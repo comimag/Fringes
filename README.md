@@ -1,75 +1,77 @@
 # Fringes
-Author: Christian Kludt
+Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns.
 
 ## Description
-Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns
-of the form
 
-    I = A + B * cos(2πvξ/L - 2πft - φ₀)
-      = A + B * cos(kx - wt - φ₀)
-      = A + B * cos(Φ)
-
+### Background
 Many applications, such as fringe projection [[11]](#11-burke-2002) or deflectometry [[1]](#1-burke-2022),
 require the ability to encode positional data.
 To do this, fringe patterns are used to encode the position on the screen / projector (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.
 
-## Features
-- [Optimal Coding Strategy](#optimal-coding-strategy)
-- [Encoding](#encoding)
-- [Decoding](#decoding)
-- [Spatial Phase Unwrapping](#spatial-phase-unwrapping--spu-)
-- Generalized Temporal Phase Unwrapping
+--- FIGURE coding ---
+
+- **Encoding**
+  - **Spatial Modulation**\
+The x- resp. y-coordinate `ξ` of the screen/projector is normalized into the range `[0, 1)`
+by dividing through the maximum coordinate `L`
+and used to modulate the luminance in a sinusoidal fringe pattern `I`
+with offset `A`, amplitude `B` and spatial frequency `v`.\
+  - **Temporal Modulation**\
+The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each.
+An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.
+- **Decoding**
+  - **Temporal Demodulation**\
+From these shifts, the phase map `φ` is determined [[13]](#13-burke-2012). Due to the trigonometric functions used,
+the global phase `Φ` is wrapped into the interval <code>[0, 2 &pi;]</code> with `v` periods:
+<code>φ &equiv; Φ mod 2&pi;</code>.
+  - **Spatial Demodulation / Phase Unwrapping**\
+If only one set with spatial frequency <code>v &le; 1</code> is used,
+no unwrapping is required because one period covers the complete coding range.
+Hence, the coordinates `ξ` are computed directly by scaling: <code>ξ = φ / (2&pi;) * L / v</code>.
+This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
+and contains the information where each camera pixel, i.e. each camera sightray, was looking at
+during the fringe pattern acquisition.
+Note that in contrast to binary coding schemes, e.g. Gray code,
+the coordinates are obtained with sub-pixel precision.
+    - **Temporal Phase Unwrapping (TPU)**\
+If multiple sets with different spatial frequencies `v` are used
+and the [unmbiguous measurement range](#quality-metrics) is larger than the coding range <code>UMR &ge; L</code>,
+the ambiguity of the phase map is resolved by
+generalized multi-frequency temporal phase unwrapping [[14]](#14-kludt-2024).
+    - **Spatial Phase Unwrapping (SPU)**\
+However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`, the ambiguous phase `φ`
+is unwrapped analyzing the neighbouring phase values [[15]](#15-herráez-2002) [[16]](#16-lei-2015).
+This only yields a relative phase map, therefore absolute positions are unknown.
+
+### Features
+<!---
+- Generalized Temporal Phase Unwrappting (GTPU)[[14](#14-kludt-2024)]
+--->
+- Generalized Temporal Phase Unwrappting (GTPU)
 - Uncertainty Propagation
 - Computation of Residuals
-- [Deinterlacing](#methods)
-- [Multiplexing](#multiplexing)
-- [Filtering Phase Maps](#methods)
-- [Remapping](#methods)
+- Deinterlacing
+- Multiplexing
+- Filtering Phase Maps
+- Remapping
 
-## Phase Shifting
+## Contents
+- [Installation](#installation)
+- [Usage](#usage)
+- [Attributes](#attributes)
+- [Methods](#methods)
+- [Optimal Coding Strategy](#optimal-coding-strategy)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Project Status](#project-status)
 
-### Encoding
+## Installation
+You can install `fringes` directly from [PyPi](https://pypi.org/) via `pip`:
 
-- #### Spatial Modulation
-  The x- resp. y-coordinate `ξ` of the screen/projector is normalized into the range `[0, 1)`
-  by dividing through the maximum coordinate `L`
-  and used to modulate the luminance in a sinusoidal fringe pattern `I`
-  with offset `A`, amplitude `B` and spatial frequency `v`.
-
-- #### Temporal Modulation
-  The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each.
-  An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.
-
-### Decoding
-
-  - #### Temporal Demodulation
-    From these shifts, the phase map `φ` is determined [[13]](#13-burke-2012). Due to the trigonometric functions used,
-    the global phase `Φ` is wrapped into the interval <code>[0, 2 &pi;]</code> with `v` periods:
-    <code>φ &equiv; Φ mod 2&pi;</code>.
-
-  - #### Spatial Demodulation / Phase Unwrapping (`PU`)
-    If only one set with spatial frequency <code>v &le; 1</code> is used,
-    no unwrapping is required because one period covers the complete coding range.
-    Hence, the coordinates `ξ` are computed directly by scaling: <code>ξ = φ / (2&pi;) * L / v</code>.
-    This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
-    and contains the information where each camera pixel, i.e. each camera sightray, was looking at
-    during the fringe pattern acquisition.
-    Note that in contrast to binary coding schemes, e.g. Gray code,
-    the coordinates are obtained with sub-pixel precision.
-
-    - ##### Temporal Phase Unwrapping (TPU)
-      If multiple sets with different spatial frequencies `v` are used
-      and the [unmbiguous measurement range](#quality-metrics) is larger than the coding range <code>UMR &ge; L</code>,
-      the ambiguity of the phase map is resolved by
-      generalized multi-frequency temporal phase unwrapping [[14]](#14-kludt-2024).
-
-    - ##### Spatial Phase Unwrapping (SPU)
-      However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`, the ambiguous phase `φ`
-      is unwrapped analyzing the neighbouring phase values [[15]](#15-herráez-2002) [[16]](#16-lei-2015).
-      This only yields a relative phase map, therefore absolute positions are unknown.
-
---- FIGURE coding ---
+```
+pip install fringes
+```
 
 ## Usage
 You instantiate and deploy the `Fringes` class:
@@ -77,7 +79,7 @@ You instantiate and deploy the `Fringes` class:
 ```python
 import fringes as frng
 
-f = frng.Fringes()     # instanciate class
+f = frng.Fringes()      # instanciate class
 ```
 
 For creating the fringe pattern sequence `I`, use the method `encode()`.
@@ -85,7 +87,7 @@ It will return a [NumPy array](https://numpy.org/doc/stable/reference/generated/
 in [videoshape](#video-shape) (frames, width, height, color channels).
 
 ```python
-I = f.encode()         # encode fringe patterns
+I = f.encode()          # encode fringe patterns
 ```
 
 For analyzing (recorded) fringe patterns, use the method `decode()`.
@@ -100,18 +102,18 @@ A, B, xi = f.decode(I)  # decode fringe patterns
 All parameters are accesible by the respective attributes of the `Fringes` class.
 
 ```python
-f.X = 1920             # set width of the fringe patterns
-f.Y = 1080             # set height of the fringe patterns
-f.K = 2                # set number of sets
-f.N = 4                # set number of shifts
-f.v = [9, 10]          # set spatial frequencies
-f.T                    # get the number of frames
+f.X = 1920              # set width of the fringe patterns
+f.Y = 1080              # set height of the fringe patterns
+f.K = 2                 # set number of sets
+f.N = 4                 # set number of shifts
+f.v = [9, 10]           # set spatial frequencies
+f.T                     # get the number of frames
 ```
 
 A glossary of them is obtained by the class attribute `doc`.
 
 ```python
-glossary = frng.Fringes.doc
+frng.Fringes.doc        # get glossary
 ```
 
 You can change the [logging level](https://docs.python.org/3/library/logging.html#levels) of a `Fringes` instance.
@@ -121,6 +123,11 @@ and how long functions take to execute.
 ```python
 f.logger.setLevel("DEBUG")
 ```
+
+## Need a GUI?
+Do you need a GUI? `Fringes` has a sister project that is called `Fringes GUI`:
+
+https://github.com/genicam/harvesters_gui
 
 ## Attributes
 All parameters are parsed when setting, so usually several input formats are accepted, e.g.

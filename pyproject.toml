@@ -5,6 +5,7 @@ description = "Phase shifting algorithms for encoding and decoding sinusoidal fr
 license = "CC-BY-NC-SA-4.0"
 authors = ["Christian Kludt"]
 readme = "README.md"
+repository = "https://github.com/comimag/fringes"
 keywords = ["phase shifting", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
 
 [tool.poetry.dependencies]
