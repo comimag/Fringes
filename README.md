@@ -11,6 +11,13 @@ at which the camera pixels were looking at during acquisition.
 
 --- FIGURE coding ---
 
+```
+I = A + B * cos(2πvξ/L - 2πft - φ₀)
+  = A + B * cos(kx - wt - φ₀)
+  = A + B * cos(Φ)
+
+```
+
 - **Encoding**
   - **Spatial Modulation**\
 The x- resp. y-coordinate `ξ` of the screen/projector is normalized into the range `[0, 1)`
