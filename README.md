@@ -59,6 +59,7 @@ This only yields a relative phase map, therefore absolute positions are unknown.
 ## Contents
 - [Installation](#installation)
 - [Usage](#usage)
+- [Graphical User Interface](#graphical-user-interface)
 - [Attributes](#attributes)
 - [Methods](#methods)
 - [Optimal Coding Strategy](#optimal-coding-strategy)
@@ -124,7 +125,7 @@ and how long functions take to execute.
 f.logger.setLevel("DEBUG")
 ```
 
-## Need a GUI?
+## Graphical User Interface
 Do you need a GUI? `Fringes` has a sister project that is called `Fringes GUI`:
 
 https://github.com/genicam/harvesters_gui
