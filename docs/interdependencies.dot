@@ -1,0 +1,117 @@
+digraph G {
+    graph [compound=True]
+    node [style=filled]
+    nodesep=0.4  // default: 0.25
+    ranksep=0.6  // default: 0.5
+
+    {rank=same; H -> TDM -> WDM -> FDM -> SDM -> grid -> SSB[style=invis][group=1]}
+    {rank=same; h -> C -> T -> D -> K -> reverse[style=invis][group=2]}
+    {rank=same; size -> shape -> P -> angle -> N -> l -> v -> f -> o[style=invis][group=3]}
+    {rank=same; X -> axis -> Y -> UMR -> static[style=invis][group=4]}
+    {rank=same; dtype -> M -> delta -> L -> eta -> DR -> PU[style=invis][group=5]}
+    //{rank=same; dtype -> M -> angle[style=invis][group=6]}
+    {rank=same; nbytes -> Imax -> q -> u[style=invis][group=7]}
+    {rank=same; A -> B -> QN -> DN -> PN[style=invis][group=8]}
+    {rank=same; gamma -> V -> Vmin -> verbose -> mode[style=invis][group=9]}
+
+    SSB[shape=box][fillcolor=white]
+
+    H -> {T} [dir=both][color=green]
+    TDM -> WDM [style=invis]
+    H -> {h} [dir=both]
+    WDM -> C[shape=box]
+    WDM -> h[dir=both]
+    WDM:se -> N[dir=both]
+    WDM:e -> FDM [weight=3][dir=both]
+    WDM -> T[dir=both][color=green]
+    FDM -> {N v f}
+    FDM -> T [color=green]
+    FDM:e -> SDM [weight=1][dir=both]
+    SDM -> T[dir=both][color=green]
+    SDM:e -> grid
+    grid:e -> SSB
+
+    C -> shape
+    h:e -> C
+    h -> M [dir=both]
+    h -> size [style=invis]
+//    T -> {D K} [constraint=false]
+    T -> {TDM shape l}
+    T:e -> D
+    T -> N [dir=both][color=green]
+    D -> {FDM SDM grid L}
+    D -> {N l v f}[dir=both][color=blue]
+    K -> {N l v f}[dir=both][color=red]
+    K -> {FDM  PU}
+    K -> SSB [weight=5]
+    reverse -> f [style=dashed]
+
+    N -> {SSB UMR}
+    l -> UMR [weight=13]
+    l:e -> v [dir=both]
+    v:e -> f
+    v -> {UMR PU}
+    f -> N:s
+
+    P -> X [dir=both]
+    P -> Y [dir=both]
+    X:e -> axis
+    X -> {shape L}
+    Y -> {shape L}
+    Y:w -> axis
+    axis -> L
+    UMR -> {eta DR}
+    static -> {v f}
+
+    M -> u
+    delta:e -> L
+    angle -> L
+    L:e -> eta
+    L -> l
+    eta:s -> PU:s
+
+    u -> DR:sw [constraint=false]
+
+    dtype -> {Imax q nbytes}
+
+    Imax -> A
+    Imax -> B [weight=2]
+    q -> QN [weight=2]
+    nbytes -> gamma [style=invis]
+    Vmin
+    verbose
+    mode
+    o
+
+    A:e -> B [dir=both]
+    A -> V [dir=both][weight=3]
+    B -> V [dir=both]
+    B -> u
+    QN -> u
+    DN -> u [weight=2]
+    PN -> u
+
+    size -> nbytes
+    //shape -> size
+    size:e -> shape [dir=back][constraint=false]
+    shape -> axis [style=invis]
+
+    N -> u
+    l -> u
+    angle -> grid
+
+    shape[shape=box]
+    size[shape=box]
+    nbytes[shape=box][fillcolor=white]
+    Imax[shape=box]
+    q[shape=box]
+//    Q[shape=box]
+    QN[shape=box]
+    UMR[shape=box]
+    eta[shape=box]
+    u[shape=box]
+    TDM[shape=box][fillcolor=white]
+    //L[shape=box]
+    DR[shape=box][fillcolor=white]
+    PU[shape=box][fillcolor=white]
+}
