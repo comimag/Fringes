@@ -128,7 +128,7 @@ f.logger.setLevel("DEBUG")
 ## Graphical User Interface
 Do you need a GUI? `Fringes` has a sister project that is called `Fringes GUI`:
 
-https://github.com/genicam/harvesters_gui
+https://github.com/genicam/fringes_gui
 
 ## Attributes
 All parameters are parsed when setting, so usually several input formats are accepted, e.g.
