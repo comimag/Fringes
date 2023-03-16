@@ -362,10 +362,10 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
   which is edge-preserving.\
   If the argument `despike` is `True`, single pixel outliers in the unwrapped phase map
   are replaced by their local neighborhood using a median filter.
-- `remap(reg, mod)`\
-  Mapping decoded coordinates `reg` i.e. `ξ` (having sub-pixel accuracy)
+- `remap(registration, modulation)`\
+  Mapping decoded registered coordinates `ξ` (having sub-pixel accuracy)
   from camera grid to (integer) positions on the pattern/screen grid
-  with weights from modulation `mod` i.e. `B`.
+  with weights from modulation `B`.
   The default for `mod` is `None`, in which case all weights are assumed to equal one.
   The method yields a grid representing the screen (light source)
   with the pixel values being a relative measure
