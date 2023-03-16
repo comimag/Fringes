@@ -9,7 +9,7 @@ repository = "https://github.com/comimag/fringes"
 keywords = ["phase shifting", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.12"
+python = "^3.10,<3.11"
 asdf = "^2.14.3"
 numba = "^0.56.4"
 opencv-contrib-python = "^4.7.0"

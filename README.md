@@ -1,5 +1,6 @@
 # Fringes
-Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns.
+
+Author: Christian Kludt
 
 ## Description
 

@@ -268,14 +268,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "fonttools"
-version = "4.39.0"
+version = "4.39.1"
 description = "Tools to manipulate font files"
 category = "dev"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fonttools-4.39.0-py3-none-any.whl", hash = "sha256:f5e764e1fd6ad54dfc201ff32af0ba111bcfbe0d05b24540af74c63db4ed6390"},
-    {file = "fonttools-4.39.0.zip", hash = "sha256:909c104558835eac27faeb56be5a4c32694192dca123d073bf746ce9254054af"},
+    {file = "fonttools-4.39.1-py3-none-any.whl", hash = "sha256:54c871c0587c1f3ad3a71b390e503edbb4638d90ad14f905f2fa5938a72fc76b"},
+    {file = "fonttools-4.39.1.zip", hash = "sha256:51c72f26a5b79fc77d59f22e9d146350fbd1d107430ddda7b7665b1be38b16ad"},
 ]
 
 [package.extras]
@@ -717,7 +717,6 @@ files = [
 numpy = [
     {version = ">=1.21.2", markers = "python_version >= \"3.10\""},
     {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\""},
-    {version = ">=1.22.0", markers = "python_version >= \"3.11\""},
     {version = ">=1.19.3", markers = "python_version >= \"3.6\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" or python_version >= \"3.9\""},
     {version = ">=1.17.0", markers = "python_version >= \"3.7\""},
     {version = ">=1.17.3", markers = "python_version >= \"3.8\""},
@@ -1286,14 +1285,14 @@ mpmath = ">=0.19"
 
 [[package]]
 name = "tifffile"
-version = "2023.2.28"
+version = "2023.3.15"
 description = "Read and write TIFF files"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "tifffile-2023.2.28-py3-none-any.whl", hash = "sha256:8357cd8ccbdd4378ad4d6b84ffe3ab15b1d96630b1719f576d4de386f45546f1"},
-    {file = "tifffile-2023.2.28.tar.gz", hash = "sha256:2d2baba8dea6609f553fe61853db9a61f715d60ba3bce6a20b5a1ab72407dfed"},
+    {file = "tifffile-2023.3.15-py3-none-any.whl", hash = "sha256:0ad708d0d5a45d068444e9036a20f1f8a237da008e35cc9cbc69bbb5602d6987"},
+    {file = "tifffile-2023.3.15.tar.gz", hash = "sha256:38e95a8f1b0cbcbf50d20011c3953db52c13a7e258afc391e7f681960303dd60"},
 ]
 
 [package.dependencies]
@@ -1344,5 +1343,5 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10,<3.12"
-content-hash = "be8ec82e07ea186b973a65f9528e478f584c9f566301602ac007cffc545179d4"
+python-versions = "^3.10,<3.11"
+content-hash = "64ae1a4b897f89b86ff596438792f924d4950ffcc5524b1f10babc6e57acd141"
