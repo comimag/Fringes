@@ -3,12 +3,11 @@
 Author: Christian Kludt
 
 ## Description
-
 This package provides the handy `Fringes` class which handles all the required parameters for configuring a fringe pattern
 and provides methods for fringe analysis.
-
+<!---
 link to  paper, please cite
-
+--->
 This package is in an early stage and under active development,
 so features and functionally will be added in the future.
 Feature requests are warmly welcomed!
@@ -37,7 +36,6 @@ at which the camera pixels were looking at during acquisition.
 I = A + B * cos(2πvξ/L - 2πft - φ₀)
   = A + B * cos(kx - wt - φ₀)
   = A + B * cos(Φ)
-
 ```
 
 - **Encoding**
@@ -45,7 +43,7 @@ I = A + B * cos(2πvξ/L - 2πft - φ₀)
 The x- resp. y-coordinate `ξ` of the screen/projector is normalized into the range `[0, 1)`
 by dividing through the maximum coordinate `L`
 and used to modulate the luminance in a sinusoidal fringe pattern `I`
-with offset `A`, amplitude `B` and spatial frequency `v`.\
+with offset `A`, amplitude `B` and spatial frequency `v`.
   - **Temporal Modulation**\
 The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each.
 An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.
@@ -173,7 +171,7 @@ If <code>D &equiv; 1</code>, the parameter `axis` is used to define along which 
 `angle` can be used to tilt the coordinate system. The origin stays the same.
 
 ### __Video Shape__
-Standardized `shape` (`T`, `Y`, `X`, `C`) of the fringe pattern sequence, with
+Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with
 - `T`: number of frames
 - `Y`: height
 - `X`: width
