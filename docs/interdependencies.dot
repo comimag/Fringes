@@ -29,6 +29,8 @@ digraph G {
     FDM:e -> SDM [weight=1][dir=both]
     SDM -> T[dir=both][color=green]
     SDM:e -> grid
+    SDM -> B
+    FDM -> B
     grid:e -> SSB
 
     C -> shape

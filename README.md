@@ -15,7 +15,7 @@ link to  paper, please cite
 --->
 - Generalized Temporal Phase Unwrappting (GTPU)
 - Uncertainty Propagation
-- Computation of Residuals
+- Optimal Coding Strategy
 - Deinterlacing
 - Multiplexing
 - Filtering Phase Maps

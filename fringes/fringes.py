@@ -36,6 +36,9 @@ class Fringes:
     _Lmax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Tmax = _Hmax * _Dmax * _Kmax * _Nmax
     _gammamax = 3  # most screens have a gamma of ~2.2
+    # _lmin = 2  # l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
+    _lmin = 4  # l >= 4 yields sufficient modulation theoretically  # todo: test 2 and 3 if B reaches Imax / 2
+    # _lmin = 8  # l >= 8 yields sufficient modulation practically
 
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
@@ -575,7 +578,7 @@ class Fringes:
 
         if self.WDM:
             assert not self.FDM
-            assert self.ismono
+            assert self._ismono
             assert np.all(self.N == 3)
 
             I = I.reshape((-1, 3, self.Y, self.X, 1))  # returns a view
@@ -856,7 +859,7 @@ class Fringes:
             assert len(np.unique(self.N)) == 1, "Shifts aren't equal."
 
         # decolorize i.e. fuse hues/colors
-        if self.H > 1 or not self.ismono:  # for gray fringes, color fusion is not performed, but extended averaging is
+        if self.H > 1 or not self._ismono:  # for gray fringes, color fusion is not performed, but extended averaging is
             I = self._decolorize(I)
 
         # demultiplex
@@ -1271,7 +1274,7 @@ class Fringes:
             self.FDM = False
             self.N = 3
             self.WDM = True
-            self.K = _T / self.D
+            self.K = _T // self.D
             self.SDM = False
         else:
             # as long as enough shifts are there to compensate for nonlinearities,
@@ -1279,7 +1282,7 @@ class Fringes:
             if _T < Nmin:
                 Nmin = _T
             Nmin = max(3, Nmin)  # minimum number of phase shifts for first set to de demodulated/decoded
-            N12 = Nmin == 3  # allow N to be in [1, 2] if K >= 2
+            N12 = False#Nmin == 3  # allow N to be in [1, 2] if K >= 2
             # todo: N12 = 1 in self.N or 2 in self.N
             Ngood = 4  # minimum number of phase shifts to obtain good results i.e. reliable results in practice
             self.SDM = False
@@ -1302,7 +1305,7 @@ class Fringes:
                 _T //= self.H
 
             # try K = Kmax
-            Kmax = 3  # todo: which is better: 2 or 3?
+            Kmax = 2#3  # todo: which is better: 2 or 3?
             if N12:
                 K = _T // self.D - (Nmin - 1)  # Nmin - 1 = 2; i.e. 2 more for first set
                 # Kmax = 2
@@ -1400,7 +1403,7 @@ class Fringes:
     @property
     def C(self) -> int:
         """Number of color channels."""
-        return 3 if self.WDM or not self.ismono else 1
+        return 3 if self.WDM or not self._ismono else 1
 
     @property
     def P(self) -> int:
@@ -1670,7 +1673,7 @@ class Fringes:
             self.logger.error("Couldn't set 'h': Black color is not allowed.")
             return
 
-        if self.WDM and not self.ismono:
+        if self.WDM and not self._ismono:
             self.logger.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
             return
 
@@ -1714,6 +1717,11 @@ class Fringes:
             self.logger.debug(f"{self._SDM = }")
             self.logger.debug(f"{self.T = }")  # computed upon call
 
+            if self.SDM:
+                self.B /= self.D
+            else:
+                self.B *= self.D
+
     @property
     def WDM(self) -> bool:
         """Wavelength division multiplexing."""
@@ -1728,7 +1736,7 @@ class Fringes:
                 _WDM = False
                 self.logger.error("Couldn't set 'WDM': At least one Shift != 3.")
 
-            if not self.ismono:
+            if not self._ismono:
                 _WDM = False
                 self.logger.error("Couldn't set 'WDM': Not all hues are monochromatic.")
 
@@ -1770,6 +1778,11 @@ class Fringes:
             self.N = self._N
             self.l = self._l  # l triggers v
             self.f = self._f
+
+            if self.FDM:
+                self.B /= (self.D * self.K)
+            else:
+                self.B *= (self.D * self.K)
 
     @property
     def static(self) -> bool:
@@ -2190,7 +2203,7 @@ class Fringes:
             self.logger.debug(f"self._o = {self._o / np.pi} PI")
 
     @property
-    def ismono(self) -> bool:
+    def _ismono(self) -> bool:
         """All hues are monochromatic, i.e. RGB values are identical for each hue."""
         return all(len(set(h)) == 1 for h in self.h)
 
@@ -2213,11 +2226,7 @@ class Fringes:
 
     @lmin.setter
     def lmin(self, lmin: float):
-        # lmin <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
-        # lmin >= 4 yields sufficient modulation theoretically
-        # lmin >= 8 yields sufficient modulation practically
-        __lmin = 4
-        _lmin = float(max(__lmin, lmin))
+        _lmin = float(max(self._lmin, lmin))
 
         if self._lmin != _lmin:
             self._lmin = _lmin
@@ -2351,7 +2360,9 @@ class Fringes:
 
     @A.setter
     def A(self, A: float):
-        _A = float(min(max(self.B, A), self.Imax - self.B))
+        Amin = max(self.B / self.Vmax, A)
+        Amax = self.Imax - self.B / self.Vmax
+        _A = float(min(Amin, Amax))
 
         if self._A != _A and _A != 0:
             self._A = _A
@@ -2364,11 +2375,17 @@ class Fringes:
 
     @B.setter
     def B(self, B: float):
-        _B = float(min(max(0, B), min(self.A, self.Imax - self.A)))
+        Bmax = min(self.A, self.Imax - self.A) * self.Vmax
+        _B = float(min(max(0, B), Bmax))
 
         if self._B != _B and _B != 0:
             self._B = _B
             self.logger.debug(f"{self._B = }")
+
+    @property
+    def Vmax(self):
+        """Maximum visibility due to multiplexing."""
+        return 1 / (self.D * self.K) if self.FDM else 1 / self.D if self.SDM else 1
 
     @property
     def V(self) -> float:
@@ -2377,7 +2394,7 @@ class Fringes:
 
     @V.setter
     def V(self, V: float):
-        _V = float(min(max(0, V), 1))
+        _V = float(min(max(0, V), self.Vmax))
         self.B = _V * self.A
 
     @property
@@ -2440,6 +2457,12 @@ class Fringes:
     @property
     def u(self) -> np.ndarray:
         """Uncertainty of measurement [px]."""
+        # if self.SDM:
+        #     B = self.B / self.D
+        # elif self.FDM:
+        #     B = self.B / (self.D * self.K)
+        # else:
+        #     B = self.B
         SNR = self.B / np.sqrt(self.PN ** 2 + self.DN ** 2 + self.QN ** 2)
         upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
@@ -2464,7 +2487,7 @@ class Fringes:
         params = {}
         for p in sorted(dir(self)):
             if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
-                if p in ["T"]:
+                if p in ["T", "eta"]:  # derived values, but informative, so we want them to be listed
                     p_ = p
                 else:
                     p_ = "_" + p

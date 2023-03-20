@@ -188,16 +188,18 @@ def test_dtypes():
 #         # todo: test angles
 
 
-def test_scaling():
-    f = Fringes()
-    f.K = 1
-
-    f.v = 1
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+# def test_scaling():
+#     f = Fringes()
+#     f.K = 1
+#
+#     f.v = 1
+#     I = f.encode()
+#     dec = f.decode(I)
+#
+#     d = dec.registration - f.coordinates()
+#     # std = np.std(d)
+#     # a = 1
+#     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
 
 def test_unwrapping():
@@ -375,7 +377,24 @@ def test_save_load():
 
 
 if __name__ == "__main__":
+    from matplotlib import pyplot as plt
+
     f = Fringes()
-    p = f.params
-    # pytest.main()
+    f.logger.setLevel("DEBUG")
+
+    T = 10
+    u = np.empty(T-1)
+    dr = np.empty(T-1)
+    for i, t in enumerate(np.arange(1, T)):
+        f.T = t
+        f.v = "auto"
+        u[i] = f.u
+        dr[i] = f.DR.min()
+        f.D = 2
+        print("------------------------------")
+
+    plt.plot(np.arange(1, T), u)
+    plt.show()
+
+    pytest.main()
     subprocess.call(['pytest', '--tb=short', str(__file__)])

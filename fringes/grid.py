@@ -38,7 +38,8 @@ import numpy as np
 
 
 def img(Y: int = 720, X: int = 720, a: float = 0, centered: bool = False):
-    y, x = np.mgrid[:Y, :X]  # / max(X, Y)
+    # y, x = np.mgrid[:Y, :X]
+    y, x = np.indices((Y, X))
     return rot(x, y, a)
 
 
@@ -46,11 +47,11 @@ def cart(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
     L = max(X, Y)
 
     if centered:
-        x = np.linspace(-X / 2, X / 2, X, endpoint=True)  # / L
-        y = np.linspace(Y / 2, -Y / 2, Y, endpoint=True)  # / L
+        x = np.linspace(-X / 2, X / 2, X, endpoint=True)
+        y = np.linspace(Y / 2, -Y / 2, Y, endpoint=True)
     else:
-        x = np.linspace(0, X, X, endpoint=False)  # / L
-        y = np.linspace(Y - 1, 0, -1, X, endpoint=False)  # / L
+        x = np.linspace(0, X, X, endpoint=False)
+        y = np.linspace(Y - 1, 0, -1, X, endpoint=False)
 
     xx, yy = np.meshgrid(x, y)
     return rot(xx, yy, a)
