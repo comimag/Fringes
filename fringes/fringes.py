@@ -67,6 +67,7 @@ class Fringes:
                  M: float = 1,  # M is inferred from h
                  D: int = 2,
                  K: int = 3,
+                 T: int = 24,
                  N: tuple | np.ndarray = np.array([[4, 4, 4], [4, 4, 4]], int),
                  l: tuple | np.ndarray = 512 / np.array([[13, 7, 89], [13, 7, 89]], float),
                  v: tuple | np.ndarray = np.array([[13, 7, 89], [13, 7, 89]], float),
@@ -1240,11 +1241,14 @@ class Fringes:
 
     @T.setter
     def T(self, T: int):
-        try:  # the setter can only take one argument, so we check for an iterable to get two arguments: T and Nmin  # todo: check
-            T, Nmin = T
-            Nmin = int(Nmin)
-        except:
-            Nmin = 3
+        # todo: the setter can only take one argument, so we check for an iterable to get two arguments: T and Nmin
+        # try:
+        #     T, Nmin = T
+        #     Nmin = int(min(max(3, Nmin), self._Nmax))
+        # except:
+        #     Nmin = 3
+
+        Nmin = 3
 
         _T = int(min(max(1, T), self._Tmax))
 
@@ -2460,10 +2464,10 @@ class Fringes:
         params = {}
         for p in sorted(dir(self)):
             if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
-                # if p == "T":
-                #     continue
-
-                p_ = "_" + p
+                if p in ["T"]:
+                    p_ = p
+                else:
+                    p_ = "_" + p
 
                 if isinstance(getattr(self, p_, None), np.ndarray):
                     param = getattr(self, p_, None).tolist()

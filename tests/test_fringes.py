@@ -375,5 +375,7 @@ def test_save_load():
 
 
 if __name__ == "__main__":
+    f = Fringes()
+    p = f.params
     # pytest.main()
     subprocess.call(['pytest', '--tb=short', str(__file__)])

@@ -8,9 +8,6 @@ and provides methods for fringe analysis.
 <!---
 link to  paper, please cite
 --->
-This package is in an early stage and under active development,
-so features and functionally will be added in the future.
-Feature requests are warmly welcomed!
 
 ### Features
 <!---
@@ -527,3 +524,8 @@ Inverse Laplace Filter
 
 ## License
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
+
+## Project Status
+This package is in an early stage and under active development,
+so features and functionally will be added in the future.
+Feature requests are warmly welcomed!
