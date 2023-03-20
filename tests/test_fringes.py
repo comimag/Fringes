@@ -45,7 +45,7 @@ def test_UMR_mutual_divisibility():
 
 
 def test_encoding():
-    f = Fringes()
+    f = Fringes(Y=100)
 
     I = f.encode()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -58,7 +58,7 @@ def test_encoding():
 
 
 def test_encoding_call():
-    f = Fringes()
+    f = Fringes(Y=100)
 
     I = f()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -71,7 +71,7 @@ def test_encoding_call():
 
 
 def test_encoding_iter():
-    f = Fringes()
+    f = Fringes(Y=100)
 
     for t, I in enumerate(f):
         assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -89,7 +89,7 @@ def test_encoding_iter():
 
 
 def test_encoding_frames():
-    f = Fringes()
+    f = Fringes(Y=100)
     
     I = np.array([f.encode(t)[0] for t in range(f.T)])
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -102,7 +102,7 @@ def test_encoding_frames():
 
 
 def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
-    f = Fringes()
+    f = Fringes(Y=100)
     f.verbose = True
 
     I = f.encode()
@@ -140,7 +140,7 @@ def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
 
 
 def test_decoding_despike():
-    f = Fringes()
+    f = Fringes(Y=100)
     I = f.encode()
     I[:, 10, 5, :] = I[:, -5, -10, :]
 
@@ -151,7 +151,7 @@ def test_decoding_despike():
 
 
 def test_deinterlacing():
-    f = Fringes()
+    f = Fringes(Y=100)
 
     I = f.encode()
     I = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace
@@ -163,7 +163,7 @@ def test_deinterlacing():
 
 
 def test_dtypes():
-    f = Fringes()
+    f = Fringes(Y=100)
 
     for dtype in f._dtypes:
         f.dtype = dtype
@@ -174,7 +174,7 @@ def test_dtypes():
 
 
 # def test_grids():
-#     f = Fringes()
+#     f = Fringes(Y=100)
 #
 #     for g in f._grids:
 #         f.grid = g
@@ -189,7 +189,7 @@ def test_dtypes():
 
 
 # def test_scaling():
-#     f = Fringes()
+#     f = Fringes(Y=100)
 #     f.K = 1
 #
 #     f.v = 1
@@ -229,7 +229,7 @@ def test_unwrapping_class_method():
         assert np.allclose(grad, 0, atol=0.2), "Gradient of unwrapped phase map isn't close to 0."
 
 
-def test_remapping():
+def test_remapping(Y=100):
     f = Fringes()
     f.Y /= 2
     f.verbose = True
@@ -251,7 +251,7 @@ def test_remapping():
 
 
 def test_hues():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.h = "rggb"
 
     I = f.encode()
@@ -270,7 +270,7 @@ def test_hues():
 
 
 def test_averaging():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.M = 2
 
     I = f.encode()
@@ -281,7 +281,7 @@ def test_averaging():
 
 
 def test_WDM():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.N = 3
     f.WDM = True
 
@@ -293,7 +293,7 @@ def test_WDM():
 
 
 def test_SDM():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.SDM = True
 
     I = f.encode()
@@ -310,7 +310,7 @@ def test_SDM():
 
 
 def test_FDM():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.FDM = True
 
     I = f.encode()
@@ -333,7 +333,7 @@ def test_FDM():
 
 
 def test_SDM_WDM():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.N = 3
     f.SDM = True
     f.WDM = True
@@ -355,9 +355,9 @@ def test_save_load():
     f = Fringes()
     params = f.params
 
-    with tempfile.TemporaryDirectory() as tdir:
+    with tempfile.TemporaryDirectory() as tempdir:
         for ext in [".json", ".yaml", ".asdf"]:  # todo: ".toml"
-            fname = os.path.join(tdir, f"params{ext}")
+            fname = os.path.join(tempdir, f"params{ext}")
 
             f.save(fname)
             assert os.path.isfile(fname), "No params-file saved."
@@ -377,24 +377,5 @@ def test_save_load():
 
 
 if __name__ == "__main__":
-    from matplotlib import pyplot as plt
-
-    f = Fringes()
-    f.logger.setLevel("DEBUG")
-
-    T = 10
-    u = np.empty(T-1)
-    dr = np.empty(T-1)
-    for i, t in enumerate(np.arange(1, T)):
-        f.T = t
-        f.v = "auto"
-        u[i] = f.u
-        dr[i] = f.DR.min()
-        f.D = 2
-        print("------------------------------")
-
-    plt.plot(np.arange(1, T), u)
-    plt.show()
-
-    pytest.main()
+    # pytest.main()
     subprocess.call(['pytest', '--tb=short', str(__file__)])

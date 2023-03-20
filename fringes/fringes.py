@@ -36,9 +36,6 @@ class Fringes:
     _Lmax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Tmax = _Hmax * _Dmax * _Kmax * _Nmax
     _gammamax = 3  # most screens have a gamma of ~2.2
-    # _lmin = 2  # l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
-    _lmin = 4  # l >= 4 yields sufficient modulation theoretically  # todo: test 2 and 3 if B reaches Imax / 2
-    # _lmin = 8  # l >= 8 yields sufficient modulation practically
 
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
@@ -592,8 +589,10 @@ class Fringes:
             assert I.dtype.kind == "f"
 
             I = I.reshape((self.D, -1))  # returns a view
+            I -= self.A
             I = np.sum(I, axis=0)
-            I *= 1 / self.D
+            I += self.A
+            # I *= 1 / self.D
             I = I.reshape((-1, self.Y, self.X, self.C if self.WDM else 1))  # returns a view
             if self.dtype.kind in "uib":
                 if rint:
@@ -602,7 +601,7 @@ class Fringes:
 
         if self.FDM:
             assert not self.WDM
-            assert not self.SDM  # todo: allow self.SDM?
+            assert not self.SDM
             assert len(np.unique(self.N)) == 1
             assert I.dtype.kind == "f"
 
@@ -610,8 +609,10 @@ class Fringes:
                 self.logger.warning("Decoding might be disturbed.")
 
             I = I.reshape((self.D * self.K, -1))  # returns a view
+            I -= self.A
             I = np.sum(I, axis=0)
-            I *= 1 / (self.D * self.K)
+            I += self.A
+            # I *= 1 / (self.D * self.K)
             I = I.reshape((-1, self.Y, self.X, 1))  # returns a view
             if self.dtype.kind in "uib":
                 if rint:
@@ -2226,7 +2227,10 @@ class Fringes:
 
     @lmin.setter
     def lmin(self, lmin: float):
-        _lmin = float(max(self._lmin, lmin))
+        # __lmin = 2  # l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
+        __lmin = 4  # l >= 4 yields sufficient modulation theoretically  # todo: test 2 and 3 if B reaches Imax / 2
+        # __lmin = 8  # l >= 8 yields sufficient modulation practically
+        _lmin = float(max(__lmin, lmin))
 
         if self._lmin != _lmin:
             self._lmin = _lmin
