@@ -41,10 +41,10 @@ digraph G {
     T -> {TDM shape l}
     T:e -> D
     T -> N [dir=both][color=green]
-    D -> {FDM SDM grid L}
+    D -> {FDM SDM grid L B}
     D -> {N l v f}[dir=both][color=blue]
     K -> {N l v f}[dir=both][color=red]
-    K -> {FDM  PU}
+    K -> {FDM B PU}
     K -> SSB [weight=5]
     reverse -> f [style=dashed]
 

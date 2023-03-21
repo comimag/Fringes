@@ -2358,29 +2358,41 @@ class Fringes:
         return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
 
     @property
+    def Amin(self):
+        """Minimum bias."""
+        return self.B / self.Vmax
+
+    @property
+    def Amax(self):
+        """Maximum bias."""
+        return self.Imax - self.B / self.Vmax
+
+    @property
     def A(self) -> float:
-        """Brightness."""
+        """Bias."""
         return self._A
 
     @A.setter
     def A(self, A: float):
-        Amin = max(self.B / self.Vmax, A)
-        Amax = self.Imax - self.B / self.Vmax
-        _A = float(min(Amin, Amax))
+        _A = float(min(max(self.Amin, A), self.Amax))
 
         if self._A != _A and _A != 0:
             self._A = _A
             self.logger.debug(f"{self._A = }")
 
     @property
+    def Bmax(self):
+        """Maximum amplitude."""
+        return min(self.A, self.Imax - self.A) * self.Vmax
+
+    @property
     def B(self) -> float:
-        """Modulation."""
+        """Amplitude."""
         return self._B
 
     @B.setter
     def B(self, B: float):
-        Bmax = min(self.A, self.Imax - self.A) * self.Vmax
-        _B = float(min(max(0, B), Bmax))
+        _B = float(min(max(0, B), self.Bmax))
 
         if self._B != _B and _B != 0:
             self._B = _B
@@ -2388,7 +2400,7 @@ class Fringes:
 
     @property
     def Vmax(self):
-        """Maximum visibility due to multiplexing."""
+        """Maximum visibility."""
         return 1 / (self.D * self.K) if self.FDM else 1 / self.D if self.SDM else 1
 
     @property
@@ -2508,6 +2520,8 @@ class Fringes:
 
     # docstrings of properties
     doc = {k: v.__doc__ for k, v in sorted(vars().items()) if isinstance(v, property) and v.__doc__ is not None}
+
+    # amplitude = B
 
     # docstring of __init__()
     __init__.__doc__ = ""
