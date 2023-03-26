@@ -35,6 +35,7 @@ class Fringes:
     _Ymax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Lmax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Tmax = _Hmax * _Dmax * _Kmax * _Nmax
+    _deltamax = 2
     _gammamax = 3  # most screens have a gamma of ~2.2
 
     # allowed values; take care to only use immutable types!
@@ -309,7 +310,7 @@ class Fringes:
         uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))  # * self.L  # todo: numba
         return uv.reshape((self.D, self.Y, self.X, 1))
 
-    def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:
+    def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:  # todo: rint = False as default? influence on residuals?
         """Encode base fringe patterns by spatio-temporal modulation."""
 
         # dd = [d for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
@@ -355,7 +356,7 @@ class Fringes:
         f = 0
         for d in range(self.D):
             if uv is None and self.grid == "image":
-                x = np.arange(self.R[d]) / self.L
+                x = np.arange(self.R[d]) / self.L  # gets broadcasted
             else:
                 x = uv[d]
 
@@ -880,7 +881,7 @@ class Fringes:
 
         # spatial unwrapping
         if np.any(self.UMR < self.R):
-            uwr = self._unwrap(phi if self.verbose or verbose else reg)  # todo: if UMR < L, do temp demod, then 3DUWR
+            uwr = self._unwrap(phi if self.verbose or verbose else reg)
 
             if self.verbose:
                 reg, res, fid = uwr
@@ -1191,6 +1192,8 @@ class Fringes:
             self.l = np.append(self._l, np.tile(self._l[-1, :], (_D - self._l.shape[0], 1)), axis=0)  # l triggers v
             self.f = np.append(self._f, np.tile(self._f[-1, :], (_D - self._f.shape[0], 1)), axis=0)
 
+            self.B = self.B
+
     @property
     def axis(self) -> int:
         """Axis along which to shift if number of directions equals one."""
@@ -1413,12 +1416,12 @@ class Fringes:
 
     @property
     def delta(self) -> float:
-        """Additional, relative buffer coding range."""
+        """Additional relative buffer coding range."""
         return self._delta
 
     @delta.setter
     def delta(self, delta: float):
-        # _delta = float(min(max(1, delta), 2))
+        # _delta = float(min(max(1, delta), self.deltamax))
         _delta = float(max(1, delta))
 
         if self._delta != _delta:
@@ -1835,6 +1838,8 @@ class Fringes:
             self.l = np.append(self._l, np.tile(l, (self.D, 1)), axis=1)  # l triggers v
             self.f = np.append(self._f, np.tile(self.defaults["f"][0, 0], (self.D, _K - self._f.shape[1])), axis=1)
 
+            self.B = self.B
+
     @property
     def eta(self) -> float:
         """Coding efficiency."""
@@ -2049,7 +2054,7 @@ class Fringes:
 
     @property
     def v(self) -> np.ndarray:
-        """Spatial frequencies, i.e. number of periods/fringes across maximum length."""
+        """Spatial frequencies, i.e. number of periods/fringes across maximum length times delta."""
         if self.D == 1 or len(np.unique(self._v, axis=0)) == 1:  # sets in directions are identical
             v = self._v[0]  # 1D
         else:
