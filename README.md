@@ -362,7 +362,7 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
   Mapping decoded registered coordinates `ξ` (having sub-pixel accuracy)
   from camera grid to (integer) positions on the pattern/screen grid
   with weights from modulation `B`.
-  The default for `mod` is `None`, in which case all weights are assumed to equal one.
+  The default for `modulation` is `None`, in which case all weights are assumed to equal one.
   The method yields a grid representing the screen (light source)
   with the pixel values being a relative measure
   of how much a screen (light source) pixel contributed

@@ -23,6 +23,8 @@ def test_init():
         assert np.array_equal(v, getattr(f, "_" + k)),\
             f"'{k}' got overwritten by interdependencies. Choose consistent default values."
 
+    assert np.array_equal(f.l, f.L / f.v), "l != L / v"
+
 
 def test_property_docs():
     f = Fringes()

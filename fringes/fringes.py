@@ -70,7 +70,7 @@ class Fringes:
                  K: int = 3,
                  T: int = 24,
                  N: tuple | np.ndarray = np.array([[4, 4, 4], [4, 4, 4]], int),
-                 l: tuple | np.ndarray = 512 / np.array([[13, 7, 89], [13, 7, 89]], float),
+                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89], [13, 7, 89]], float),
                  v: tuple | np.ndarray = np.array([[13, 7, 89], [13, 7, 89]], float),
                  f: tuple | np.ndarray = np.array([[1, 1, 1], [1, 1, 1]], float),
                  h: tuple | np.ndarray = _hues[0],  # np.array([[255, 255, 255]], int)
@@ -1161,7 +1161,7 @@ class Fringes:
         if self._angle != _angle:
             self._angle = _angle
             self.logger.debug(f"{self._angle = }")
-            self._l = self.L / self._v  # l triggers v
+            self._l = self.L / self._v
 
     @property
     def D(self) -> int:
@@ -2384,6 +2384,11 @@ class Fringes:
         if self._A != _A and _A != 0:
             self._A = _A
             self.logger.debug(f"{self._A = }")
+
+    # @property
+    # def Bmin(self):
+    #     """Minimum amplitude."""
+    #     return self.q
 
     @property
     def Bmax(self):
