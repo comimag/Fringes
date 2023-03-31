@@ -22,7 +22,10 @@ h: hues
 w: weights for inverse vaiance weighting
 q: quantization step size
 Q: number of quantization bits
-QN: quantization noise
+DN: digital numbers
+dark: dark noise
+quant: quantization noise
+phot: photon noise
 SQNR: signal to quantization noise ratio
 TDM: temporal devision multiplexing
 SDM: spatial devision multiplexing

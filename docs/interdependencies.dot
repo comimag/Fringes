@@ -8,9 +8,9 @@ digraph G {
     {rank=same; h -> C -> T -> D -> K -> reverse[style=invis][group=2]}
     {rank=same; size -> shape -> P -> angle -> N -> l -> v -> f -> o[style=invis][group=3]}
     {rank=same; X -> axis -> Y -> UMR -> static[style=invis][group=4]}
-    {rank=same; dtype -> M -> delta -> L -> eta -> DR -> PU[style=invis][group=5]}
+    {rank=same; dtype -> M -> alpha -> L -> eta -> PU[style=invis][group=5]}
     //{rank=same; dtype -> M -> angle[style=invis][group=6]}
-    {rank=same; nbytes -> Imax -> q -> u[style=invis][group=7]}
+    {rank=same; nbytes -> Imax -> q -> u -> DR[style=invis][group=7]}
     {rank=same; A -> B -> QN -> DN -> PN[style=invis][group=8]}
     {rank=same; gamma -> V -> Vmin -> verbose -> mode[style=invis][group=9]}
 
@@ -66,11 +66,11 @@ digraph G {
     static -> {v f}
 
     M -> u
-    delta:e -> L
+    alpha:e -> L
     angle -> L
     L:e -> eta
     L -> l
-    eta:s -> PU:s
+    eta:e -> PU
 
     u -> DR:sw [constraint=false]
 

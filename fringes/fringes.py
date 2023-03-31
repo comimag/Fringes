@@ -35,7 +35,7 @@ class Fringes:
     _Ymax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Lmax = 2 ** 20  # 2^20 = 1,048,576     i.e. default height limit of imread() in OpenCV
     _Tmax = _Hmax * _Dmax * _Kmax * _Nmax
-    _deltamax = 2
+    _alphamax = 2
     _gammamax = 3  # most screens have a gamma of ~2.2
 
     # allowed values; take care to only use immutable types!
@@ -79,7 +79,7 @@ class Fringes:
                  A: float = 255 / 2,  # Imax / 2 @ uint8
                  B: float = 255 / 2,  # Imax / 2 @ uint8
                  V: float = 1,
-                 delta: float = 1,
+                 alpha: float = 1,
                  dtype: str | np.dtype = "uint8",
                  grid: str = "image",
                  angle: float = 0,
@@ -94,8 +94,8 @@ class Fringes:
                  verbose: bool = False,
                  mode: str = "fast",
                  Vmin: float = 0,
-                 DN: float = 0,  # todo: 3?  # Manta G-419
-                 PN: float = 0,  # K = (2 ** 12 - 1) / 9600 * 255 / 2  # Manta G-419
+                 esat: float = np.inf,
+                 dark: float = 0,
                  ) -> None:
 
         given = {k: v for k, v in sorted(locals().items()) if k in self.defaults and not np.array_equal(v, self.defaults[k])}
@@ -1415,17 +1415,17 @@ class Fringes:
         return self.Y * self.X
 
     @property
-    def delta(self) -> float:
+    def alpha(self) -> float:
         """Additional relative buffer coding range."""
-        return self._delta
+        return self._alpha
 
-    @delta.setter
-    def delta(self, delta: float):
-        # _delta = float(min(max(1, delta), self.deltamax))
-        _delta = float(max(1, delta))
+    @alpha.setter
+    def alpha(self, alpha: float):
+        # _alpha = float(min(max(1, alpha), self.alphamax))
+        _alpha = float(max(1, alpha))
 
-        if self._delta != _delta:
-            self._delta = _delta
+        if self._alpha != _alpha:
+            self._alpha = _alpha
 
     @property
     def R(self) -> np.ndarray[int]:
@@ -1490,7 +1490,7 @@ class Fringes:
             else:
                 pass  # todo: L for logpol & ang
 
-        return L * self.delta
+        return L * self.alpha
 
     @property
     def UMR(self) -> np.ndarray:
@@ -2054,7 +2054,7 @@ class Fringes:
 
     @property
     def v(self) -> np.ndarray:
-        """Spatial frequencies, i.e. number of periods/fringes across maximum length times delta."""
+        """Spatial frequencies, i.e. number of periods/fringes across maximum length times alpha."""
         if self.D == 1 or len(np.unique(self._v, axis=0)) == 1:  # sets in directions are identical
             v = self._v[0]  # 1D
         else:
@@ -2436,11 +2436,16 @@ class Fringes:
             self._Vmin = _Vmin
             self.logger.debug(f"{self._Vmin = }")
 
-    # @property
-    # def Q(self) -> int:
-    #     """Number of quantization bits."""
-    #     return 1 if self.dtype.kind in "b" else np.iinfo(
-    #         self.dtype).bits if self.dtype.kind in "ui" else 10 ** np.finfo(self.dtype).precision
+    @property
+    def r(self) -> int:
+        """Number of quantization bits."""
+        return 1 if self.dtype.kind in "b" else np.iinfo(
+            self.dtype).bits if self.dtype.kind in "ui" else 10 ** np.finfo(self.dtype).precision
+
+    @property
+    def Q(self) -> float:
+        """Number of quantization levels."""
+        return 2 ** self.r
 
     @property
     def q(self) -> float:
@@ -2448,48 +2453,56 @@ class Fringes:
         return 1.0 if self.dtype.kind in "uib" else np.finfo(self.dtype).resolution
 
     @property
-    def QN(self) -> float:
-        """Quantization noise's standard deviation."""
+    def quant(self) -> float:
+        """Quantization noise (standard deviation) [DN]."""
         return self.q / np.sqrt(12)
 
     @property
-    def DN(self) -> float:
-        """Dark noise's standard deviation."""
-        return self._DN
+    def dark(self) -> float:
+        """Dark noise of digital camera (standard deviation) [electrons]."""
+        return self._dark
 
-    @DN.setter
-    def DN(self, DN: float):
-        _DN = float(min(max(0, DN), np.sqrt(self.Imax)))
+    @dark.setter
+    def dark(self, dark: float):
+        _dark = float(min(max(0, dark), np.sqrt(self.Imax)))
 
-        _DN = max(0, _DN - np.sqrt(1 / 12))  # correct for quantization noise contained in dark noise measurement
+        _dark = max(0, _dark - self.quant)  # correct for quantization noise contained in dark noise measurement
 
-        if self._DN != _DN:
-            self._DN = _DN
-            self.logger.debug(f"{self._DN = }")
+        if self._dark != _dark:
+            self._dark = _dark
+            self.logger.debug(f"{self._dark = }")
 
     @property
-    def PN(self) -> float:
-        """Photon noise's standard deviation."""
-        return self._PN
+    def shot(self) -> float:
+        """Shot noise of digital camera (standard deviation) [DN]."""
+        return np.sqrt(self.A / self.gain)  # average intensity is bias
 
-    @PN.setter
-    def PN(self, PN: float):
-        _PN = float(min(max(0, PN), np.sqrt(self.Imax)))
+    @property
+    def esat(self) -> float:
+        """Saturation capacity of digital camera (standard deviation) [electrons]."""
+        return self._esat
 
-        if self._PN != _PN:
-            self._PN = _PN
-            self.logger.debug(f"{self._PN = }")
+    @esat.setter
+    def esat(self, esat: float):
+        _esat = float(max(0, esat))
+
+        if _esat == 0:
+            return
+
+        if self._esat != _esat:
+            self._esat = _esat
+            self.logger.debug(f"{self._esat = }")
+
+    @property
+    def gain(self) -> float:
+        """System gain of digital camera [DN / electrons]."""
+        return self.Q / self._esat
 
     @property
     def u(self) -> np.ndarray:
-        """Uncertainty of measurement [px]."""
-        # if self.SDM:
-        #     B = self.B / self.D
-        # elif self.FDM:
-        #     B = self.B / (self.D * self.K)
-        # else:
-        #     B = self.B
-        SNR = self.B / np.sqrt(self.PN ** 2 + self.DN ** 2 + self.QN ** 2)
+        """Uncertainty of measurement (standard deviation) [px]."""
+        noise = np.sqrt(self.gain ** 2 * self.dark ** 2 + self.quant ** 2 + self.gain ** 2 * self.shot ** 2)
+        SNR = self.B / noise
         upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
         uxi = upin * self._l  # local positional uncertainties
