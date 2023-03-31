@@ -380,9 +380,23 @@ def test_save_load():
 
 if __name__ == "__main__":
     f = Fringes()
-    f.dark = 13.7 / 2 ** 12 * 2 ** 8
+    u = f.u
+    DR = f.DR
+    DRdB = f.DRdB
+
+    f = Fringes()
     f.esat = 9600
     u = f.u
+    DR = f.DR
+    DRdB = f.DRdB
+
+    f = Fringes()
+    f.esat = 9600
+    dark = 13.7 / 2 ** 12 * 2 ** 8
+    f.dark = 13.7 / 2 ** 12 * 2 ** 8
+    u = f.u
+    DR = f.DR
+    DRdB = f.DRdB
 
     # pytest.main()
     subprocess.call(['pytest', '--tb=short', str(__file__)])

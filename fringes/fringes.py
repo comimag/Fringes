@@ -2475,7 +2475,7 @@ class Fringes:
     @property
     def shot(self) -> float:
         """Shot noise of digital camera (standard deviation) [DN]."""
-        return np.sqrt(self.A / self.gain)  # average intensity is bias
+        return np.sqrt(self.A / self.gain) if self.gain != 0 else 0  # average intensity is bias
 
     @property
     def esat(self) -> float:
@@ -2495,7 +2495,7 @@ class Fringes:
 
     @property
     def gain(self) -> float:
-        """System gain of digital camera [DN / electrons]."""
+        """Overall system gain of digital camera [DN / electrons]."""
         return self.Q / self._esat
 
     @property
