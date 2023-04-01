@@ -1,4 +1,4 @@
 from .fringes import Fringes
 from .util import vshape, curvature, relief
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'

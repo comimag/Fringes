@@ -113,7 +113,7 @@ def decode(
     phi = np.empty((D, K, Y, X, C), dt)
     reg = np.empty((D, Y, X, C), dt)
     res = np.empty((D, Y, X, C), dt)
-    fid = np.empty((D, K, Y, X, C), np.int_)
+    fid = np.empty((D, K, Y, X, C), dt)  # np.int_
 
     for x in nb.prange(X):  # usually X > Y -> put X first, because parallelization only affects outer for-loop
         for y in nb.prange(Y):

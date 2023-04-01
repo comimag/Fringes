@@ -307,7 +307,7 @@ class Fringes:
         """uv-coordinates of grid to encode."""
         centered = False if self.grid == "image" else True
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
-        uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))  # * self.L  # todo: numba
+        uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))[self.axis if self.D == 1 else ...]  # * self.L  # todo: numba
         return uv.reshape((self.D, self.Y, self.X, 1))
 
     def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:  # todo: rint = False as default? influence on residuals?
@@ -344,6 +344,7 @@ class Fringes:
 
         if self.grid != "image" or self.angle != 0:
             uv = self.coordinates()[..., 0]
+            assert uv.ndmi == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
         else:
             uv = None
 
@@ -357,6 +358,16 @@ class Fringes:
         for d in range(self.D):
             if uv is None and self.grid == "image":
                 x = np.arange(self.R[d]) / self.L  # gets broadcasted
+                if self.D == 2:
+                    if d == 0:
+                        x = x[None, :]
+                    else:
+                        x = x[:, None]
+                else:
+                    if self.axis == 0:
+                        x = x[None, :]
+                    else:
+                        x = x[:, None]
             else:
                 x = uv[d]
 
@@ -366,7 +377,7 @@ class Fringes:
                 for n in range(self._N[d, k]):
                     if f in frames:
                         t = n / 4 if self._N[d, k] == 2 else n / self._N[d, k]  # t = o if N[d, k] == 1
-                        cos = np.cos(q * (x if x.ndim == 2 else x[None, :] if d == 0 else x[:, None]) - w * t - self.o)
+                        cos = np.cos(q * x - w * t - self.o)
 
                         if self.gamma == 1:
                             val = self.A + self.B * cos
@@ -547,7 +558,7 @@ class Fringes:
                 Vmin /= self.D * self.K
 
             if self.mode == "fast":
-                SQNR = self.B / self.QN
+                SQNR = self.B / self.quant
                 Vmin = max(Vmin, 1 / SQNR)
                 r = min(self.u, 1)  # todo: 0.5 or self.u
             else:
@@ -1294,9 +1305,11 @@ class Fringes:
             # todo: T == 4 -> no mod
             #  T == 5 -> FDM if _T >= Nmin?
 
-            # try to keep directions  # todo: mux
+            # directions  # todo: mux
             if _T < self.D * Nmin:
                 self.D = 1
+            else:
+                self.D = 2
 
             # try to keep hues  # todo: mux
             if _T < self.H * self.D * Nmin:
@@ -1781,7 +1794,10 @@ class Fringes:
             # self.K = self._K
             self.N = self._N
             self.l = self._l  # l triggers v
-            self.f = self._f
+            if self.FDM:
+                self.f = self._f
+            else:
+                self.f = "auto"
 
             if self.FDM:
                 self.B /= (self.D * self.K)

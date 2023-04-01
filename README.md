@@ -2,8 +2,11 @@
 
 Author: Christian Kludt
 
+![Parameter Interdependencies](docs/spirals.png)
+
 ## Description
-This package provides the handy `Fringes` class which handles all the required parameters for configuring a fringe pattern
+This package provides the handy `Fringes` class which handles all the required parameters
+for configuring fringe pattern sequences
 and provides methods for fringe analysis.
 <!---
 link to  paper, please cite
@@ -153,20 +156,6 @@ Only the ones in white boxes will never influence others.
 ![Parameter Interdependencies](docs/interdependencies.svg)\
 Parameter and their Interdependencies.
 
-### __Coordinate System__
-The following coordinate systems can be used by setting `grid` to:
-- `'image'`: The top left corner pixel of the grid is the origin (0, 0)
-and positive directions are right- resp. downwards.
-- `'Cartesian'`: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.
-- `'polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
-- `'log-polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
-
-`D` denotes the number of directions to be encoded.
-If <code>D &equiv; 1</code>, the parameter `axis` is used to define along which axis of the coordinate system
-(index 0 or 1) the fringes are shifted.
-
-`angle` can be used to tilt the coordinate system. The origin stays the same.
-
 ### __Video Shape__
 Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with
 - `T`: number of frames
@@ -184,6 +173,20 @@ The length `L` is the maximum of `X` and `Y`.
 `C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
 
 `size` is the product of `shape`.
+
+### __Coordinate System__
+The following coordinate systems can be used by setting `grid` to:
+- `'image'`: The top left corner pixel of the grid is the origin (0, 0)
+and positive directions are right- resp. downwards.
+- `'Cartesian'`: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.
+- `'polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
+- `'log-polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
+
+`D` denotes the number of directions to be encoded.
+If <code>D &equiv; 1</code>, the parameter `axis` is used to define along which axis of the coordinate system
+(index 0 or 1) the fringes are shifted.
+
+`angle` can be used to tilt the coordinate system. The origin stays the same.
 
 ### __Set__
 Each set consists of the following parameters:

@@ -23,7 +23,7 @@ def test_init():
         assert np.array_equal(v, getattr(f, "_" + k)),\
             f"'{k}' got overwritten by interdependencies. Choose consistent default values."
 
-    assert np.array_equal(f.l, f.L / f.v), "l != L / v"
+    assert np.array_equal(f.l, f.L / f.v), "l != L / v"  # todo: above assert should already handle this
 
 
 def test_property_docs():
@@ -48,6 +48,32 @@ def test_UMR_mutual_divisibility():
 
 def test_encoding():
     f = Fringes(Y=100)
+
+    I = f.encode()
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+
+    dec = f.decode(I)
+
+    d = dec.registration - f.coordinates()
+    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+
+
+def test_encoding_one_direction():
+    f = Fringes(Y=100)
+    f.D = 1
+    f.axis = 0
+
+    I = f.encode()
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+
+    dec = f.decode(I)
+
+    d = dec.registration - f.coordinates()
+    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+
+    f.axis = 1
 
     I = f.encode()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -379,24 +405,5 @@ def test_save_load():
 
 
 if __name__ == "__main__":
-    f = Fringes()
-    u = f.u
-    DR = f.DR
-    DRdB = f.DRdB
-
-    f = Fringes()
-    f.esat = 9600
-    u = f.u
-    DR = f.DR
-    DRdB = f.DRdB
-
-    f = Fringes()
-    f.esat = 9600
-    dark = 13.7 / 2 ** 12 * 2 ** 8
-    f.dark = 13.7 / 2 ** 12 * 2 ** 8
-    u = f.u
-    DR = f.DR
-    DRdB = f.DRdB
-
     # pytest.main()
-    subprocess.call(['pytest', '--tb=short', str(__file__)])
+    subprocess.run(['pytest', '--tb=short', str(__file__)])
