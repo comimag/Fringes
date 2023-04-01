@@ -43,7 +43,7 @@ def test_set_T():
     f = Fringes()
 
     try:
-        for T in range(1, 102):  # f._Tmax
+        for T in range(1, 1002):  # f._Tmax
             f.T = T
     except:
         assert False, f"Couldn't set 'T' to {T}."

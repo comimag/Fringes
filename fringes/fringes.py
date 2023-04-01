@@ -1305,8 +1305,8 @@ class Fringes:
             # todo: T == 4 -> no mod
             #  T == 5 -> FDM if _T >= Nmin?
 
-            # directions  # todo: mux
-            if _T < self.D * Nmin:
+            # try D == 2  # todo: mux
+            if _T < 2 * Nmin:
                 self.D = 1
             else:
                 self.D = 2
@@ -1342,7 +1342,7 @@ class Fringes:
             # try N >= 4  # todo: try N >= Nmin
             N = np.empty([self.D, self.K], int)
             Navg = _T // (self.D * self.K)
-            if Navg < Nmin and N12:  # use N12
+            if Navg < Nmin:  # use N12
                 N[:, 0] = Nmin
                 Nbase = (_T - self.D * Nmin) // (self.D * (self.K - 1))
                 N[:, 1:] = Nbase
