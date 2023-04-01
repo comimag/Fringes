@@ -1271,25 +1271,28 @@ class Fringes:
         _T = int(min(max(1, T), self._Tmax))
 
         if _T == 1:  # WDM + SDM todo: SSB?
-            self.H = 1
             if self.grid not in self._grids[:2]:
                 self.logger.error(f"Couldn't set 'T = 1': grid not in {self._grids[:2]}'.")
                 return
-            self.FDM = False
-            self.N = 3
-            self.WDM = True
+
+            self.H = 1
             self.K = 1
+
+            self.FDM = False  # reset FDM before setting N
+            self.N = 3  # set N before WDM
+            self.WDM = True
+
             if self.D == 2:
                 self.SDM = True
         elif _T == 2:  # WDM
             self.H = 1
-            if self.grid not in self._grids[:2]:
-                self.logger.error(f"Couldn't set 'T = 1': grid not in {self._grids[:2]}'.")
-                return
-            self.FDM = False
-            self.N = 3
+            self.D = 2
+            self.K = 1
+
+            self.FDM = False  # reset FDM before setting N
+            self.N = 3  # set N before WDM
             self.WDM = True
-            self.K = _T // self.D
+
             self.SDM = False
         else:
             # as long as enough shifts are there to compensate for nonlinearities,
