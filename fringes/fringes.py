@@ -1342,7 +1342,7 @@ class Fringes:
             # try N >= 4  # todo: try N >= Nmin
             N = np.empty([self.D, self.K], int)
             Navg = _T // (self.D * self.K)
-            if Navg < Nmin:  # use N12
+            if Navg < Nmin and N12:  # use N12
                 N[:, 0] = Nmin
                 Nbase = (_T - self.D * Nmin) // (self.D * (self.K - 1))
                 N[:, 1:] = Nbase

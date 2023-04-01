@@ -39,6 +39,16 @@ def test_init_doc():
         "Not all init parameters have an associated property with a defined docstring."
 
 
+def test_set_T():
+    f = Fringes()
+
+    try:
+        for T in range(1, 102):  # f._Tmax
+            f.T = T
+    except:
+        assert False, f"Couldn't set 'T' to {T}."
+
+
 def test_UMR_mutual_divisibility():
     f = Fringes()
     f.l = np.array([20.2, 60.6])
