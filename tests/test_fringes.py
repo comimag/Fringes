@@ -56,6 +56,24 @@ def test_UMR_mutual_divisibility():
     assert np.array_equal(f.UMR, [60.6] * f.D), "'UMR' is not 60.6."
 
 
+def test_coordinates():
+    f = Fringes()
+    uv = f.coordinates()
+
+    assert np.array_equal(uv[0, 0, :, 0], np.arange(f.X))
+    assert np.array_equal(uv[1, :, 0, 0], np.arange(f.Y))
+
+    f = Fringes(Y=1)
+    uv = f.coordinates()
+
+    assert np.array_equal(uv, np.arange(f.X).reshape(1, 1, -1, 1))
+
+    f = Fringes(X=1)
+    uv = f.coordinates()
+
+    assert np.array_equal(uv, np.arange(f.Y).reshape(1, -1, 1, 1))
+
+
 def test_encoding():
     f = Fringes(Y=100)
 
@@ -83,7 +101,9 @@ def test_encoding_one_direction():
     d = dec.registration - f.coordinates()
     assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
 
+    f = Fringes(X=100, Y=1920)
     f.axis = 1
+    f.D = 1
 
     I = f.encode()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -114,7 +134,7 @@ def test_encoding_iter():
     for t, I in enumerate(f):
         assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
         assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
-    assert t + 1 == f.T, "Number of iterations does't eual number of frames."
+    assert t + 1 == f.T, "Number of iterations does't equal number of frames."
 
     I = np.array(list(frame[0] for frame in f))
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -415,5 +435,5 @@ def test_save_load():
 
 
 if __name__ == "__main__":
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

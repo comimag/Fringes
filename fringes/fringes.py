@@ -89,7 +89,7 @@ class Fringes:
                  WDM: bool = False,
                  FDM: bool = False,
                  static: bool = False,
-                 lmin: float = 4,
+                 lmin: float = 8,
                  reverse: bool = False,
                  verbose: bool = False,
                  mode: str = "fast",
@@ -1862,7 +1862,7 @@ class Fringes:
     @property
     def eta(self) -> float:
         """Coding efficiency."""
-        return self.L / self.UMR  # todo: self.R / self.UMR
+        return self.UMR / self.L  # todo: self.UMR / self.R
 
     @property
     def N(self) -> np.ndarray:
@@ -2531,7 +2531,8 @@ class Fringes:
     @property
     def DR(self) -> float:
         """Dynamic range."""
-        return self.UMR / self.u
+        # return self.UMR / self.u
+        return self.L / self.u
 
     @property
     def DRdB(self) -> float:
