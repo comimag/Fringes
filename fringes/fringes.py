@@ -1069,7 +1069,7 @@ class Fringes:
             else:  # self.axis == 1
                 x = np.vstack((np.zeros_like(x), x))
 
-        src = np.zeros((int(np.round(self.Y * scale)), int(np.round(self.X * scale)), C))
+        src = np.zeros((int(np.round(self.Y * scale)), int(np.round(self.X * scale)), C), np.float32)
         idx = np.rint(x.swapaxes(1, 2) * scale).astype(int, copy=False)
         if B is not None:
             val = np.mean(B.swapaxes(1, 2), axis=0)
@@ -1213,9 +1213,9 @@ class Fringes:
     @axis.setter
     def axis(self, axis: int | str):
         if isinstance(axis, str):
-            if axis.lower() == "x":
+            if axis.lower() in ["x", "u"]:
                 axis = 0
-            elif axis.lower() == "y":
+            elif axis.lower() in ["y", "v"]:
                 axis = 1
             else:
                 return

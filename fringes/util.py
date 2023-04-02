@@ -51,13 +51,17 @@ def vshape(I: np.ndarray) -> np.ndarray:
     return I.reshape(T, Y, X, C)
 
 
-def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: test + readme
+def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: test
+    """Local curvature map by deriving a slope map."""
+
     T, Y, X, C = vshape(reg).shape
     reg = reg.reshape(T, Y, X, C)  # returns a view
 
+    assert T == 2, "More than 2 directions."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
-    curv = np.sum(np.gradient(reg[d], axis=0) + np.gradient(reg[d], axis=1) for d in range(T))
+    curv = np.gradient(reg[0], axis=0) + np.gradient(reg[0], axis=1) + \
+           np.gradient(reg[1], axis=0) + np.gradient(reg[1], axis=1)
 
     if not calibrated:
         # curv -= np.mean(curv, axis=(0, 1))
@@ -68,7 +72,12 @@ def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo:
     return curv
 
 
-def relief(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test + readme
+def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
+    """
+    Local height map by dual local integration via an inverse laplace filter [[19]](#19).\
+    Think of it as a relief, where height is only relative to the local neighborhood.
+    """
+
     k = np.array([[0, 1, 0],
                   [1, 0, 1],
                   [0, 1, 0]], np.float32)

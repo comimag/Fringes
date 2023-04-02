@@ -10,7 +10,7 @@ import pytest
 import subprocess
 
 from fringes import __version__
-from fringes import Fringes
+from fringes import Fringes, curvature, height
 
 
 def test_version():
@@ -89,8 +89,8 @@ def test_encoding():
 
 def test_encoding_one_direction():
     f = Fringes(Y=100)
-    f.D = 1
     f.axis = 0
+    f.D = 1
 
     I = f.encode()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -287,8 +287,8 @@ def test_unwrapping_class_method():
         assert np.allclose(grad, 0, atol=0.2), "Gradient of unwrapped phase map isn't close to 0."
 
 
-def test_remapping(Y=100):
-    f = Fringes()
+def test_remapping():
+    f = Fringes(Y=100)
     f.Y /= 2
     f.verbose = True
 
@@ -306,6 +306,19 @@ def test_remapping(Y=100):
     assert np.all(source[0::2, 1::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
     assert np.all(source[1::2, 0::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
     assert np.all(source[1::2, 1::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
+
+
+def test_curvature_height():
+    f = Fringes(Y=100)
+
+    I = f.encode()
+    dec = f.decode(I)
+
+    c = curvature(dec.registration)
+    assert np.allclose(c[1:, 1:], 0, atol=0.1), "Curvature if off more than 0.1."  # todo: boarder
+
+    h = height(c)
+    assert np.allclose(h[:, 1:], 0, atol=0.1), "Height if off more than 0.1."  # todo: boarder
 
 
 def test_hues():
@@ -406,7 +419,7 @@ def test_SDM_WDM():
     # d = dec.registration - f.coordinates()
     # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarders
     d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
-    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
 
 
 def test_save_load():
@@ -424,16 +437,16 @@ def test_save_load():
             # assert len(params_loaded) == len(params), "A different number of attributes is loaded than saved."
 
             for k in params_loaded.keys():
-                assert k in params, f"Fringes class has no attribute {k}"
+                assert k in params, f"Fringes class has no attribute '{k}'"
                 assert params_loaded[k] == params[k], \
-                    f"Attribute {k} in params-file differs from its corresponding class attribute."
+                    f"Attribute '{k}' in params-file differs from its corresponding instance attribute."
 
             for k in params.keys():
-                assert k in params_loaded, f"params-file has no attribute {k}"
+                assert k in params_loaded, f"params-file has no attribute '{k}'"
                 assert params[k] == params_loaded[k], \
-                    f"Class attribute {k} differs from its corresponding attribute in params-file."
+                    f"Instance attribute '{k}' differs from its corresponding attribute in params-file."
 
 
 if __name__ == "__main__":
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

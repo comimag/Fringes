@@ -387,8 +387,9 @@ The next methods are package-methods:
   i.e. the number of color channels <code>C &isin; {1; 3; 4}</code>. To do this, leading dimensions may be flattened.
 - `curvature(registration)`\
   Returns a curvature map. 
-- `relief(curvature)`\
-  Local height map by local integration via an inverse laplace filter [[19]](#19).
+- `height(curvature)`\
+  Local height map by local integration via an inverse laplace filter [[19]](#19).\
+  Think of it as a relief, where height is only relative to the local neighborhood.
 
 ## __Optimal Coding Strategy__
 As makes sense intuitively, more sets `K` as well as more shifts `N` per set reduce the uncertainty `u` after decoding.
