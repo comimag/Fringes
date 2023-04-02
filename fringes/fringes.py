@@ -1211,7 +1211,15 @@ class Fringes:
         return self._axis
 
     @axis.setter
-    def axis(self, axis: int):
+    def axis(self, axis: int | str):
+        if isinstance(axis, str):
+            if axis.lower() == "x":
+                axis = 0
+            elif axis.lower() == "y":
+                axis = 1
+            else:
+                return
+
         _axis = int(min(max(0, axis), 1))
 
         if self._axis != _axis:
