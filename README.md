@@ -321,12 +321,12 @@ It is influenced by the fringe parameters
 - `B`: measured amplitude
 
 and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
-- `PN`: photon noise of light itself
-- `DN`: dark noise of the used camera
-- `QN`: quantization noise of the light source or camera
+- `dark`: dark noise of the used camera
+- `shot`: photon noise of light itself
+- `quant`: quantization noise of the light source or camera
 
-The maximum possible dynamic range of the measurement is `DR = UMR / u`.
-It describes how many points can be discriminated on the interval `[0, UMR)`.
+The maximum possible dynamic range of the measurement is `DR = L / u`.
+It describes how many points can be discriminated on the interval `[0, L)`.
 It remains constant if `L` and hence `l` are scaled (the scaling factor cancels out).
 
 ## Methods
@@ -389,7 +389,7 @@ The next methods are package-methods:
   Returns a curvature map. 
 - `height(curvature)`\
   Local height map by local integration via an inverse laplace filter [[19]](#19).\
-  Think of it as a relief, where height is only relative to the local neighborhood.
+  Think of it as a relief, where height is only relative to the local neighborhood.`
 
 ## __Optimal Coding Strategy__
 As makes sense intuitively, more sets `K` as well as more shifts `N` per set reduce the uncertainty `u` after decoding.

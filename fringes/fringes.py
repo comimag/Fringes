@@ -27,8 +27,8 @@ class Fringes:
     _Hmax = 101  # this is arbitrary
     _Dmax = 2  # max 2 dimensions
     _Kmax = 101  # this is arbitrary, but must be < 128 when deploying spatial or frequency multiplexing @ uint8
-    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(M)
-    _Mmax = 101  # this is arbitrary; more is better but the improvement scales with sqrt(N)
+    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(N); @FDM: > 2 * Dmax * Kmax + 1
+    _Mmax = 101  # this is arbitrary; more is better but the improvement scales with sqrt(M)
     # _Pmax: int = 35651584  # ~8K i.e. max luma picture size of h264, h265, h266 video codecs as of 2022; todo: update
     _Pmax = 2 ** 30  # 2^30 = 1,073,741,824 i.e. default size   limit of imread() in OpenCV
     _Xmax = 2 ** 20  # 2^20 = 1,048,576     i.e. default width  limit of imread() in OpenCV
@@ -59,6 +59,12 @@ class Fringes:
         "float32",
         "float64",
     )
+    _loader = {
+        ".json": json.load,
+        # todo: ".toml": toml.load,
+        ".yaml": yaml.safe_load,
+        ".asdf": asdf.open,
+    }
 
     # default values are defined here; take care to only use immutable types!
     def __init__(self,
@@ -178,13 +184,6 @@ class Fringes:
             self.logger.error(f"File '{fname}' does not exist.")
             return {}
 
-        loader = {
-            ".json": json.load,
-            # ".toml": toml.load,
-            ".yaml": yaml.safe_load,
-            ".asdf": asdf.open,
-        }
-
         ext = os.path.splitext(fname)[-1]
         if ext == ".asdf":
             with asdf.open(fname) as f:
@@ -195,6 +194,7 @@ class Fringes:
                     p = json.load(f)
                 elif ext == ".yaml":
                     p = yaml.safe_load(f)
+                # todo:
                 # elif ext == ".toml":
                 #     p = toml.load(f)
                 else:
@@ -219,7 +219,7 @@ class Fringes:
     def save(self, fname: str = "") -> None:
         """Save parameters to file."""
 
-        if not os.path.isdir(os.path.dirname(fname)) or os.path.splitext(fname)[-1] not in (".json", ".yaml", ".asdf"):  # ".toml"
+        if not os.path.isdir(os.path.dirname(fname)) or os.path.splitext(fname)[-1] not in self._loader.keys():
             fname = os.path.join(os.path.dirname(__file__), "params.yaml")
 
         ext = os.path.splitext(fname)[-1]
@@ -242,7 +242,7 @@ class Fringes:
         # self.__init__()  # attention: config file might be reloaded
 
         for k, v in self.defaults.items():
-            setattr(self, k, v)  # initially define private variables
+            setattr(self, k, v)  # attention: private variables have to be defined within __init__()
 
         self.logger.info("Set parameters back to defaults.")
 
@@ -344,7 +344,7 @@ class Fringes:
 
         if self.grid != "image" or self.angle != 0:
             uv = self.coordinates()[..., 0]
-            assert uv.ndmi == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
+            assert uv.ndim == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
         else:
             uv = None
 
@@ -864,10 +864,14 @@ class Fringes:
         I = I.reshape((T, Y, X, C))
 
         # assertions
+        if T != self.T:
+            self.logger.error("Number of frames of parameters and data don't match.")
+            return
+
         if np.any(self.UMR < self.R):
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
-        assert T == self.T, "Number of frames of parameters and data don't match."
+
         if self.FDM:
             assert len(np.unique(self.N)) == 1, "Shifts aren't equal."
 
@@ -1450,6 +1454,7 @@ class Fringes:
 
         if self._alpha != _alpha:
             self._alpha = _alpha
+            self.l = self._lf
 
     @property
     def R(self) -> np.ndarray[int]:
@@ -1482,7 +1487,7 @@ class Fringes:
     def L(self) -> int | float:
         """Length of fringe patterns [px]."""
 
-        if self.grid in ["image", "Cartesian"]:
+        if True:#self.grid in ["image", "Cartesian"]:
             if self.angle % 90 == 0:
                 if self.D == 2:
                     L = max(self.X, self.Y)
@@ -1492,7 +1497,7 @@ class Fringes:
                     else:  # self.axis == 1
                         L = self.Y
             else:
-                a = np.deg2rad(self.a)
+                a = np.deg2rad(self.angle)
                 if self.D == 2:
                     L = self.X * np.cos(a) + self.Y * np.sin(a)
                     # Lx = self.X + self.Y * tan
@@ -1505,14 +1510,14 @@ class Fringes:
                         L = self.Y + self.X * np.tan(a)
         elif self.grid == "polar":
             if self.angle % 90 == 0:
-                L = np.sqrt(self.X ** 2 + self.Y ** 2)
+                L = np.sqrt(self.X ** 2 + self.Y ** 2)  # todo
             else:
-                pass  # todo: L for pol & ang
-        elif self.grid == "logpol":
+                L = self.X ** 2 + self.Y ** 2  # todo
+        elif self.grid == "log-polar":
             if self.angle % 90 == 0:
-                L = np.log(np.sqrt(self.X ** 2 + self.Y ** 2))
+                L = np.log(np.sqrt(self.X ** 2 + self.Y ** 2))  # todo
             else:
-                pass  # todo: L for logpol & ang
+                L = self.X ** 2 + self.Y ** 2  # todo
 
         return L * self.alpha
 
@@ -1698,7 +1703,7 @@ class Fringes:
             return
 
         if np.any(np.max(_h, axis=1) == 0):
-            self.logger.error("Couldn't set 'h': Black color is not allowed.")
+            self.logger.error("Didn't set 'h': Black color is not allowed.")
             return
 
         if self.WDM and not self._ismono:
@@ -2026,8 +2031,8 @@ class Fringes:
                 #         # i[1::2] = 1
                 #         # l = np.array([lmin, lmin + 1])[i]
             elif l == "exponential":
-                K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
-                l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, K)))
+                # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
+                l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K)))
             elif l == "linear":
                 l = np.concatenate(([np.inf], np.linspace(self.L, self.lmin, self.K - 1)))
             elif l == "default":
@@ -2120,8 +2125,8 @@ class Fringes:
 
                         v = self.L / l
             elif v == "exponential":
-                K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
-                v = np.concatenate(([0], np.geomspace(1, self.vmax, K)))
+                # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
+                v = np.concatenate(([0], np.geomspace(1, self.vmax, self.K)))
             elif v == "linear":
                 v = np.concatenate(([0], np.linspace(1, self.vmax, self.K - 1)))
             elif v == "default":
@@ -2148,8 +2153,8 @@ class Fringes:
 
         if self.FDM:
             if self.static:
-                if _v.size != self.D * self.K or not np.all(_v % 1 == 0) or not np.lcm.reduce(
-                        _v.astype(int, copy=False).ravel()) == np.prod(_v):  # todo: allow coprimes?!
+                if _v.size != self.D * self.K or not np.all(_v % 1 == 0) or \
+                        not np.lcm.reduce(_v.astype(int, copy=False).ravel()) == np.prod(_v):  # todo: allow coprimes?!
                     n = min(10, self.vmax // 2)
                     ith = self.D * self.K
                     pmax = sympy.ntheory.generate.nextprime(n, ith + 1)
@@ -2158,10 +2163,10 @@ class Fringes:
                     _v = np.sort(np.array(p, float).reshape((self.D, self.K)), axis=1)  # resort primes
                     self.logger.warning(f"Periods were not coprime. "
                                         f"Changing values to {str(_v.round(3)).replace(chr(10), ',')}.")
-            else:
-                vmax = (self._Nmax - 1) / 2 > _v
-                if np.any(_v > vmax):  # clip v so that Nmax <= 2 * max(v) + 1 = 2 * max(f) + 1
-                    _v = np.maximum(_v, vmax)
+            # else:
+            #     # from Nmin: fmax = (self.Nmax - 1) / 2, but this is already ensured by Nmax >= 2 * D * K + 1
+            #     vmax = (self._Nmax - 1) / 2 > _v
+            #     _v = np.maximum(_v, vmax)
 
         if _v.size and not np.array_equal(self._v, _v):
             self._v = _v  # set v before D and K
@@ -2193,6 +2198,9 @@ class Fringes:
 
         # make array, ensure dtype and clip
         _f = np.array(f, float, ndmin=1)
+        if self.FDM:
+            if self.static:
+                pass
 
         # empty array
         if not _f.size:
@@ -2210,10 +2218,10 @@ class Fringes:
 
         if self.FDM:
             if self.static:
-                _f = self._v  # periods to shift over: take min spatial frequency i.e. max wavelength
+                _f = self._v  # todo: periods to shift over: take min spatial frequency i.e. max wavelength?
             else:
-                if _f.shape != (self.D, self.K) or not np.all(i % 1 == 0 for i in _f) or len(
-                        np.unique(np.abs(_f))) < _f.size:  # assure _f are int, absolute values of _f differ
+                if _f.shape != (self.D, self.K) or not np.all(i % 1 == 0 for i in _f) or \
+                        len(np.unique(np.abs(_f))) < _f.size:  # assure _f are int, absolute values of _f differ
                     _f = np.arange(1, self.D * self.K + 1, dtype=float).reshape((self.D, self.K))
 
         if _f.size and 0 not in _f and not np.array_equal(self._f, _f):
@@ -2245,7 +2253,7 @@ class Fringes:
         """Minimum number of shifts to (uniformly) sample temporal frequencies."""
         if self.FDM:
             if self.static:
-                Nmin = int(np.ceil(2 * self.f.max() + 1))
+                Nmin = int(np.ceil(2 * self.f.max() + 1))  # todo: 2 * D * K + 1 -> fractional periods
             else:
                 Nmin = 2 * self.D * self.K + 1
         else:
@@ -2554,7 +2562,7 @@ class Fringes:
         params = {}
         for p in sorted(dir(self)):
             if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
-                if p in ["T", "eta"]:  # derived values, but informative, so we want them to be listed
+                if p in ["T", "eta", "V"]:  # derived values, but informative, so we want them to be listed
                     p_ = p
                 else:
                     p_ = "_" + p
