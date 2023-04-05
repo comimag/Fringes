@@ -114,6 +114,8 @@ class Fringes:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
+        a = self.logger.handlers
+
         # set values each using initial if initial else config if config else default values
         for k, v in self.defaults.items():
             setattr(self, f"_{k}", v)  # initially define private variables
@@ -130,9 +132,7 @@ class Fringes:
                 self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
 
         self._UMR = None
-        if np.any(self.UMR < self.R):
-            self.logger.warning(
-                "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
+        UMR = self.UMR  # property 'UMR' logs warning if necessary
 
     defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
 
@@ -202,15 +202,15 @@ class Fringes:
                     return {}
 
         if "fringes" in p:
-            self.logger.debug(f"{fname}.")  # todo: does order in which params are loaded affect final param state?
-
             params = p["fringes"]
-            for k in self.params.keys():
+            for k in self.params.keys():  # todo: does order in which params are loaded affect final param state?
                 if k in params and k != "T":
                     setattr(self, k, params[k])
             for k in self.params.keys():
                 if not np.array_equal(params[k], getattr(self, k)):
                     self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent config values.")
+
+            self.logger.info(f"Loaded parameters from {fname}.")
 
             return params
         else:
@@ -235,7 +235,7 @@ class Fringes:
                 #     toml.dump({"fringes": self.params}, f)
                 # todo: ".ini"
 
-        self.logger.debug(f"{fname}.")
+        self.logger.info(f"Saved parameters to {fname}.")
 
     def reset(self) -> None:
         """Reset parameters to defaults."""
@@ -252,9 +252,10 @@ class Fringes:
          lmin: Minimum resolvable wavelength.
          L: Length of fringe patterns."""
         self.h = "w"  # todo: try h = "rgb"
-        self.D = 2
+        # self.D = 2  # todo
         self.T = (T, 4)
         self.v = "auto"
+        self.logger.info("Auto set parameters.")
 
     # def gamma_auto_correct(self, I: np.ndarray) -> np.ndarray:
     #     """Automatically compensate gamma by histogram analysis."""
@@ -291,23 +292,36 @@ class Fringes:
         # self.vmax = vmax  # todo: per hue?
         self.lmin = self.L / vmax
 
-        print(MTF)
+        self.logger.info(f"MTF is: {MTF}")
         return MTF  # todo: return interpolated mtf?
 
     def deinterlace(self, I: np.ndarray) -> np.ndarray:
         """Deinterlace fringe patterns acquired with a line scan camera
         while each frame has been displayed and captured
         while the object has been moved by one pixel."""
+
+        t0 = time.perf_counter()
+
         T, Y, X, C = vshape(I).shape
         assert T * Y % self.T == 0, "Number of frames of parameters and data don't match."
         # I = I.reshape((T * Y, X, C))  # concatenate
+        self.logger.info()
+
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
+
         return I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
 
     def coordinates(self) -> np.ndarray:
         """uv-coordinates of grid to encode."""
+
+        t0 = time.perf_counter()
+
         centered = False if self.grid == "image" else True
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
         uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))[self.axis if self.D == 1 else ...]  # * self.L  # todo: numba
+
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
+
         return uv.reshape((self.D, self.Y, self.X, 1))
 
     def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:  # todo: rint = False as default? influence on residuals?
@@ -850,7 +864,7 @@ class Fringes:
         if self.H > 1 or np.any(self.h != 255):  # can be used for extended averaging
             I = self._colorize(I, frames)
 
-        self.logger.debug(f"{si(time.perf_counter() - t0)}s")
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return I
 
@@ -940,7 +954,7 @@ class Fringes:
         else:
             dec = namedtuple("decoding", "brightness modulation registration")(bri, mod, reg)
 
-        self.logger.debug(f"{si(time.perf_counter() - t0)}s")
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return dec
 
@@ -1089,13 +1103,15 @@ class Fringes:
             if mx > 0:
                 src /= mx
 
-        self.logger.debug(f"{si(time.perf_counter() - t0)}s")
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return src
 
     def _error(self):  # todo: remove
         """Error."""
         # """Mean absolute distance between decoded and true coordinates, considering only quantization noise."""
+
+        t0 = time.perf_counter()
 
         # f = Fringes(**{k: v for k, v in self.params.items() if k in Fringes.defaults})
         I = self.encode()
@@ -1135,6 +1151,7 @@ class Fringes:
                 "dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve SNR SPNR"
             )(DR, DRP, B, xavg, xmed, xmax, xstd, reserve, SNR, SPNR, )
 
+        self.logger.debug(f"{si(time.perf_counter() - t0)}s")
         return errors
 
     @property
