@@ -1454,7 +1454,7 @@ class Fringes:
 
         if self._alpha != _alpha:
             self._alpha = _alpha
-            self.l = self._lf
+            self.l = self.L / self._v
 
     @property
     def R(self) -> np.ndarray[int]:
@@ -1875,7 +1875,7 @@ class Fringes:
     @property
     def eta(self) -> float:
         """Coding efficiency."""
-        return self.UMR / self.L  # todo: self.UMR / self.R
+        return self.R.max() / self.UMR
 
     @property
     def N(self) -> np.ndarray:
@@ -2547,8 +2547,7 @@ class Fringes:
     @property
     def DR(self) -> float:
         """Dynamic range."""
-        # return self.UMR / self.u
-        return self.L / self.u
+        return self.R.max() / self.u
 
     @property
     def DRdB(self) -> float:
