@@ -1473,7 +1473,7 @@ class Fringes:
             self.l = self.L / self._v
 
     @property
-    def R(self) -> np.ndarray[int]:
+    def R(self) -> np.ndarray:
         """Range of fringe patterns for each direction [px]."""
         if self.D == 2:
             R = np.array([self.X, self.Y])
