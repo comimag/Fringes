@@ -305,7 +305,6 @@ class Fringes:
         T, Y, X, C = vshape(I).shape
         assert T * Y % self.T == 0, "Number of frames of parameters and data don't match."
         # I = I.reshape((T * Y, X, C))  # concatenate
-        self.logger.info()
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
