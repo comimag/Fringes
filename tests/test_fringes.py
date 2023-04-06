@@ -448,5 +448,5 @@ def test_save_load():
 
 
 if __name__ == "__main__":
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

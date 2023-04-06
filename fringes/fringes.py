@@ -71,7 +71,7 @@ class Fringes:
                  Y: int = 1200,
                  X: int = 1920,
                  H: int = 1,  # H is inferred from h
-                 M: float = 1,  # M is inferred from h
+                 M: float = 1.,  # M is inferred from h
                  D: int = 2,
                  K: int = 3,
                  T: int = 24,
@@ -81,27 +81,27 @@ class Fringes:
                  f: tuple | np.ndarray = np.array([[1, 1, 1], [1, 1, 1]], float),
                  h: tuple | np.ndarray = _hues[0],  # np.array([[255, 255, 255]], int)
                  o: float = np.pi,
-                 gamma: float = 1,
+                 gamma: float = 1.,
                  A: float = 255 / 2,  # Imax / 2 @ uint8
                  B: float = 255 / 2,  # Imax / 2 @ uint8
-                 V: float = 1,
-                 alpha: float = 1,
+                 V: float = 1.,
+                 alpha: float = 1.,
                  dtype: str | np.dtype = "uint8",
                  grid: str = "image",
-                 angle: float = 0,
+                 angle: float = 0.,
                  axis: int = 0,
                  TDM: bool = True,
                  SDM: bool = False,
                  WDM: bool = False,
                  FDM: bool = False,
                  static: bool = False,
-                 lmin: float = 8,
+                 lmin: float = 8.,
                  reverse: bool = False,
                  verbose: bool = False,
                  mode: str = "fast",
-                 Vmin: float = 0,
+                 Vmin: float = 0.,
                  esat: float = np.inf,
-                 dark: float = 0,
+                 dark: float = 0.,
                  ) -> None:
 
         given = {k: v for k, v in sorted(locals().items()) if k in self.defaults and not np.array_equal(v, self.defaults[k])}
@@ -2516,6 +2516,8 @@ class Fringes:
     @dark.setter
     def dark(self, dark: float):
         _dark = float(min(max(0, dark), np.sqrt(self.Imax)))
+
+        _dark = max(_dark, 0.49)  # temporal noise is dominated by quantization noise ->
 
         _dark = max(0, _dark - self.quant)  # correct for quantization noise contained in dark noise measurement
 

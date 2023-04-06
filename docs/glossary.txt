@@ -59,3 +59,4 @@ BNFTP: background normalized Fourier-transform proflometry
 SSB: single-sideband demodulation
 FTF: frequency transfer function
 DFP: digital fringe projection
+CRA: chief ray angle
