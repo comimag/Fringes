@@ -21,6 +21,7 @@ def circ_dist(a, b, c) -> float:
 
 
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+# @nb.jit(cache=True)
 def decode(
     I: np.ndarray,
     N: np.ndarray,

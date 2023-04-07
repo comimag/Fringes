@@ -242,7 +242,8 @@ class Fringes:
         # self.__init__()  # attention: config file might be reloaded
 
         for k, v in self.defaults.items():
-            setattr(self, k, v)  # attention: private variables have to be defined within __init__()
+            if k in self.params:
+                setattr(self, k, v)  # attention: private variables have to be defined within __init__()
 
         self.logger.info("Set parameters back to defaults.")
 
@@ -1891,7 +1892,7 @@ class Fringes:
     @property
     def eta(self) -> float:
         """Coding efficiency."""
-        return self.R.max() / self.UMR
+        return self.R.max() / self.UMR if self.UMR >= self.R.max() else 0
 
     @property
     def N(self) -> np.ndarray:
