@@ -448,5 +448,13 @@ def test_save_load():
 
 
 if __name__ == "__main__":
+    f = Fringes()
+    f.logger.setLevel("DEBUG")
+    f.A = 130
+    f.B = 130
+    f.B = 120
+    f.A = 130
+    f.A = 110
+    f.A = 130
     pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

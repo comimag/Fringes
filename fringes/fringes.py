@@ -1892,7 +1892,9 @@ class Fringes:
     @property
     def eta(self) -> float:
         """Coding efficiency."""
-        return self.R.max() / self.UMR if self.UMR >= self.R.max() else 0
+        eta = self.R / self.UMR
+        eta[self.UMR < self.R] = 0
+        return eta
 
     @property
     def N(self) -> np.ndarray:
@@ -2474,6 +2476,7 @@ class Fringes:
     def V(self, V: float):
         _V = float(min(max(0, V), self.Vmax))
         self.B = _V * self.A
+        self.logger.debug(f"{self._V = }")
 
     @property
     def Vmin(self) -> float:
