@@ -1630,7 +1630,7 @@ class Fringes:
         else:
             # todo: M = M[None, None, :]
             pass
-        return np.amax(M)  # todo: fix
+        return float(M.max())  # convert Numpy float64 to Python float  # todo: fix M.max()
 
     @M.setter
     def M(self, M: float):
@@ -2384,8 +2384,7 @@ class Fringes:
     @property
     def size(self) -> np.uint64:
         """Number of pixels of fringe pattern sequence, i.e. frames * height * width * color channels."""
-        # return int(np.prod(self.shape))  # use int() to ensure type is "int" instead of "numpy.core.multiarray.scalar"
-        return np.prod(self.shape, dtype=np.uint64)
+        return float(np.prod(self.shape, dtype=np.uint64))  # use uint64 prevent integer overflow
 
     @property
     def nbytes(self) -> int:
@@ -2510,7 +2509,7 @@ class Fringes:
     @property
     def quant(self) -> float:
         """Quantization noise (standard deviation) [DN]."""
-        return self.q / np.sqrt(12)
+        return float(self.q / np.sqrt(12))  # convert Numpy float64 to Python float
 
     @property
     def dark(self) -> float:
@@ -2521,7 +2520,7 @@ class Fringes:
     def dark(self, dark: float):
         _dark = float(min(max(0, dark), np.sqrt(self.Imax)))
 
-        _dark = max(_dark, 0.49)  # temporal noise is dominated by quantization noise ->
+        # _dark = max(_dark, 0.49)  # todo: temporal noise is dominated by quantization noise ->
 
         _dark = max(0, _dark - self.quant)  # correct for quantization noise contained in dark noise measurement
 
@@ -2564,12 +2563,12 @@ class Fringes:
         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
         uxi = upin * self._l  # local positional uncertainties
         ux = np.sqrt(1 / np.sum(1 / uxi ** 2))  # global phase uncertainty (by inverse variance weighting of uxi)
-        return ux
+        return float(ux)  # convert Numpy float64 to Python float
 
     @property
     def DR(self) -> float:
         """Dynamic range."""
-        return self.R.max() / self.u
+        return self.R / self.u
 
     @property
     def DRdB(self) -> float:

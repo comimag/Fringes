@@ -427,7 +427,7 @@ def test_save_load():
     params = f.params
 
     with tempfile.TemporaryDirectory() as tempdir:
-        for ext in [".json", ".yaml", ".asdf"]:  # todo: ".toml"
+        for ext in f._loader.keys():
             fname = os.path.join(tempdir, f"params{ext}")
 
             f.save(fname)
@@ -448,13 +448,5 @@ def test_save_load():
 
 
 if __name__ == "__main__":
-    f = Fringes()
-    f.logger.setLevel("DEBUG")
-    f.A = 130
-    f.B = 130
-    f.B = 120
-    f.A = 130
-    f.A = 110
-    f.A = 130
-    pytest.main()
+    # pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
