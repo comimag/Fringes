@@ -114,7 +114,7 @@ def decode(
     phi = np.empty((D, K, Y, X, C), dt)
     reg = np.empty((D, Y, X, C), dt)
     res = np.empty((D, Y, X, C), dt)
-    fid = np.empty((D, K, Y, X, C), dt)  # np.int_
+    fid = np.empty((D, K, Y, X, C), dt)
 
     for x in nb.prange(X):  # usually X > Y -> put X first, because parallelization only affects outer for-loop
         for y in nb.prange(Y):
@@ -172,7 +172,7 @@ def decode(
                                 reg[d, y, x, c] = np.nan  # no spatial modulation, therefore we can't compute value
                                 if verbose:
                                     res[d, y, x, c] = np.nan
-                                    fid[d, 0, y, x, c] = -1  # np.nan
+                                    fid[d, 0, y, x, c] = np.nan
                         elif v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
                             pn = (p[0] + o) / PI2 % 1  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
                             reg[d, y, x, c] = pn * l[d, 0]
@@ -182,8 +182,8 @@ def decode(
                         else:  # v[d, 0] > 1: # spatial phase unwrapping (to be done in a later step)
                             reg[d, y, x, c] = p[0]
                             if verbose:
-                                # residuals are to be received from SPU (spatial phase unwrapping)
-                                fid[d, 0, y, x, c] = -1  # np.nan  # unknown
+                                # todo: residuals are to be received from SPU (spatial phase unwrapping)
+                                fid[d, 0, y, x, c] = np.nan  # unknown
                     else:  # K > 1: temporal phase unwrapping
                         if False:    # todo
                             # cw = np.empty(K)  # fringe visibility (fringe contrast) squared for multiplying into weights
@@ -257,7 +257,7 @@ def decode(
                                 reg[d, y, x, c] = np.nan  # np.nan  # no suitable fringe orders found
                                 if verbose:
                                     res[d, y, x, c] = np.inf  # no suitable fringe orders found
-                                    fid[d, :, y, x, c] = -1  # np.nan  # no suitable fringe orders found
+                                    fid[d, :, y, x, c] = np.nan  # no suitable fringe orders found
                             else:
                                 reg[d, y, x, c] = avg
                                 if verbose:

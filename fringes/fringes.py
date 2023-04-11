@@ -123,13 +123,13 @@ class Fringes:
         fname = os.path.join(os.path.dirname(__file__), "params.yaml")
         if os.path.isfile(fname):  # load params from config file if existent
             self.load(fname)
-
-        for k, v in given.items():
-            if k in self.defaults:
-                setattr(self, k, v)
-        for k, v in given.items():
-            if not np.array_equal(v, getattr(self, k)):  # getattr(self, "_" + k)
-                self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
+        else:
+            for k, v in given.items():
+                if k in self.defaults:
+                    setattr(self, k, v)
+            for k, v in given.items():
+                if not np.array_equal(v, getattr(self, k)):  # getattr(self, "_" + k)
+                    self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
 
         self._UMR = None
         UMR = self.UMR  # property 'UMR' logs warning if necessary
@@ -801,13 +801,13 @@ class Fringes:
                 I = I[..., 0]
             elif C == 3:
                 I = np.diagonal(I, axis1=-2, axis2=-1)  # returns a view
-        elif self.H == 2 and C == 3 and is_single_and_value and is_equal_or_zero:  # C == 3 avoids CMY colors appearing twice as bright as RGB colors (as it is with mono cameras) assuming spectral bands don't overlap todo
+        elif self.H == 2 and C == 3 and is_single_and_value and is_equal_or_zero:  # todo: C == 3 avoids CMY colors appearing twice as bright as RGB colors (as it is with mono cameras) assuming spectral bands don't overlap
             I = np.moveaxis(I, 0, -2)  # returns a view
             idx = self.h != 0
             I = I[..., idx]  # advanced indexing doesn't return a view
         else:  # fuse colors by weighted averaging
             w = self.h / np.sum(self.h, axis=0)  # normalized weights
-            w[np.isnan(w)] = 0
+            # w[np.isnan(w)] = 0
 
             if np.all((w == 0) | (w == 1)):
                 w = w.astype(bool, copy=False)  # multiplying with bool preserves dtype
@@ -815,6 +815,9 @@ class Fringes:
             else:
                 dtype = float  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
 
+
+            # I = I.astype(float, copy=False)
+            # I[w[:, None, None, None, :] == 0] = np.nan
             I = np.sum(I * w[:, None, None, None, :], axis=0, dtype=dtype)
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
@@ -1289,6 +1292,8 @@ class Fringes:
 
     @T.setter
     def T(self, T: int):
+        # attention: params may change even if Tnew == Told
+
         # todo: the setter can only take one argument, so we check for an iterable to get two arguments: T and Nmin
         # try:
         #     T, Nmin = T
@@ -2475,8 +2480,10 @@ class Fringes:
     @V.setter
     def V(self, V: float):
         _V = float(min(max(0, V), self.Vmax))
-        self.B = _V * self.A
-        self.logger.debug(f"{self._V = }")
+
+        if self._B != _V * self.A:
+            self.B = _V * self.A
+            self.logger.debug(f"{self._V = }")
 
     @property
     def Vmin(self) -> float:
