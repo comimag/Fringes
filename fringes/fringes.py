@@ -243,7 +243,8 @@ class Fringes:
 
         for k, v in self.defaults.items():
             if k in self.params:
-                setattr(self, k, v)  # attention: private variables have to be defined within __init__()
+                if k != "T":
+                    setattr(self, k, v)  # attention: private variables have to be defined within __init__()
 
         self.logger.info("Set parameters back to defaults.")
 
