@@ -1,5 +1,4 @@
 # Fringes
-
 Author: Christian Kludt
 
 [//]: # (![Parameter Interdependencies]&#40;docs/spirals.png&#41;)
