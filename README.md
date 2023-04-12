@@ -12,9 +12,9 @@ link to  paper, please cite
 --->
 
 ### Features
-<!---
+
 - Generalized Temporal Phase Unwrappting (GTPU)[[14](#14-kludt-2024)]
---->
+
 - Generalized Temporal Phase Unwrappting (GTPU)
 - Uncertainty Propagation
 - Optimal Coding Strategy
@@ -138,11 +138,10 @@ and how long functions take to execute.
 ```python
 f.logger.setLevel("DEBUG")
 ```
-<!---
+
 ## Graphical User Interface
-Do you need a GUI? `Fringes` has a sister project that is called `Fringes GUI`:
-https://pypi.org/project/fringes-gui/
---->
+Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
+
 ## Attributes
 All parameters are parsed when setting, so usually several input formats are accepted, e.g.
 `bool`, `int`, `float`, `str` for scalars and additionally `list`, `tuple`, `ndarray` for arrays.
