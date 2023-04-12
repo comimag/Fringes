@@ -809,15 +809,12 @@ class Fringes:
             w = self.h / np.sum(self.h, axis=0)  # normalized weights
             # w[np.isnan(w)] = 0
 
-            if np.all((w == 0) | (w == 1)):
+            if np.all((w == 0) | (w == 1)):  # todo: when does this happen?
                 w = w.astype(bool, copy=False)  # multiplying with bool preserves dtype
                 dtype = I.dtype  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
             else:
                 dtype = float  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
 
-
-            # I = I.astype(float, copy=False)
-            # I[w[:, None, None, None, :] == 0] = np.nan
             I = np.sum(I * w[:, None, None, None, :], axis=0, dtype=dtype)
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
