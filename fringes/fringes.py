@@ -2587,19 +2587,12 @@ class Fringes:
         params = {}
         for p in sorted(dir(self)):
             if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
-                # if p in ["T", "eta"]:  # derived values, but informative, so we want them to be listed
-                #     p_ = p
-                # else:
-                #     p_ = "_" + p
-
                 if isinstance(getattr(self, p, None), np.ndarray):
-                    param = getattr(self, p, None).tolist()
+                    params[p] = getattr(self, p, None).tolist()
                 elif isinstance(getattr(self, p, None), np.dtype):
-                    param = str(getattr(self, p, None))
+                    params[p] = str(getattr(self, p, None))
                 else:
-                    param = getattr(self, p, None)
-
-                params[p] = param
+                    params[p] = getattr(self, p, None)
         return params
 
     # docstrings of properties
