@@ -164,7 +164,7 @@ Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with
 `T` depends on the paremeters `H`, `D`, `K`, `N` and the [multiplexing](#multiplexing) methods:\
 If all `N` are identical, then `T = H * D * K * N` with `N` as a scalar,
 else <code>T = H * &sum; N<sub>i</sub></code> with `N` as an array.\
-If a [multiplexing](#multiplexing) methods is activated, `T` reduces further.
+If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
 
 The length `L` is the maximum of `X` and `Y`.
 
@@ -330,7 +330,7 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
 ## Methods
 - `load(fname)`\
   Load a parameter set from the file `fname` to a `Fringes` instance.
-  Supported file formats are `.json`, `.yaml` and `.asdf`.
+  Supported file formats are `*.json`, `*.yaml` and `*.asdf`.
 - `save(fname)`\
   Save the parameter set of the current `Fringes` instance to the file `fname`.
   If `fname` is not provided, the default is `params.yaml` within the package's directory 'fringes'.
@@ -387,7 +387,7 @@ The next methods are package-methods:
   Returns a curvature map. 
 - `height(curvature)`\
   Local height map by local integration via an inverse laplace filter [[19]](#19).\
-  Think of it as a relief, where height is only relative to the local neighborhood.`
+  Think of it as a relief, where height is only relative to the local neighborhood.
 
 ## __Optimal Coding Strategy__
 As makes sense intuitively, more sets `K` as well as more shifts `N` per set reduce the uncertainty `u` after decoding.
@@ -404,6 +404,8 @@ Also, small wavelengths might result in a smaller unambiguous measurement range 
 If two or more sets `K` are used and their wavelengths `l` resp. number of periods `v` are relative primes,
 the unmbiguous measurement range can be increased many times.
 As a consequence, one can use much smaller wavelenghts `l` (larger number of periods `v`).
+
+
 However, it must be assured that the unambiguous measurment range is always equal or larger than both,
 the width `X` and the height `Y`.
 Else, [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) would yield wrong results and thus instead
@@ -450,20 +452,26 @@ to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) meth
 
 
 - __My decoded coordinates show lots of noise__
+  - Make sure the exposure of your camera is adjusted so that the fringe patterns show up with maximum contrast.
+    Try to avoid under- and overexposure during acquisition.
+  - Try using more, sets `K` and/or shifts `N`.
+  - Adjust the used wavelengths `l` resp. number of periods `v` to ensure the unamboguous measurement range
+    is larger than the pattern length, i.e. <code>UMR &ge; L</code>.
+  - If the decoded modulation is much lower than the decoded brightness,
+    try to use larger wavelengths `l` resp. smaller number of periods `v`.\
+    If the decoded modulation remains low even with very large wavelengths (less than five periods per screen length),
+    and you are conducting a deflectometric mesurement, the surface under test is probably too rough.
+    Since deflectometry is for specular and glossy surfsces only, it isn't suited for scattering ones.
+    You should consider a different measurement technique, e.g. fringe projection.
 
-  Try using more, sets `K` and/or shifts `N` and adjust the used wavelengths `l` resp. number of periods `v`.\
-  Also, make sure the exposure of your camera is adjusted so that the fringe patterns show up with maximum contrast.\
-  Try to avoid under- and overexposure during acquisition.
-
-
-- #### My decoded coordinates show systematic offsets
-  First, ensure that the correct frame was captured while acquiring the fringe pattern sequence.
-  If the timings are not set correctly, the sequence may be a frame off.\
-  Secondly, this might occur if either the camera or the display used have a gamma value very different from 1.
-  Typical screens have a gamma value of 2.2;   therefore compensate by setting the inverse value
-  <code>gamma<sup>-1</sup> = 1 / 2.2 &approx; 0.45</code> to the `gamma` attribute of the `Fringes` instance.
-  Alternatively, change the gamma value of the light source or camera directly.
-  You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
+- __My decoded coordinates show systematic offsets__
+  - First, ensure that the correct frame was captured while acquiring the fringe pattern sequence.
+    If the timings are not set correctly, the sequence may be a frame off.
+  - Secondly, this might occur if either the camera or the display used have a gamma value very different from 1.
+    Typical screens have a gamma value of 2.2;   therefore compensate by setting the inverse value
+    <code>gamma<sup>-1</sup> = 1 / 2.2 &approx; 0.45</code> to the `gamma` attribute of the `Fringes` instance.
+    Alternatively, change the gamma value of the light source or camera directly.
+    You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
 
 ## References
 
