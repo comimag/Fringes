@@ -152,7 +152,7 @@ The attributes in rectangular boxes are readonly, i.e. they are inferred from th
 Only the ones in white boxes will never influence others.
 
 ![Parameter Interdependencies](docs/interdependencies.svg)\
-Parameter and their Interdependencies.
+Parameter and their interdependencies.
 
 ### __Video Shape__
 Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with

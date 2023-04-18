@@ -1474,6 +1474,7 @@ class Fringes:
 
         if self._alpha != _alpha:
             self._alpha = _alpha
+            self.logger.debug(f"{self._alpha = }")
             self.l = self.L / self._v
 
     @property
@@ -2597,8 +2598,6 @@ class Fringes:
 
     # docstrings of properties
     doc = {k: v.__doc__ for k, v in sorted(vars().items()) if isinstance(v, property) and v.__doc__ is not None}
-
-    # amplitude = B
 
     # docstring of __init__()
     __init__.__doc__ = ""
