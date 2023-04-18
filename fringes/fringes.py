@@ -2368,7 +2368,7 @@ class Fringes:
 
     @property
     def gamma(self) -> float:
-        """Gamma factor."""
+        """Gamma` correction factor used to compensate the display resonse curve."""
         return self._gamma
 
     @gamma.setter
