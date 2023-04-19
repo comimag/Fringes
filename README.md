@@ -147,9 +147,7 @@ All parameters are parsed when setting, so usually several input formats are acc
 `bool`, `int`, `float`, `str` for scalars and additionally `list`, `tuple`, `ndarray` for arrays.
 
 Note that parameters might have circular dependencies which are resolved automatically,
-hence dependent parameters might change as well. 
-The attributes in rectangular boxes are readonly, i.e. they are inferred from the others.
-Only the ones in white boxes will never influence others.
+hence dependent parameters might change as well.
 
 ![Parameter Interdependencies](docs/interdependencies.svg)\
 Parameter and their interdependencies.

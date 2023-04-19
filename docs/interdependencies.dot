@@ -67,7 +67,6 @@ digraph G {
 
     M -> u
     alpha:e -> L
-    angle -> L
     L:e -> eta
     L -> l
     eta:e -> PU
