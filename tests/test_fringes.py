@@ -430,7 +430,7 @@ def test_SDM_WDM():
         #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
 
     # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarders
+    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
     d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
 
