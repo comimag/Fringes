@@ -317,9 +317,9 @@ It is influenced by the fringe parameters
 - `B`: measured amplitude
 
 and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
-- `dark`: dark noise of the used camera
 - `shot`: photon noise of light itself
 - `quant`: quantization noise of the light source or camera
+- `dark`: dark noise of the used camera
 
 The standard deviation of the quantization noise  is <code>QN = q / &radic; 12</code>.
 
