@@ -2,7 +2,7 @@
 Author: Christian Kludt
 
 [//]: # (![Parameter Interdependencies]&#40;docs/spirals.png&#41;)
-<img src="docs/spirals.png"  width="50%" height="50%">
+<img src="docs/du-bist-ein-wildschwein.gif">
 
 ## Description
 This package provides the handy `Fringes` class which handles all the required parameters

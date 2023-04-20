@@ -44,24 +44,22 @@ def img(Y: int = 720, X: int = 720, a: float = 0):
 
 
 def cart(Y: int = 720, X: int = 720, a: float = 0):
-    x = np.linspace(-X / 2, X / 2, X, endpoint=True)
-    y = np.linspace(Y / 2, -Y / 2, Y, endpoint=True)
+    x = np.linspace(-(X - 1) / 2, (X - 1) / 2, X, endpoint=True)
+    y = np.linspace((Y - 1) / 2, -(Y - 1) / 2, Y, endpoint=True)
     xx, yy = np.meshgrid(x, y)
     return rot(xx, yy, a)
 
 
-def pol(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
+def pol(Y: int = 720, X: int = 720, a: float = 0):
     xx, yy = cart(Y, X)
-    pp = np.arctan2(yy, xx) / (2 * np.pi) * max(X, Y)
-    rr = np.sqrt(xx ** 2 + yy ** 2)
-    rr /= np.sqrt((min(X, Y) / max(X, Y)) ** 2)
+    pp = np.arctan2(yy, xx) / (2 * np.pi)
+    rr = np.sqrt(xx ** 2 + yy ** 2) / min(X, Y)
     return rot(pp, rr, a)
 
 
-def logpol(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
+def logpol(Y: int = 720, X: int = 720, a: float = 0):
     pp, rr = pol(Y, X)
-    L = max(X, Y)
-    ll = np.log(rr / L + 1) * L  # with rr in [0, 1] -> ll in [0, 0.693]; important is only the logarithmical progression
+    ll = np.log(rr) / (2 * np.pi)
     return rot(pp, ll, a)
 
 
@@ -96,7 +94,7 @@ def rot(uu, vv, a):
 
 def innercirc(Y: int = 720, X: int = 720):
     """Mask with area inside inscribed circle."""
-    return pol(Y, X)[1] <= min(X, Y) / 2
+    return pol(Y, X)[1] <= 0.5
 
 
 # todo: coordinate transformations, add angle

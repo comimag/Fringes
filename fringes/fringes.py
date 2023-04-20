@@ -317,6 +317,8 @@ class Fringes:
 
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
         xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[self.axis if self.D == 1 else ...]
+        if self.grid in ["polar", "log-polar"]:
+            xi *= self.L
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
@@ -410,9 +412,6 @@ class Fringes:
                             I[i] = val
                         i += 1
                     f += 1
-
-        if self.grid in ["polar", "log-polar"]:
-            I *= grid.innercirc(self.Y, self.X)[None, :, :]
 
         # dt = np.float64 if self.SDM or self.FDM or np.any((self.h != 0) * (self.h != 255)) else self.dtype
         # I = encode(dt, np.ones(1), frames, self._N, self._v, self._f * (-1 if self.reverse else 1), self.o, self.Y, self.X, 1, self.axis, self.gamma, self.A, self.B)
@@ -861,6 +860,10 @@ class Fringes:
         # multiplex (reduce number of frames)
         if self.SDM or self.WDM or self.FDM:
             I = self._multiplex(I, rint)
+
+        # apply inscribed circle
+        if self.grid in ["polar", "log-polar"]:
+            I *= grid.innercirc(self.Y, self.X)[None, :, :, None]
 
         # colorize (extended averaging)
         if self.H > 1 or np.any(self.h != 255):  # can be used for extended averaging
@@ -1462,7 +1465,7 @@ class Fringes:
 
     @alpha.setter
     def alpha(self, alpha: float):
-        _alpha = float(min(max(1, alpha), self.alphamax))
+        _alpha = float(min(max(1, alpha), self._alphamax))
 
         if self._alpha != _alpha:
             self._alpha = _alpha
@@ -1484,7 +1487,7 @@ class Fringes:
     @property
     def L(self) -> int | float:
         """Length to be encoded [px]."""
-        return self.R.max() * self.alpha
+        return float(self.R.max() * self.alpha)
 
     @property
     def UMR(self) -> np.ndarray:
