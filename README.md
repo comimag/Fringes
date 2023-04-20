@@ -163,10 +163,10 @@ If all `N` are identical, then `T = H * D * K * N` with `N` as a scalar,
 else <code>T = H * &sum; N<sub>i</sub></code> with `N` as an array.\
 If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
 
+`C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
+
 The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be ancoded.\
 It can be extended by the factor `alpha`.
-
-`C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
 
 `size` is the product of `shape`.
 
@@ -257,7 +257,7 @@ The following multiplexing methods can be activated by setting them to `True`:
 By default, the aforementioned multiplexing methods are deactivated,
 so we then only have `TDM`: Time Divison Multiplexing.
 
-### __Data Type__
+### __Values__
 `dtype` denotes the data type of the fringe pattern sequence `I`.\
 Possible values are:
 - `'bool'`
@@ -278,7 +278,10 @@ The quantization step size `q` is also derived from `dtype`:
 `q = 1` for `bool` and `Q`-bit `unsigned integers`, 
 and for `float` its corresponding [resolution](https://numpy.org/doc/stable/reference/generated/numpy.finfo.html).
 
-The standard deviation of the quantization noise  is <code>QN = q / &radic; 12</code>.
+The standard deviation of the quantization noise  is <code>quant = q / &radic; 12</code>.
+
+`gamma` denotes the gamma correction factor and can be used to compensate for nonlinearities
+of the display response curve.
 
 ### Unwrapping
 - `PU` denotes the phase unwrapping method and is eihter `'none'`, `'temporal'`, `'spatial'` or `'SSB'`.
@@ -321,8 +324,8 @@ and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
 - `quant`: quantization noise of the light source or camera
 - `dark`: dark noise of the used camera
 
-The maximum possible dynamic range of the measurement is `DR = L / u`.
-It describes how many points can be discriminated on the interval `[0, L)`.
+The maximum possible dynamic range of the measurement is `DR = UMR / u`.
+It describes how many points can be discriminated on the interval `[0, UMR)`.
 It remains constant if `L` and hence `l` are scaled (the scaling factor cancels out).
 
 ## Methods
