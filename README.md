@@ -163,7 +163,8 @@ If all `N` are identical, then `T = H * D * K * N` with `N` as a scalar,
 else <code>T = H * &sum; N<sub>i</sub></code> with `N` as an array.\
 If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
 
-The length `L` is the maximum of `X` and `Y`.
+The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be ancoded.
+It can be extended by the factor `alpha`.
 
 `C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
 
@@ -209,16 +210,6 @@ Usually `f = 1` and is essentially only changed if [frequency division multiplex
 
 `o` denotes the phase offset `φ₀` which can be used to
 e.g. let the fringe patterns start (at the origin) with a gray value of zero.
-
-`UMR` denotes the unambiguous measurement range.
-The coding is only unique in the interval `[0, UMR)`; after that it repeats itself.
-The `UMR` is derived from `l` and `v`:
-- If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
-- Else, if <code>v &isin; &#8469;</code>,
-  <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
-- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gdc` are extended to rational numbers.
-- Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
-  with a fixed length of decimal digits.
 
 ### __Coloring and Averaging__
 The fringe pattern sequence `I` can be colorized by setting the hue `h` to any RGB color tuple
@@ -303,6 +294,16 @@ if <code>K &equiv; H &equiv; N &equiv; 1</code>, i.e. <code>T &equiv; 1</code>
 and the [coordinate system](#coordinate-system) is eighter `'image'` or `'Cartesian'`.
 
 ### __Quality Metrics__
+`UMR` denotes the unambiguous measurement range.
+The coding is only unique in the interval `[0, UMR)`; after that it repeats itself.
+The `UMR` is derived from `l` and `v`:
+- If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
+- Else, if <code>v &isin; &#8469;</code>,
+  <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
+- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gdc` are extended to rational numbers.
+- Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
+  with a fixed length of decimal digits.
+
 `eta` denotes the coding efficiency `L / UMR`. It makes no sense to choose `UMR` much larger than `L`,
 because then a significant part of the coding range is not used.
 

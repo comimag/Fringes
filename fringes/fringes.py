@@ -1457,13 +1457,12 @@ class Fringes:
 
     @property
     def alpha(self) -> float:
-        """Factor of additional coding range."""
+        """Factor for extending the coding range 'L'."""
         return self._alpha
 
     @alpha.setter
     def alpha(self, alpha: float):
-        # _alpha = float(min(max(1, alpha), self.alphamax))
-        _alpha = float(max(1, alpha))
+        _alpha = float(min(max(1, alpha), self.alphamax))
 
         if self._alpha != _alpha:
             self._alpha = _alpha
@@ -1484,7 +1483,7 @@ class Fringes:
 
     @property
     def L(self) -> int | float:
-        """Length of range to be encoded [px]."""
+        """Length to be encoded [px]."""
         return self.R.max() * self.alpha
 
     @property
