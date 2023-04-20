@@ -2,6 +2,7 @@
 Author: Christian Kludt
 
 [//]: # (![Parameter Interdependencies]&#40;docs/spirals.png&#41;)
+<img src="docs/spirals.png"  width="50%" height="50%">
 
 ## Description
 This package provides the handy `Fringes` class which handles all the required parameters
@@ -12,8 +13,6 @@ link to  paper, please cite
 --->
 
 ### Features
-
-- Generalized Temporal Phase Unwrappting (GTPU)[[14](#14-kludt-2024)]
 
 - Generalized Temporal Phase Unwrappting (GTPU)
 - Uncertainty Propagation
@@ -150,7 +149,7 @@ Note that parameters might have circular dependencies which are resolved automat
 hence dependent parameters might change as well.
 
 ![Parameter Interdependencies](docs/interdependencies.svg)\
-Parameter and their interdependencies.
+Parameter and their Interdependencies.
 
 ### __Video Shape__
 Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with
@@ -211,6 +210,16 @@ Usually `f = 1` and is essentially only changed if [frequency division multiplex
 `o` denotes the phase offset `φ₀` which can be used to
 e.g. let the fringe patterns start (at the origin) with a gray value of zero.
 
+`UMR` denotes the unambiguous measurement range.
+The coding is only unique in the interval `[0, UMR)`; after that it repeats itself.
+The `UMR` is derived from `l` and `v`:
+- If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
+- Else, if <code>v &isin; &#8469;</code>,
+  <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
+- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gdc` are extended to rational numbers.
+- Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
+  with a fixed length of decimal digits.
+
 ### __Coloring and Averaging__
 The fringe pattern sequence `I` can be colorized by setting the hue `h` to any RGB color tuple
 in the interval `[0, 255]`. However, black `(0, 0, 0)` is not allowed. `h` must be in shape `(H, 3)`:\
@@ -257,7 +266,7 @@ The following multiplexing methods can be activated by setting them to `True`:
 By default, the aforementioned multiplexing methods are deactivated,
 so we then only have `TDM`: Time Divison Multiplexing.
 
-### __Values__
+### __Data Type__
 `dtype` denotes the data type of the fringe pattern sequence `I`.\
 Possible values are:
 - `'bool'`
@@ -278,7 +287,7 @@ The quantization step size `q` is also derived from `dtype`:
 `q = 1` for `bool` and `Q`-bit `unsigned integers`, 
 and for `float` its corresponding [resolution](https://numpy.org/doc/stable/reference/generated/numpy.finfo.html).
 
-The `gamma` correction factor is used to compensate the display resonse curve.
+The standard deviation of the quantization noise  is <code>QN = q / &radic; 12</code>.
 
 ### Unwrapping
 - `PU` denotes the phase unwrapping method and is eihter `'none'`, `'temporal'`, `'spatial'` or `'SSB'`.
@@ -294,16 +303,6 @@ if <code>K &equiv; H &equiv; N &equiv; 1</code>, i.e. <code>T &equiv; 1</code>
 and the [coordinate system](#coordinate-system) is eighter `'image'` or `'Cartesian'`.
 
 ### __Quality Metrics__
-`UMR` denotes the unambiguous measurement range.
-The coding is only unique in the interval `[0, UMR)`; after that it repeats itself.
-The `UMR` is derived from `l` and `v`:
-- If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
-- Else, if <code>v &isin; &#8469;</code>,
-  <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
-- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gdc` are extended to rational numbers.
-- Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
-  with a fixed length of decimal digits.
-
 `eta` denotes the coding efficiency `L / UMR`. It makes no sense to choose `UMR` much larger than `L`,
 because then a significant part of the coding range is not used.
 
@@ -320,8 +319,6 @@ and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
 - `dark`: dark noise of the used camera
 - `shot`: photon noise of light itself
 - `quant`: quantization noise of the light source or camera
-
-The standard deviation of the quantization noise  is <code>QN = q / &radic; 12</code>.
 
 The maximum possible dynamic range of the measurement is `DR = L / u`.
 It describes how many points can be discriminated on the interval `[0, L)`.
@@ -360,7 +357,7 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
   If the argument `despike` is `True`, single pixel outliers in the unwrapped phase map
   are replaced by their local neighborhood using a median filter.
 - `remap(registration, modulation)`\
-  Mapping decoded registered coordinates `ξ` (having sub-pixel accuracy)
+  Mapping decoded, registered coordinates `ξ` (having sub-pixel accuracy)
   from camera grid to (integer) positions on the pattern/screen grid
   with weights from modulation `B`.
   The default for `modulation` is `None`, in which case all weights are assumed to equal one.

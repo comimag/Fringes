@@ -10,7 +10,7 @@ import scipy as sp
 import sympy
 import skimage as ski
 import cv2
-# import toml
+import toml
 import yaml
 import asdf
 from si_prefix import si_format as si
@@ -61,8 +61,8 @@ class Fringes:
     )
     _loader = {
         ".json": json.load,
-        # todo: ".toml": toml.load,
         ".yaml": yaml.safe_load,
+        ".toml": toml.load,
         ".asdf": asdf.open,
     }
 
@@ -84,7 +84,7 @@ class Fringes:
                  gamma: float = 1.,
                  A: float = 255 / 2,  # Imax / 2 @ uint8
                  B: float = 255 / 2,  # Imax / 2 @ uint8
-                 V: float = 1.,
+                 V: float = 1.,  # V is inferred from A and B
                  alpha: float = 1.,
                  dtype: str | np.dtype = "uint8",
                  grid: str = "image",
@@ -171,7 +171,7 @@ class Fringes:
         return f"{self.params}"
 
     def __eq__(self, other) -> bool:
-        return self.params == other.params
+        return hasattr(other, "params") and self.params == other.params
 
     def load(self, fname: "") -> dict:
         """Load parameters from file."""
@@ -194,9 +194,8 @@ class Fringes:
                     p = json.load(f)
                 elif ext == ".yaml":
                     p = yaml.safe_load(f)
-                # todo:
-                # elif ext == ".toml":
-                #     p = toml.load(f)
+                elif ext == ".toml":
+                    p = toml.load(f)
                 else:
                     self.logger.error(f"Unknown file type '{ext}'.")
                     return {}
@@ -231,9 +230,8 @@ class Fringes:
                     json.dump({"fringes": self.params}, f)
                 elif ext == ".yaml":
                     yaml.dump({"fringes": self.params}, f)
-                # elif ext == ".toml":
-                #     toml.dump({"fringes": self.params}, f)
-                # todo: ".ini"
+                elif ext == ".toml":
+                    toml.dump({"fringes": self.params}, f)
 
         self.logger.info(f"Saved parameters to {fname}.")
 
@@ -317,13 +315,12 @@ class Fringes:
 
         t0 = time.perf_counter()
 
-        centered = False if self.grid == "image" else True
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
-        uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))[self.axis if self.D == 1 else ...]  # * self.L  # todo: numba
+        xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[self.axis if self.D == 1 else ...]
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
-        return uv.reshape((self.D, self.Y, self.X, 1))
+        return xi.reshape((self.D, self.Y, self.X, 1))
 
     def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:  # todo: rint = False as default? influence on residuals?
         """Encode base fringe patterns by spatio-temporal modulation."""
@@ -358,10 +355,10 @@ class Fringes:
         frames = np.array(frame)
 
         if self.grid != "image" or self.angle != 0:
-            uv = self.coordinates()[..., 0]
-            assert uv.ndim == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
+            xi = self.coordinates()[..., 0]
+            assert xi.ndim == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
         else:
-            uv = None
+            xi = None
 
         # is_pure = all(c == 0 or c == 255 for h in self.h for c in h)
         # dtype = np.dtype("float64") if self.SDM or self.FDM or not is_pure else self.dtype
@@ -371,7 +368,7 @@ class Fringes:
         i = 0
         f = 0
         for d in range(self.D):
-            if uv is None and self.grid == "image":
+            if xi is None and self.grid == "image":
                 x = np.arange(self.R[d]) / self.L  # gets broadcasted
                 if self.D == 2:
                     if d == 0:
@@ -384,14 +381,18 @@ class Fringes:
                     else:
                         x = x[:, None]
             else:
-                x = uv[d]
+                x = xi[d] / self.L
 
             for k in range(self.K):
                 q = 2 * np.pi * self._v[d, k]
-                w = 2 * np.pi * self._f[d, k] * (-1 if self.reverse else 1)
+                w = 2 * np.pi * self._f[d, k]
+
+                if self.reverse:
+                    w *= -1
+
                 for n in range(self._N[d, k]):
                     if f in frames:
-                        t = n / 4 if self._N[d, k] == 2 else n / self._N[d, k]  # t = o if N[d, k] == 1
+                        t = n / 4 if self._N[d, k] == 2 else n / self._N[d, k]
                         cos = np.cos(q * x - w * t - self.o)
 
                         if self.gamma == 1:
@@ -410,8 +411,8 @@ class Fringes:
                         i += 1
                     f += 1
 
-        # if self.grid in ["polar", "log-polar"]:
-        #     I *= grid.innercirc(self.Y, self.X)[None, None, None, :, :, None]
+        if self.grid in ["polar", "log-polar"]:
+            I *= grid.innercirc(self.Y, self.X)[None, :, :]
 
         # dt = np.float64 if self.SDM or self.FDM or np.any((self.h != 0) * (self.h != 255)) else self.dtype
         # I = encode(dt, np.ones(1), frames, self._N, self._v, self._f * (-1 if self.reverse else 1), self.o, self.Y, self.X, 1, self.axis, self.gamma, self.A, self.B)
@@ -518,7 +519,7 @@ class Fringes:
                 fxx, fyy = np.meshgrid(fx, fy)
                 frr = np.sqrt(fxx ** 2 + fyy ** 2)  # todo: normalization of both directions
 
-                mr = frr <= L / 2  # ensure same sampling in all disrections
+                mr = frr <= L / 2  # ensure same sampling in all directions
                 W = 10
                 W = min(max(1, W / 2), L / 20)
                 mr[frr < W] = 0  # remove baseband
@@ -588,7 +589,7 @@ class Fringes:
             #     w[d] /= np.sum(w[d])
 
             phi, bri, mod, reg, res, fid = decode(
-                I, self._N, self._v, _f, self.R, self.o, r, self.mode, Vmin, self.verbose or verbose
+                I, self._N, self._v, _f, self.R, self.alpha, self.o, r, self.mode, Vmin, self.verbose or verbose
             )
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
@@ -827,7 +828,7 @@ class Fringes:
         t0 = time.perf_counter()
 
         # check UMR
-        if np.any(self.UMR < self.R):
+        if self._isambiguous:
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
 
@@ -883,10 +884,6 @@ class Fringes:
             self.logger.error("Number of frames of parameters and data don't match.")
             return
 
-        if np.any(self.UMR < self.R):
-            self.logger.warning(
-                "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
-
         if self.FDM:
             assert len(np.unique(self.N)) == 1, "Shifts aren't equal."
 
@@ -910,13 +907,23 @@ class Fringes:
                     fid[..., idx] = -1  # np.nan
 
         # spatial unwrapping
-        if np.any(self.UMR < self.R):
+        if self._isambiguous:
+            self.logger.warning("Unwrapping is not spatially independent and only yields a relative phase map.")
             uwr = self._unwrap(phi if self.verbose or verbose else reg)
 
             if self.verbose:
                 reg, res, fid = uwr
             else:
                 reg = uwr[0]
+        else:
+            # coordiante retransformation
+            if False:  # todo: self.D == 2:
+                if self.grid == "Cartesian":
+                    reg = grid.cart2img(reg, -self.angle)
+                elif self.grid =="polar":
+                    reg = grid.pol2cart(vu, -self.angle)
+                elif self.grid == "log-polar":
+                    reg = grid.logpol2cart(vu, -self.angle)
 
         if denoise:
             reg = bilateral(reg, k=3)
@@ -1055,7 +1062,7 @@ class Fringes:
         return uwr
 
     def remap(self,
-              x: np.ndarray,
+              xi: np.ndarray,
               B: np.ndarray = None,
               Bmin: float = 0,
               scale: float = 1,
@@ -1070,26 +1077,26 @@ class Fringes:
 
         t0 = time.perf_counter()
 
-        T, Y, X, C = vshape(x).shape
+        T, Y, X, C = vshape(xi).shape
 
         if B is not None and B.ndim > 1:
-            assert x.shape[1:] == B.shape[1:], "'x' and 'B' have different width, height or color channels"
+            assert xi.shape[1:] == B.shape[1:], "'xi' and 'B' have different width, height or color channels"
 
             B = B.reshape((-1, Y, X, C))
 
-        x = x.reshape((-1, Y, X, C))
+        xi = xi.reshape((-1, Y, X, C))
 
-        assert np.all(np.round(np.max(x[d])) <= self.R[d] - 1 for d in range(self.D)), \
+        assert np.all(np.round(np.max(xi[d])) <= self.R[d] - 1 for d in range(self.D)), \
             f"Coordinates contain values > {self.R - 1}, decoding might be erroneous."
 
         if T == 1:
             if self.axis == 0:
-                x = np.vstack((x, np.zeros_like(x)))
+                xi = np.vstack((xi, np.zeros_like(xi)))
             else:  # self.axis == 1
-                x = np.vstack((np.zeros_like(x), x))
+                xi = np.vstack((np.zeros_like(xi), xi))
 
         src = np.zeros((int(np.round(self.Y * scale)), int(np.round(self.X * scale)), C), np.float32)
-        idx = np.rint(x.swapaxes(1, 2) * scale).astype(int, copy=False)
+        idx = np.rint(xi.swapaxes(1, 2) * scale).astype(int, copy=False)
         if B is not None:
             val = np.mean(B.swapaxes(1, 2), axis=0)
             if Bmin > 0:
@@ -1118,11 +1125,10 @@ class Fringes:
         I = self.encode()
         dec = self.decode(I)
 
-        centered = False if self.grid == "image" else True
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
-        uv = np.array(getattr(grid, sys)(self.Y, self.X, self.angle, centered))[:, :, :, None] * self.L
+        xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[:, :, :, None] * self.L
 
-        eps = np.abs(uv - dec.registration)  # / self.L
+        eps = np.abs(xi - dec.registration)  # / self.L
         idxe = np.argwhere(eps.squeeze() > 0.1)
 
         xavg = np.nanmean(eps)
@@ -1172,15 +1178,6 @@ class Fringes:
             self._grid = _grid
             self.logger.debug(f"{self._grid = }")
             self.SDM = self.SDM
-
-            # if self.grid in self._grids[2:]:
-            #     self.angle = 45
-            #     # optional: create quadratic shape of fringe patterns which fit onto screen  # todo
-            #     # L = min(self.X, self.Y)  # max(self.X, self.Y) i.e. self.L  # ... into screen
-            #     # self.X = L
-            #     # self.Y = L
-            # else:
-            #     self.angle = 0
 
     @property
     def angle(self) -> float:
@@ -1366,11 +1363,7 @@ class Fringes:
             self.K = min(K, Kmax)
 
             # ensure UMR >= R
-            if self.K == 1:
-                self.v = 1
-            if np.any(self.UMR < self.R):
-                # self.v = "auto"
-                # self._v[:, 0] = 1
+            if self._isambiguous:
                 imin = np.argmin(self._v, axis=0)
                 self._v[imin] = 1
 
@@ -1464,7 +1457,7 @@ class Fringes:
 
     @property
     def alpha(self) -> float:
-        """Additional relative buffer coding range."""
+        """Factor of additional coding range."""
         return self._alpha
 
     @alpha.setter
@@ -1479,7 +1472,7 @@ class Fringes:
 
     @property
     def R(self) -> np.ndarray:
-        """Range of fringe patterns for each direction [px]."""
+        """Lengths of fringe patterns for each direction [px]."""
         if self.D == 2:
             R = np.array([self.X, self.Y])
         else:
@@ -1487,60 +1480,12 @@ class Fringes:
                 R = np.array([self.X])
             else:
                 R = np.array([self.Y])
-
-        # a = self.angle / 360 * (2 * np.pi)
-        # tan = np.tan(a)
-        # if self.D == 2:
-        #     Rx = self.X + self.Y * tan
-        #     Ry = self.Y + self.X * tan
-        #     R = np.array([Rx, Ry], float)
-        # else:
-        #     if self.axis == 0:
-        #         Rx = self.X + self.Y * tan
-        #         R = np.array([Rx], float)
-        #     else:
-        #         Ry = self.Y + self.X * tan
-        #         R = np.array([Ry], float)
-        # # todo: polar, log-polar coordinates
         return R
 
     @property
     def L(self) -> int | float:
-        """Length of fringe patterns [px]."""
-
-        if True:#self.grid in ["image", "Cartesian"]:
-            if self.angle % 90 == 0:
-                if self.D == 2:
-                    L = max(self.X, self.Y)
-                else:
-                    if self.axis == 0:
-                        L = self.X
-                    else:  # self.axis == 1
-                        L = self.Y
-            else:
-                a = np.deg2rad(self.angle)
-                if self.D == 2:
-                    L = self.X * np.cos(a) + self.Y * np.sin(a)
-                    # Lx = self.X + self.Y * tan
-                    # Ly = self.Y + self.X * tan
-                    # L = max(Lx, Ly)
-                else:
-                    if self.axis == 0:
-                        L = self.X + self.Y * np.tan(a)
-                    else:
-                        L = self.Y + self.X * np.tan(a)
-        elif self.grid == "polar":
-            if self.angle % 90 == 0:
-                L = np.sqrt(self.X ** 2 + self.Y ** 2)  # todo
-            else:
-                L = self.X ** 2 + self.Y ** 2  # todo
-        elif self.grid == "log-polar":
-            if self.angle % 90 == 0:
-                L = np.log(np.sqrt(self.X ** 2 + self.Y ** 2))  # todo
-            else:
-                L = self.X ** 2 + self.Y ** 2  # todo
-
-        return L * self.alpha
+        """Length of range to be encoded [px]."""
+        return self.R.max() * self.alpha
 
     @property
     def UMR(self) -> np.ndarray:
@@ -1619,11 +1564,18 @@ class Fringes:
         self._UMR = UMR
         self.logger.debug(f"self.UMR = {str(self.UMR)}")
 
-        if np.any(self.UMR < self.R):
+        if self._isambiguous:
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
 
         return self._UMR
+
+    @property
+    def eta(self) -> float:
+        """Coding efficiency."""
+        eta = self.R / self.UMR
+        eta[self.UMR < self.R] = 0
+        return eta
 
     @property
     def M(self) -> int | np.ndarray:
@@ -1894,13 +1846,6 @@ class Fringes:
             self.B = self.B
 
     @property
-    def eta(self) -> float:
-        """Coding efficiency."""
-        eta = self.R / self.UMR
-        eta[self.UMR < self.R] = 0
-        return eta
-
-    @property
     def N(self) -> np.ndarray:
         """Number of phase shifts."""
         if self.D == 1 or len(np.unique(self._N, axis=0)) == 1:  # sets in directions are identical
@@ -2109,7 +2054,7 @@ class Fringes:
 
     @property
     def v(self) -> np.ndarray:
-        """Spatial frequencies, i.e. number of periods/fringes across maximum length times alpha."""
+        """Spatial frequencies, i.e. number of periods/fringes across maximum coding length."""
         if self.D == 1 or len(np.unique(self._v, axis=0)) == 1:  # sets in directions are identical
             v = self._v[0]  # 1D
         else:
@@ -2272,6 +2217,11 @@ class Fringes:
         return all(len(set(h)) == 1 for h in self.h)
 
     @property
+    def _isambiguous(self) -> bool:
+        """Unambiguous measument range is larger than the screen length."""
+        return np.any(self.UMR < self.R * self.alpha)
+
+    @property
     def Nmin(self) -> int:
         """Minimum number of shifts to (uniformly) sample temporal frequencies."""
         if self.FDM:
@@ -2359,10 +2309,10 @@ class Fringes:
             PU = "SSB"  # single sideband demodulation
         elif self.K == np.all(self.v <= 1):
             PU = "none"
-        elif np.all(self.UMR >= self.R):
-            PU = "temporal"
-        else:
+        elif self._isambiguous:
             PU = "spatial"
+        else:
+            PU = "temporal"
 
         return PU
 
@@ -2574,7 +2524,7 @@ class Fringes:
     @property
     def DR(self) -> float:
         """Dynamic range."""
-        return self.R / self.u
+        return self.L / self.u
 
     @property
     def DRdB(self) -> float:

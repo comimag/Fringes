@@ -173,7 +173,7 @@ def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
         t0 = time.perf_counter()
         dec = f.decode(I)
         t1 = time.perf_counter()
-        assert t1 - t0 < 10 * 60, f"Numba compilation takes longer than 7 minutes: {(t1 - t0) / 60} minutes."
+        assert t1 - t0 < 10 * 60, f"Numba compilation takes longer than 10 minutes: {(t1 - t0) / 60} minutes."
 
     dec = f.decode(I)
 
@@ -218,6 +218,19 @@ def test_deinterlacing():
 
     d = dec.registration - f.coordinates()
     assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+
+
+def test_alpha():
+    f = Fringes(Y=100)
+    f.alpha = 1.1
+
+    I = f.encode()
+    # todo: add noise to I
+    dec = f.decode(I)
+
+    d = dec.registration - f.coordinates()
+    assert np.allclose(d, 0, atol=0.2), "Registration is off more than 0.2."  # todo: 0.1
+    assert all([dec.registration[d].max() <= f.R[d] for d in range(f.D)]), "Registration values are larger than R."
 
 
 def test_dtypes():
@@ -439,12 +452,12 @@ def test_save_load():
             for k in params_loaded.keys():
                 assert k in params, f"Fringes class has no attribute '{k}'"
                 assert params_loaded[k] == params[k], \
-                    f"Attribute '{k}' in params-file differs from its corresponding instance attribute."
+                    f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
 
             for k in params.keys():
-                assert k in params_loaded, f"params-file has no attribute '{k}'"
+                assert k in params_loaded, f"File '{fname}' has no attribute '{k}'"
                 assert params[k] == params_loaded[k], \
-                    f"Instance attribute '{k}' differs from its corresponding attribute in params-file."
+                    f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
 
 
 if __name__ == "__main__":

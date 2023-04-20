@@ -6,7 +6,7 @@ digraph G {
 
     {rank=same; H -> TDM -> WDM -> FDM -> SDM -> grid -> SSB[style=invis][group=1]}
     {rank=same; h -> C -> T -> D -> K -> reverse[style=invis][group=2]}
-    {rank=same; size -> shape -> P -> angle -> N -> l -> v -> f -> o[style=invis][group=3]}
+    {rank=same; size -> shape -> P -> N -> l -> v -> f -> o[style=invis][group=3]}
     {rank=same; X -> axis -> Y -> UMR -> static[style=invis][group=4]}
     {rank=same; dtype -> M -> alpha -> L -> eta -> PU[style=invis][group=5]}
     //{rank=same; dtype -> M -> angle[style=invis][group=6]}
@@ -67,6 +67,7 @@ digraph G {
 
     M -> u
     alpha:e -> L
+    angle -> L
     L:e -> eta
     L -> l
     eta:e -> PU

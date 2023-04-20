@@ -37,37 +37,31 @@ import numpy as np
 #     r = np.exp(l)
 
 
-def img(Y: int = 720, X: int = 720, a: float = 0, centered: bool = False):
+def img(Y: int = 720, X: int = 720, a: float = 0):
     # y, x = np.mgrid[:Y, :X]
     y, x = np.indices((Y, X))
     return rot(x, y, a)
 
 
-def cart(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
-    L = max(X, Y)
-
-    if centered:
-        x = np.linspace(-X / 2, X / 2, X, endpoint=True)
-        y = np.linspace(Y / 2, -Y / 2, Y, endpoint=True)
-    else:
-        x = np.linspace(0, X, X, endpoint=False)
-        y = np.linspace(Y - 1, 0, -1, X, endpoint=False)
-
+def cart(Y: int = 720, X: int = 720, a: float = 0):
+    x = np.linspace(-X / 2, X / 2, X, endpoint=True)
+    y = np.linspace(Y / 2, -Y / 2, Y, endpoint=True)
     xx, yy = np.meshgrid(x, y)
     return rot(xx, yy, a)
 
 
 def pol(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
     xx, yy = cart(Y, X)
-    pp = np.arctan2(yy, xx) / (2 * np.pi)
-    # rr = np.sqrt(xx ** 2 + yy ** 2) * max(X, Y) / min(X, Y)
-    rr = np.sqrt(xx ** 2 + yy ** 2) # / np.sqrt((min(X, Y) / max(X, Y)) ** 2 + 1)
+    pp = np.arctan2(yy, xx) / (2 * np.pi) * max(X, Y)
+    rr = np.sqrt(xx ** 2 + yy ** 2)
+    rr /= np.sqrt((min(X, Y) / max(X, Y)) ** 2)
     return rot(pp, rr, a)
 
 
 def logpol(Y: int = 720, X: int = 720, a: float = 0, centered: bool = True):
     pp, rr = pol(Y, X)
-    ll = np.log(rr + 1)  # with rr in [0, 1] -> ll in [0, 0.693]; important is only the logarithmical progression
+    L = max(X, Y)
+    ll = np.log(rr / L + 1) * L  # with rr in [0, 1] -> ll in [0, 0.693]; important is only the logarithmical progression
     return rot(pp, ll, a)
 
 
@@ -102,7 +96,7 @@ def rot(uu, vv, a):
 
 def innercirc(Y: int = 720, X: int = 720):
     """Mask with area inside inscribed circle."""
-    return pol(Y, X)[1] <= 0.5
+    return pol(Y, X)[1] <= min(X, Y) / 2
 
 
 # todo: coordinate transformations, add angle
@@ -111,7 +105,7 @@ def cart2pol(uv, a: float = 0):
     yy = uv[1]
     pp = np.arctan2(yy, xx)
     rr = np.sqrt(xx ** 2 + yy ** 2)
-    return np.stack((pp, rr), axis=0)
+    return np.stack(rot(pp, rr, a), axis=0)
 
 
 def pol2cart(uv, a: float = 0):
@@ -119,21 +113,21 @@ def pol2cart(uv, a: float = 0):
     rr = uv[1]
     xx = rr * np.cos(pp)
     yy = rr * np.sin(pp)
-    return np.stack((xx, yy), axis=0)
+    return np.stack(rot(xx, yy, a), axis=0)
 
 
 def pol2logpol(uv, a: float = 0):
     pp = uv[0]
     rr = uv[1]
     ll = np.log(rr)
-    return np.stack((pp, ll), axis=0)
+    return np.stack(rot(pp, ll, a), axis=0)
 
 
 def logpol2pol(uv, a: float = 0):
     pp = uv[0]
     ll = uv[1]
-    rr = np.exp(ll)
-    return np.stack((pp, rr), axis=0)
+    rr = np.exp(ll) - 1
+    return np.stack(rot(pp, rr, a), axis=0)
 
 
 def cart2logpol(uv, a: float = 0):

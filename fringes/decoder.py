@@ -28,6 +28,7 @@ def decode(
     v: np.ndarray,
     f: np.ndarray,
     R: np.ndarray,  # range
+    a: float = 1,  # alpha
     o: float = np.pi,
     r: float = 0,
     mode: str = "",
@@ -46,7 +47,7 @@ def decode(
     D, K = N.shape
     assert R.size == D, "Screen length must be given for each direction."
 
-    L = max(R)  # length of fringe pattern
+    L = max(R) * a
     l = L / v  # lambda i.e. period lengths in [px]
 
     # precomputations for later use in for-loops
@@ -168,7 +169,7 @@ def decode(
                                 if verbose:
                                     res[d, y, x, c] = 0
                                     fid[d, 0, y, x, c] = 0
-                            else:  # elif R[d] > 1:
+                            else:
                                 reg[d, y, x, c] = np.nan  # no spatial modulation, therefore we can't compute value
                                 if verbose:
                                     res[d, y, x, c] = np.nan
@@ -179,7 +180,7 @@ def decode(
                             if verbose:
                                 res[d, y, x, c] = 0  # todo: uncertainty
                                 fid[d, 0, y, x, c] = 0
-                        else:  # v[d, 0] > 1: # spatial phase unwrapping (to be done in a later step)
+                        else:  # spatial phase unwrapping (to be done in a later step)
                             reg[d, y, x, c] = p[0]
                             if verbose:
                                 # todo: residuals are to be received from SPU (spatial phase unwrapping)
@@ -196,7 +197,7 @@ def decode(
                             #                         #         cw[k] = (B[k] / A[k]) ** 2
                             v = A / B  # dim K ?!
                             mask = v < Vmin or B > A or np.isnan(B)  # check for sufficient modulation i.e. fringe contrast
-                            # todo: if umr(v[mask]) < L -> SPU
+                            # todo: if umr(v[mask]) < R -> SPU
                             #     reg[d, y, x, c] = np.nan
                             # if verbose:
                             #   pass  # residuals are to be received from SPU (spatial phase unwrapping)
