@@ -163,7 +163,7 @@ If all `N` are identical, then `T = H * D * K * N` with `N` as a scalar,
 else <code>T = H * &sum; N<sub>i</sub></code> with `N` as an array.\
 If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
 
-The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be ancoded.
+The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be ancoded.\
 It can be extended by the factor `alpha`.
 
 `C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
