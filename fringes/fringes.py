@@ -2524,7 +2524,7 @@ class Fringes:
     @property
     def DR(self) -> float:
         """Dynamic range."""
-        return self.L / self.u
+        return self.UMR / self.u
 
     @property
     def DRdB(self) -> float:

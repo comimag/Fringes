@@ -316,9 +316,9 @@ It is influenced by the fringe parameters
 - `B`: measured amplitude
 
 and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
-- `dark`: dark noise of the used camera
 - `shot`: photon noise of light itself
 - `quant`: quantization noise of the light source or camera
+- `dark`: dark noise of the used camera
 
 The maximum possible dynamic range of the measurement is `DR = L / u`.
 It describes how many points can be discriminated on the interval `[0, L)`.
