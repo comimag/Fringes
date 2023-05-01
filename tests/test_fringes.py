@@ -463,9 +463,9 @@ def test_save_load():
 if __name__ == "__main__":
     f = Fringes()
 
-    f.Y = 10
+    f.Y = 1920
     f.verbose = True
-    f.gamma = 2.2
+    f.gamma = 0.45
     I = f.encode()
     J = f.gamma_auto_correct(I)
     dec1 = f.decode(I)

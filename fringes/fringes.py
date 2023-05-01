@@ -264,21 +264,26 @@ class Fringes:
         self.v = "auto"
         self.logger.info("Auto set parameters.")
 
-    def gamma_auto_correct(self, I: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
         """Automatically compensate gamma by histogram analysis."""
 
+        # normalize to [0, 1]
+        Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1
+        J = I / Imax
+
         # estimate gamma correction factor
-        mid = self.Imax / 2
-        mean = np.mean(I)
-        gamma = np.log(mid * 255) / np.log(mean)
+        med = np.nanmedian(J)  # median is a robust estimator for the mean
+        gamma = np.log(med) / np.log(0.5)
         invGamma = 1 / gamma
 
         # apply inverse gamma
-        if self.dtype is float:
-            return I ** invGamma
-        else:
-            table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
-            return cv2.LUT(I, table)
+        # table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
+        # J = cv2.LUT(J, table)
+        J **= invGamma
+        J *= Imax
+
+        return J
 
     def setMTF(self, B: np.ndarray, show: bool = True) -> np.ndarray:  # todo: check return type
         """Compute the normalized modulation transfer function at spatial frequencies v
