@@ -165,7 +165,7 @@ If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
 
 `C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
 
-The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be ancoded.\
+The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be encoded.\
 It can be extended by the factor `alpha`.
 
 `size` is the product of `shape`.
@@ -329,12 +329,16 @@ It describes how many points can be discriminated on the interval `[0, UMR)`.
 It remains constant if `L` and hence `l` are scaled (the scaling factor cancels out).
 
 ## Methods
+The following are instance methods:
 - `load(fname)`\
   Load a parameter set from the file `fname` to a `Fringes` instance.
   Supported file formats are `*.json`, `*.yaml` and `*.asdf`.
+  If the file doesn't exist or doesn't have one of the aforementioned filename extensions,
+  the file `.fringes.yaml` within the user home directory is tried to load.
 - `save(fname)`\
   Save the parameter set of the current `Fringes` instance to the file `fname`.
-  If `fname` is not provided, the default is `params.yaml` within the package's directory 'fringes'.
+  If `fname` is not provided or doesn't have one of the aforementioned filename extensions,
+  the parameter set are saved to the file `.fringes.yaml` within the user home directory.
 - `reset()`\
   Reset the parameter set of the current `Fringes` instance to the default values.
 - `auto(T)`\
@@ -356,10 +360,10 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
   [Decode](#decoding) the fringe pattern sequence `I`.\
   If either the argument `verbose` or the attribute with the same name is `True`,
   additional infomation is computed and retuned: phase maps `φ`, residuals `r` and fringe orders `k`.\
-  If the argument `denoise` is `True`, the unwrapped phase map is smoothened by a bilateral filter
-  which is edge-preserving.\
   If the argument `despike` is `True`, single pixel outliers in the unwrapped phase map
-  are replaced by their local neighborhood using a median filter.
+  are replaced by their local neighborhood using a median filter.\
+  If the argument `denoise` is `True`, the unwrapped phase map is smoothened by a bilateral filter
+  which is edge-preserving.
 - `remap(registration, modulation)`\
   Mapping decoded, registered coordinates `ξ` (having sub-pixel accuracy)
   from camera grid to (integer) positions on the pattern/screen grid
@@ -372,13 +376,15 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
 - `deinterlace(I)`\
   Deinterlace a fringe pattern sequence `I` acquired with a line scan camera
   while each frame has been displayed and captured
-  while the object has been moved by one pixel.
+  while the object has been moved by one camera pixel.
 
-The next methods are class-methods:
+The next methods are static methods:
+- `gamma_auto_correct(I)`\
+  Automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
 - `unwrap(phi)`\
   [Unwrap](#spatial-phase-unwrapping--spu-) the phase map `phi` i.e. `φ` spacially.
 
-The next methods are package-methods:
+The next methods are package methods:
 - `vshape(I)`\
   Transforms video data of arbitrary shape and dimensionality into the standardized shape `(T, Y, X, C)`, where
   `T` is number of frames, `Y` is height, `X` is width, and `C` is number of color channels.
@@ -433,17 +439,15 @@ to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) meth
 
 ## Troubleshooting
 <!---
-- __`poetry install` does not work__
-  
-  First, ensure that poetry is installed correctly as descibed onthe [Poetry Website](https://python-poetry.org/docs/).\
+- __`poetry install` does not work__  
+  First, ensure that poetry is installed correctly as descibed on the [Poetry Website](https://python-poetry.org/docs/).\
   Secondly, ensure the correct python version is installed on your system, as specified in the file `pyproject.toml`!\
   Thirdly, this can be caused by a proxy which `pip` does not handle correctly.
   Manually setting the proxy in the Windows settings or even adding a system variable 
-`https_proxy = http://YOUR_PROXY:PORT` can resolve this.
+  `https_proxy = http://YOUR_PROXY:PORT` can resolve this.
 --->
 
-- __Decoding takes a long time__
-  
+- __Decoding takes a long time__  
   This is probably related to the just-in-time compiler [Numba](https://numba.pydata.org/) 
   used for this computationally expensive function:
   During the first execution, an initial compilation is executed. 
@@ -462,17 +466,19 @@ to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) meth
     try to use larger wavelengths `l` resp. smaller number of periods `v`.\
     If the decoded modulation remains low even with very large wavelengths (less than five periods per screen length),
     and you are conducting a deflectometric mesurement, the surface under test is probably too rough.
-    Since deflectometry is for specular and glossy surfsces only, it isn't suited for scattering ones.
+    Since deflectometry is for specular and glossy surfaces only, it isn't suited for scattering ones.
     You should consider a different measurement technique, e.g. fringe projection.
 
 - __My decoded coordinates show systematic offsets__
-  - First, ensure that the correct frame was captured while acquiring the fringe pattern sequence.
+  - First, ensure that the correct frames were captured while acquiring the fringe pattern sequence.
     If the timings are not set correctly, the sequence may be a frame off.
   - Secondly, this might occur if either the camera or the display used have a gamma value very different from 1.
-    Typical screens have a gamma value of 2.2;   therefore compensate by setting the inverse value
-    <code>gamma<sup>-1</sup> = 1 / 2.2 &approx; 0.45</code> to the `gamma` attribute of the `Fringes` instance.
-    Alternatively, change the gamma value of the light source or camera directly.
-    You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
+    - Typical screens have a gamma value of 2.2; therefore compensate by setting the inverse value
+      <code>gamma<sup>-1</sup> = 1 / 2.2 &approx; 0.45</code> to the `gamma` attribute of the `Fringes` instance.\
+      Alternatively, change the gamma value of the light source or camera directly.
+    - You can use the static method `gamma_auto_correct` to
+      automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
+    - You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
 
 ## References
 
@@ -537,6 +543,5 @@ Inverse Laplace Filter
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
 
 ## Project Status
-This package is in an early stage and under active development,
-so features and functionally will be added in the future.
+This package is under active development, so features and functionally will be added in the future.
 Feature requests are warmly welcomed!

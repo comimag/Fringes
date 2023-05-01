@@ -266,7 +266,7 @@ class Fringes:
 
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
-        """Automatically compensate gamma by histogram analysis."""
+        """Automatically estimate and apply the gamma correction factor to linearize the display/camera response curve."""
 
         # normalize to [0, 1]
         Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1
@@ -951,9 +951,6 @@ class Fringes:
                 elif self.grid == "log-polar":
                     reg = grid.logpol2cart(vu, -self.angle)
 
-        if denoise:
-            reg = bilateral(reg, k=3)
-
         if despike:
             reg = median(reg, k=3)
 
@@ -969,6 +966,9 @@ class Fringes:
             #         xi = np.argwhere(spikes)
             #         a = sp.interpolate.interpn(points, values, xi, method="cubic")
             #         reg[d] = sp.interpolate.interpn(points, values, xi, method="cubic")
+
+        if denoise:
+            reg = bilateral(reg, k=3)
 
         # revert grid coordinates
         if self.grid in self._grids[1:]:
@@ -1059,8 +1059,8 @@ class Fringes:
 
         return uwr
 
-    @classmethod
-    def unwrap(cls, phi: np.ndarray, B: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
+    @staticmethod
+    def unwrap(phi: np.ndarray, B: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
         """Unwrap phase maps spacially."""
 
         T, Y, X, C = vshape(phi).shape

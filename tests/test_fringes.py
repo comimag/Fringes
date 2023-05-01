@@ -465,11 +465,13 @@ if __name__ == "__main__":
 
     f.Y = 1920
     f.verbose = True
-    f.gamma = 0.45
+    f.gamma = 0.1
     I = f.encode()
     J = f.gamma_auto_correct(I)
     dec1 = f.decode(I)
     dec2 = f.decode(J)
+    regmx1 = dec1.residuals.max()
+    regmx2 = dec2.residuals.max()
 
     f.h = "rg"
     M = f.M
