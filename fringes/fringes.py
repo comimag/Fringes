@@ -102,10 +102,13 @@ class Fringes:
                  Vmin: float = 0.,
                  esat: float = np.inf,
                  dark: float = 0.,
+                 load_config: bool = False,
                  ) -> None:
 
+        # given values not identical to default values
         given = {k: v for k, v in sorted(locals().items()) if k in self.defaults and not np.array_equal(v, self.defaults[k])}
 
+        # logger
         self.logger = lg.getLogger(self.__class__.__name__)  # todo: give each logger instance its own instance name
         self.logger.setLevel("CRITICAL")
         if not self.logger.hasHandlers():
@@ -114,14 +117,13 @@ class Fringes:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
-        a = self.logger.handlers
-
-        # set values each using initial if initial else config if config else default values
+        # set values to attributes, each using initial if initial else config if config else default values
+        # this is implemented by setting first default values, then config values and finally given values
         for k, v in self.defaults.items():
             setattr(self, f"_{k}", v)  # initially define private variables
 
-        fname = os.path.join(os.path.dirname(__file__), "params.yaml")
-        if os.path.isfile(fname):  # load params from config file if existent
+        fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+        if load_config and os.path.isfile(fname):  # load params from config file if existent
             self.load(fname)
         else:
             for k, v in given.items():
@@ -134,6 +136,7 @@ class Fringes:
         self._UMR = None
         UMR = self.UMR  # property 'UMR' logs warning if necessary
 
+    # default values from class initialization
     defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
 
     # restrict class attributes to the ones listed here (add "__dict__" or commend the next line out to circumvent this)
@@ -143,7 +146,7 @@ class Fringes:
         """Encode fringe patterns."""
         return self.encode(*args, **kwargs)
 
-    def __getitem__(self, t: int) -> np.ndarray:
+    def __getitem__(self, t: int | tuple | list) -> np.ndarray:
         """Single frame(s) of fringe pattern sequence."""
         return self.encode(t=t)
 
@@ -175,14 +178,16 @@ class Fringes:
 
     def load(self, fname: "") -> dict:
         """Load parameters from file."""
-        if not os.path.isfile(fname):
-            fname = os.path.dirname(__file__) + os.sep + "params.yaml"
 
-        if not fname:
-            return {}
-        elif not os.path.isfile(fname):
+        if not os.path.isfile(fname):
             self.logger.error(f"File '{fname}' does not exist.")
-            return {}
+
+            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+
+            if os.path.isfile(fname):
+                self.logger.warning(f"Using file {fname} instead.")
+            else:
+                return {}
 
         ext = os.path.splitext(fname)[-1]
         if ext == ".asdf":
@@ -213,13 +218,15 @@ class Fringes:
 
             return params
         else:
+            self.logger.error("No 'fringes' section in config file.")
             return {}
 
     def save(self, fname: str = "") -> None:
         """Save parameters to file."""
 
         if not os.path.isdir(os.path.dirname(fname)) or os.path.splitext(fname)[-1] not in self._loader.keys():
-            fname = os.path.join(os.path.dirname(__file__), "params.yaml")
+            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+            self.logger.warning(f"File directory does not exist or extension is unknown. Using file '{fname}' instead.")
 
         ext = os.path.splitext(fname)[-1]
         if ext == ".asdf":
@@ -240,7 +247,7 @@ class Fringes:
         # self.__init__()  # attention: config file might be reloaded
 
         for k, v in self.defaults.items():
-            if k in self.params:
+            if k in self.params:  # todo: try to remove this line
                 if k != "T":
                     setattr(self, k, v)  # attention: private variables have to be defined within __init__()
 
@@ -257,10 +264,21 @@ class Fringes:
         self.v = "auto"
         self.logger.info("Auto set parameters.")
 
-    # def gamma_auto_correct(self, I: np.ndarray) -> np.ndarray:
-    #     """Automatically compensate gamma by histogram analysis."""
-    #     J = I  # todo: autodegamma -> assume evenly distributed histogram
-    #     return J
+    def gamma_auto_correct(self, I: np.ndarray) -> np.ndarray:
+        """Automatically compensate gamma by histogram analysis."""
+
+        # estimate gamma correction factor
+        mid = self.Imax / 2
+        mean = np.mean(I)
+        gamma = np.log(mid * 255) / np.log(mean)
+        invGamma = 1 / gamma
+
+        # apply inverse gamma
+        if self.dtype is float:
+            return I ** invGamma
+        else:
+            table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
+            return cv2.LUT(I, table)
 
     def setMTF(self, B: np.ndarray, show: bool = True) -> np.ndarray:  # todo: check return type
         """Compute the normalized modulation transfer function at spatial frequencies v
@@ -400,7 +418,7 @@ class Fringes:
                         if self.gamma == 1:
                             val = self.A + self.B * cos
                         else:
-                            val = self.A + self.B * (.5 + .5 * cos) ** self.gamma
+                            val = (self.A / self.Imax + self.B / self.Imax * cos) ** self.gamma * self.Imax
 
                         if dtype.kind in "ui" and rint:
                             # val += .5
@@ -1790,6 +1808,7 @@ class Fringes:
             else:
                 self.f = "auto"
 
+            # keep maximum possible visibility constant
             if self.FDM:
                 self.B /= (self.D * self.K)
             else:
@@ -2320,7 +2339,7 @@ class Fringes:
 
     @property
     def gamma(self) -> float:
-        """Gamma` correction factor used to compensate the display resonse curve."""
+        """Gamma correction factor used to compensate the display response curve."""
         return self._gamma
 
     @gamma.setter
@@ -2371,6 +2390,11 @@ class Fringes:
         """Maximum gray value."""
         return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
 
+    # @property
+    # def beta(self) -> float:
+    #     """Relative bias i.e. relative mean intensity."""
+    #     return self.A / self.Imax  # todo: beta.setter
+
     @property
     def Amin(self):
         """Minimum bias."""
@@ -2393,11 +2417,6 @@ class Fringes:
         if self._A != _A and _A != 0:
             self._A = _A
             self.logger.debug(f"{self._A = }")
-
-    # @property
-    # def Bmin(self):
-    #     """Minimum amplitude."""
-    #     return self.q
 
     @property
     def Bmax(self):

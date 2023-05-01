@@ -461,5 +461,17 @@ def test_save_load():
 
 
 if __name__ == "__main__":
+    f = Fringes()
+
+    f.Y = 10
+    f.verbose = True
+    f.gamma = 2.2
+    I = f.encode()
+    J = f.gamma_auto_correct(I)
+    dec1 = f.decode(I)
+    dec2 = f.decode(J)
+
+    f.h = "rg"
+    M = f.M
     # pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
