@@ -102,7 +102,6 @@ class Fringes:
                  Vmin: float = 0.,
                  esat: float = np.inf,
                  dark: float = 0.,
-                 load_config: bool = False,
                  ) -> None:
 
         # given values not identical to default values
@@ -117,21 +116,17 @@ class Fringes:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
-        # set values to attributes, each using initial if initial else config if config else default values
-        # this is implemented by setting first default values, then config values and finally given values
+        # set values to attributes, each using initial if initial else default values
+        # this is implemented by setting first default values, then given values
         for k, v in self.defaults.items():
             setattr(self, f"_{k}", v)  # initially define private variables
 
-        fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
-        if load_config and os.path.isfile(fname):  # load params from config file if existent
-            self.load(fname)
-        else:
-            for k, v in given.items():
-                if k in self.defaults:
-                    setattr(self, k, v)
-            for k, v in given.items():
-                if not np.array_equal(v, getattr(self, k)):  # getattr(self, "_" + k)
-                    self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
+        for k, v in given.items():
+            if k in self.defaults:
+                setattr(self, k, v)
+        for k, v in given.items():
+            if not np.array_equal(v, getattr(self, k)):  # getattr(self, "_" + k)
+                self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
 
         self._UMR = None
         UMR = self.UMR  # property 'UMR' logs warning if necessary
@@ -176,7 +171,7 @@ class Fringes:
     def __eq__(self, other) -> bool:
         return hasattr(other, "params") and self.params == other.params
 
-    def load(self, fname: "") -> dict:
+    def load(self, fname: str = "") -> dict:
         """Load parameters from file."""
 
         if not os.path.isfile(fname):
@@ -185,7 +180,7 @@ class Fringes:
             fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
             if os.path.isfile(fname):
-                self.logger.warning(f"Using file {fname} instead.")
+                self.logger.warning(f"Using file '{fname}' instead.")
             else:
                 return {}
 
@@ -214,11 +209,11 @@ class Fringes:
                 if not np.array_equal(params[k], getattr(self, k)):
                     self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent config values.")
 
-            self.logger.info(f"Loaded parameters from {fname}.")
+            self.logger.info(f"Loaded parameters from '{fname}'.")
 
             return params
         else:
-            self.logger.error("No 'fringes' section in config file.")
+            self.logger.error(f"No 'fringes' section in file '{fname}'.")
             return {}
 
     def save(self, fname: str = "") -> None:
