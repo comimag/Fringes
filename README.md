@@ -332,7 +332,7 @@ It remains constant if `L` and hence `l` are scaled (the scaling factor cancels 
 The following are instance methods:
 - `load(fname)`\
   Load a parameter set from the file `fname` to a `Fringes` instance.
-  Supported file formats are `*.json`, `*.yaml` and `*.asdf`.
+  Supported file formats are `*.json`, `*.yaml`, `*.toml` and `*.asdf`.
   If the file doesn't exist or doesn't have one of the aforementioned filename extensions,
   the file `.fringes.yaml` within the user home directory is tried to load.
 - `save(fname)`\

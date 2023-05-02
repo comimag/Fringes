@@ -13,9 +13,10 @@ def circ_dist(a, b, c) -> float:
     param c: circumference (distance) after which wrapping occurs
     """
     d = b - a
-    if d > c / 2:
+    c2 = c / 2
+    if d > c2:
         d -= c
-    elif d < - c / 2:
+    elif d < - c2:
         d += c
     return d
 
