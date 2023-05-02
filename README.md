@@ -61,7 +61,7 @@ Note that in contrast to binary coding schemes, e.g. Gray code,
 the coordinates are obtained with sub-pixel precision.
     - **Temporal Phase Unwrapping (TPU)**\
 If multiple sets with different spatial frequencies `v` are used
-and the [unmbiguous measurement range](#quality-metrics) is larger than the coding range <code>UMR &ge; L</code>,
+and the [unambiguous measurement range](#quality-metrics) is larger than the coding range <code>UMR &ge; L</code>,
 the ambiguity of the phase map is resolved by
 generalized multi-frequency temporal phase unwrapping (GTPU) [[14]](#14-kludt-2024).
     - **Spatial Phase Unwrapping (SPU)**\
@@ -409,7 +409,7 @@ Hence, the used hardware imposes a lower bound for the wavelength (or upper boun
    
 Also, small wavelengths might result in a smaller unambiguous measurement range `UMR`.
 If two or more sets `K` are used and their wavelengths `l` resp. number of periods `v` are relative primes,
-the unmbiguous measurement range can be increased many times.
+the unambiguous measurement range can be increased many times.
 As a consequence, one can use much smaller wavelenghts `l` (larger number of periods `v`).
 
 
