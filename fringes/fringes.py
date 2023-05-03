@@ -84,7 +84,7 @@ class Fringes:
                  gamma: float = 1.,
                  A: float = 255 / 2,  # Imax / 2 @ uint8
                  B: float = 255 / 2,  # Imax / 2 @ uint8
-                 beta: float = 1.,  # beta is inferred from A and Imax
+                 beta: float = .5,  # beta is inferred from A and Imax
                  V: float = 1.,  # V is inferred from A and B
                  alpha: float = 1.,
                  dtype: str | np.dtype = "uint8",
@@ -2441,8 +2441,9 @@ class Fringes:
     def beta(self, beta) -> float:
         _beta = float(min(max(0, beta), 1))
 
-        self.A = _beta * self.Imax
-        self.B = _beta * self.V * self.A
+        if self._A != _beta * self.Imax or self.B != _beta * self.Imax * self.V:
+            self.A = _beta * self.Imax
+            self.B = _beta * self.Imax * self.V
 
     @property
     def Vmax(self):
