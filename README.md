@@ -272,6 +272,9 @@ as well as its maximum gray value `Imax` are derived directly from it:\
 and <code>Imax = 2<sup>Q</sup> - 1</code> for `unsigned integers` with `Q` bits.
 
 `Imax` in turn limits the offset `A` and the amplitude `B`.
+
+`beta` denotes the relative bias i.e. the relative mean intensity with <code>beta &isin; [0, 1]</code> 
+
 The fringe visibility (also called fringe contrast) is `V = A / B` with <code>V &isin; [0, 1]</code>.
 
 The quantization step size `q` is also derived from `dtype`:

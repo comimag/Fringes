@@ -84,6 +84,7 @@ class Fringes:
                  gamma: float = 1.,
                  A: float = 255 / 2,  # Imax / 2 @ uint8
                  B: float = 255 / 2,  # Imax / 2 @ uint8
+                 beta: float = 1.,  # beta is inferred from A and Imax
                  V: float = 1.,  # V is inferred from A and B
                  alpha: float = 1.,
                  dtype: str | np.dtype = "uint8",
@@ -206,7 +207,7 @@ class Fringes:
                 if k in params and k != "T":
                     setattr(self, k, params[k])
             for k in self.params.keys():
-                if not np.array_equal(params[k], getattr(self, k)):
+                if k in params and not np.array_equal(params[k], getattr(self, k)):
                     self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent config values.")
 
             self.logger.info(f"Loaded parameters from '{fname}'.")
@@ -2390,11 +2391,6 @@ class Fringes:
         """Maximum gray value."""
         return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
 
-    # @property
-    # def beta(self) -> float:
-    #     """Relative bias i.e. relative mean intensity."""
-    #     return self.A / self.Imax  # todo: beta.setter
-
     @property
     def Amin(self):
         """Minimum bias."""
@@ -2435,6 +2431,18 @@ class Fringes:
         if self._B != _B and _B != 0:
             self._B = _B
             self.logger.debug(f"{self._B = }")
+
+    @property
+    def beta(self) -> float:
+        """Relative bias i.e. relative mean intensity."""
+        return self.A / self.Imax
+
+    @beta.setter
+    def beta(self, beta) -> float:
+        _beta = float(min(max(0, beta), 1))
+
+        self.A = _beta * self.Imax
+        self.B = _beta * self.V * self.A
 
     @property
     def Vmax(self):
