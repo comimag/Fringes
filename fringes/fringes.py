@@ -2439,11 +2439,11 @@ class Fringes:
 
     @beta.setter
     def beta(self, beta) -> float:
-        _beta = float(min(max(0, beta), 1))
+        _beta = float(min(max(0, beta), 0.5))
 
         if self._A != _beta * self.Imax or self.B != _beta * self.Imax * self.V:
-            self.A = _beta * self.Imax
             self.B = _beta * self.Imax * self.V
+            self.A = _beta * self.Imax
 
     @property
     def Vmax(self):
