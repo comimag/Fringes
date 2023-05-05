@@ -21,8 +21,27 @@ def circ_dist(a, b, c) -> float:
     return d
 
 
-# @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-@nb.jit(cache=True, fastmath=True)
+# @nb.jit(cache=True, nopython=True, nogil=True, fastmath=True)
+@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+# @nb.jit(
+#     nb.types.UniTuple(  # output types
+#         nb.float32[:, :, :, :],
+#         6
+#     )
+#     (  # input types
+#         nb.uint8[:, :, :, :],
+#         nb.int_[:, :],
+#         nb.float64[:, :],
+#         nb.float64[:, :],
+#         nb.int_[:],
+#         nb.float64,
+#         nb.float64,
+#         nb.float64,
+#         nb.types.unicode_type,
+#         nb.float64,
+#         nb.bool_,
+#     ),
+#     cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 def decode(
     I: np.ndarray,
     N: np.ndarray,
@@ -32,7 +51,7 @@ def decode(
     a: float = 1,  # alpha
     o: float = np.pi,
     r: float = 0,
-    mode: str = "",
+    mode: bool = True,
     Vmin: float = 0.0,  # 10 / 255  # min fringe contrast i.e. min visibility (can accelerate unwrapping)
     verbose: bool = False,
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
@@ -55,9 +74,9 @@ def decode(
     Nmax = np.max(N)
     sin = np.empty((D, K, Nmax))  # phase shift factors
     cos = np.empty((D, K, Nmax))  # phase shift factors
-    for d in nb.prange(D):
-        for k in nb.prange(K):
-            for n in nb.prange(N[d, k]):
+    for d in range(D):
+        for k in range(K):
+            for n in range(N[d, k]):
                 t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen
                 wto = PI2 * f[d, k] * t
                 sin[d, k, n] = np.sin(wto)
@@ -79,7 +98,7 @@ def decode(
     no = o / PI2
 
     # choose that v from which the other fringe orders of the remaining sets are derived
-    if mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
+    if mode:  # todo: decide for each pixel individually i.e. multiply with B later on
         w = N * v ** 2  # weights of phase measurements are their inverse variances (must be multiplied with B later on)
         idx = [np.argmax(w[d] * (N[d] > 2) * (v[d] > 0)) for d in range(D)]  # the set with most precise phases
     # elif mode == "robust":  # todo: "exhaustive"?
@@ -111,7 +130,6 @@ def decode(
     ssdlim = varlim * K
 
     # allocate
-    # dt = np.float64 if I.itemsize == 8 else np.float32  # todo: numba crashes
     dt = np.float32  # float32's precision is usually better than quantization noise in phase shifting sequence
     bri = np.empty((D, Y, X, C), dt)  # brightness must be identical for all sets, therefore we arverage over them
     mod = np.empty((D, K, Y, X, C), dt)
@@ -122,8 +140,8 @@ def decode(
 
     for x in nb.prange(X):  # usually X > Y -> put X first, because parallelization only affects outer for-loop
         for y in nb.prange(Y):
-            for c in nb.prange(C):
-                for d in nb.prange(D):
+            for c in range(C):
+                for d in range(D):
 
                     # temporal demodulation
                     A = 0
@@ -133,7 +151,7 @@ def decode(
                     for k in KN3[d]:  # where N >= 3
                         re = 0
                         im = 0
-                        for n, t in enumerate(range(ti[d, k], ti[d, k + 1])):  # nb.prange not working with enumerate
+                        for n, t in enumerate(range(ti[d, k], ti[d, k + 1])):
                             A += I[t, y, x, c]
                             re += I[t, y, x, c] * cos[d, k, n]
                             im += I[t, y, x, c] * sin[d, k, n]
@@ -191,7 +209,7 @@ def decode(
                     else:  # K > 1: temporal phase unwrapping
                         if False:    # todo
                             # cw = np.empty(K)  # fringe visibility (fringe contrast) squared for multiplying into weights
-                            #                         # for k in nb.prange(K):  # softmax?
+                            #                         # for k in range(K):  # softmax?
                             #                         #     if B[k] > 2 * A[k]:
                             #                         #         cm[k] = 0
                             #                         #     elif B[k] > A[k]:
@@ -260,7 +278,7 @@ def decode(
                             if mn >= ssdmax[d]:
                                 reg[d, y, x, c] = np.nan  # np.nan  # no suitable fringe orders found
                                 if verbose:
-                                    res[d, y, x, c] = np.inf  # no suitable fringe orders found
+                                    res[d, y, x, c] = L / 2  # no suitable fringe orders found -> set max value possible due to Popoviciu's inequality on variances
                                     fid[d, :, y, x, c] = np.nan  # no suitable fringe orders found
                             else:
                                 reg[d, y, x, c] = avg

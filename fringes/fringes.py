@@ -230,7 +230,7 @@ class Fringes:
         else:
             with open(fname, "w") as f:
                 if ext == ".json":
-                    json.dump({"fringes": self.params}, f)
+                    json.dump({"fringes": self.params}, f, indent=4)
                 elif ext == ".yaml":
                     yaml.dump({"fringes": self.params}, f)
                 elif ext == ".toml":
@@ -594,10 +594,10 @@ class Fringes:
             if self.mode == "fast":
                 SQNR = self.B / self.quant
                 Vmin = max(Vmin, 1 / SQNR)
-                r = min(self.u, 1)  # todo: 0.5 or self.u
+                r = min(self.u, 1.)  # todo: 0.5 or self.u
             else:
-                r = 0
-            r = 0  # todo
+                r = 0.
+            r = 0.  # todo
 
             # """Weights for inverse variance weighting."""
             # var = 1 / self._N / self.M / np.sqrt(
@@ -1147,10 +1147,7 @@ class Fringes:
         I = self.encode()
         dec = self.decode(I)
 
-        sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
-        xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[:, :, :, None] * self.L
-
-        eps = np.abs(xi - dec.registration)  # / self.L
+        eps = np.abs(self.coordinates() - dec.registration)  # / self.L
         idxe = np.argwhere(eps.squeeze() > 0.1)
 
         xavg = np.nanmean(eps)
