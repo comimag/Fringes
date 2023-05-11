@@ -1814,7 +1814,7 @@ class Fringes:
             if self.FDM:
                 self.f = self._f
             else:
-                self.f = "auto"
+                self.f = np.ones((self.D, self.K))
 
             # keep maximum possible visibility constant
             if self.FDM:
@@ -2177,6 +2177,11 @@ class Fringes:
             self.f = self._f
 
     @property
+    def fmax(self):
+        """Maximum temporal frequency, i.e. maximum number of periods to shift over."""
+        return min((self.Nmax - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmax - 1) / 2
+
+    @property
     def f(self) -> np.ndarray:
         """Temporal frequency, i.e. number of periods to shift over."""
         if self.D == 1 or len(np.unique(self._f, axis=0)) == 1:  # sets in directions are identical
@@ -2194,8 +2199,7 @@ class Fringes:
                 return
 
         # make array, ensure dtype and clip
-        fmax = (self.Nmax - 1) / 2
-        _f = np.array(f, float, ndmin=1).clip(-fmax, fmax)
+        _f = np.array(f, float, ndmin=1).clip(-self.fmax, self.fmax)
 
         # empty array
         if not _f.size:
@@ -2255,7 +2259,7 @@ class Fringes:
     @property
     def lmin(self) -> float:
         """Minimum resolvable wavelength [px]."""
-        return self._lmin
+        return min(self._lmin, self.L / self.fmax) if self.FDM and self.static else self._lmin
 
     @lmin.setter
     def lmin(self, lmin: float):
