@@ -75,10 +75,14 @@ class Fringes:
                  D: int = 2,
                  K: int = 3,
                  T: int = 24,
-                 N: tuple | np.ndarray = np.array([[4, 4, 4], [4, 4, 4]], int),
-                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89], [13, 7, 89]], float),
-                 v: tuple | np.ndarray = np.array([[13, 7, 89], [13, 7, 89]], float),
-                 f: tuple | np.ndarray = np.array([[1, 1, 1], [1, 1, 1]], float),
+                 N: tuple | np.ndarray = np.array([[4, 4, 4],
+                                                   [4, 4, 4]], int),
+                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89],
+                                                          [13, 7, 89]], float),
+                 v: tuple | np.ndarray = np.array([[13, 7, 89],
+                                                   [13, 7, 89]], float),
+                 f: tuple | np.ndarray = np.array([[1, 1, 1],
+                                                   [1, 1, 1]], float),
                  h: tuple | np.ndarray = _hues[0],  # np.array([[255, 255, 255]], int)
                  o: float = np.pi,
                  gamma: float = 1.,
@@ -240,12 +244,10 @@ class Fringes:
 
     def reset(self) -> None:
         """Reset parameters to defaults."""
-        # self.__init__()  # attention: config file might be reloaded
 
-        for k, v in self.defaults.items():
-            if k in self.params:  # todo: try to remove this line
-                if k != "T":
-                    setattr(self, k, v)  # attention: private variables have to be defined within __init__()
+        for k, v in self.params.items():
+            if k != "T":  # attention: private variables have to be defined within __init__()
+                setattr(self, k, self.defaults[v])
 
         self.logger.info("Set parameters back to defaults.")
 
@@ -254,8 +256,7 @@ class Fringes:
          T: Given number of frames.
          lmin: Minimum resolvable wavelength.
          L: Length of fringe patterns."""
-        self.h = "w"  # todo: try h = "rgb"
-        # self.D = 2  # todo
+        self.h = "w"
         self.T = (T, 4)
         self.v = "auto"
         self.logger.info("Auto set parameters.")
@@ -281,15 +282,15 @@ class Fringes:
 
         return J
 
-    def setMTF(self, B: np.ndarray, show: bool = True) -> np.ndarray:  # todo: check return type
+    def setMTF(self, B: np.ndarray, show: bool = True) -> np.ndarray:
         """Compute the normalized modulation transfer function at spatial frequencies v
         and use the result to set the optimal lmin.
         """
         # B: modulation
 
         # filter
-        MTF = np.median(B, axis=(1, 2))
-        # B = B[B - Bmed[:, None, None, :] < (np.iinfo(sensor_dtype).max if sensor_dtype.kind in "ui" else 1) / 10]
+        # MTF = np.median(B, axis=(1, 2))
+        MTF = np.quantile(B, 0.1, axis=(1, 2))
 
         #  normalize (only relative weights are important)
         MTF = MTF.reshape((self.D, -1, B.shape[-1]))  # MTF per direction
@@ -297,7 +298,6 @@ class Fringes:
         MTF[np.isnan(MTF)] = 0
 
         # vmax @ B / 2 @ recorded dtype, cf. Bothe
-        mtf0 = (np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1) / 2
         C = MTF.shape[-1]
         v = np.arange(self.vmax)
         vmax = np.empty((self.D, C))
@@ -308,8 +308,7 @@ class Fringes:
                 idx = np.argmin(mtf >= 0.5) - 1  # index of last element where MTF >= 0.5
                 vmax[d, c] = v[idx]
 
-        # self.vmax = vmax  # todo: per hue?
-        self.lmin = self.L / vmax
+        self.lmin = self.L / vmax.max()
 
         self.logger.info(f"MTF is: {MTF}")
         return MTF  # todo: return interpolated mtf?
@@ -454,7 +453,7 @@ class Fringes:
         # if self.FDM:
         #    c = np.fft.rfft(I, axis=0) / T  # todo: hfft
         #
-        #    # if self._N[0, 0] > 2 * self.D * self.K:  # 2 * np.abs(_f).max() + 1:
+        #    # if np.any(self._N > 2 * self.D * self.K):  # 2 * np.abs(_f).max() + 1:
         #    #     i = np.append(np.zeros(1, int), self._f.flatten().astype(int, copy=False))  # add offset
         #    #     c = c[i]
         #
@@ -652,7 +651,7 @@ class Fringes:
             assert len(np.unique(self.N)) == 1
             assert I.dtype.kind == "f"
 
-            if self._N[0, 0] < 2 * np.abs(self._f).max() + 1:  # todo: fractional periods
+            if np.any(self._N < 2 * np.abs(self._f).max() + 1):  # todo: fractional periods
                 self.logger.warning("Decoding might be disturbed.")
 
             I = I.reshape((self.D * self.K, -1))  # returns a view
@@ -1325,13 +1324,6 @@ class Fringes:
     def T(self, T: int):
         # attention: params may change even if Tnew == Told
 
-        # todo: the setter can only take one argument, so we check for an iterable to get two arguments: T and Nmin
-        # try:
-        #     T, Nmin = T
-        #     Nmin = int(min(max(3, Nmin), self._Nmax))
-        # except:
-        #     Nmin = 3
-
         Nmin = 3
 
         _T = int(min(max(1, T), self._Tmax))
@@ -1374,11 +1366,11 @@ class Fringes:
             # todo: T == 4 -> no mod
             #  T == 5 -> FDM if _T >= Nmin?
 
-            # try D == 2  # todo: mux
-            if _T < 2 * Nmin:
-                self.D = 1
-            else:
-                self.D = 2
+            # # try D == 2  # todo: mux
+            # if _T < 2 * Nmin:
+            #     self.D = 1
+            # else:
+            #     self.D = 2
 
             # try to keep hues  # todo: mux
             if _T < self.H * self.D * Nmin:
@@ -1883,6 +1875,15 @@ class Fringes:
             self.B = self.B
 
     @property
+    def Nmin(self) -> int:
+        """Minimum number of shifts to (uniformly) sample temporal frequencies."""
+        if self.FDM:
+            Nmin = int(np.ceil(2 * self.f.max() + 1))  # todo: 2 * D * K + 1 -> fractional periods if static
+        else:
+            Nmin = 1
+        return Nmin
+
+    @property
     def N(self) -> np.ndarray:
         """Number of phase shifts."""
         if self.D == 1 or len(np.unique(self._N, axis=0)) == 1:  # sets in directions are identical
@@ -2193,10 +2194,8 @@ class Fringes:
                 return
 
         # make array, ensure dtype and clip
-        _f = np.array(f, float, ndmin=1)
-        if self.FDM:
-            if self.static:
-                pass
+        fmax = (self.Nmax - 1) / 2
+        _f = np.array(f, float, ndmin=1).clip(-fmax, fmax)
 
         # empty array
         if not _f.size:
@@ -2212,12 +2211,16 @@ class Fringes:
         else:
             _f = _f[:self._Dmax, :self._Kmax, ..., -1]
 
+        if np.any(_f % self._N == 0):
+            # _f = np.ones((self.D, self.K))
+            _f[_f % self._N == 0] = 1
+
         if self.FDM:
             if self.static:
-                _f = self._v  # todo: periods to shift over = one full revolution (take min spatial frequency i.e. max wavelength?)
+                _f = self._v  # periods to shift over = one full revolution
             else:
                 if _f.shape != (self.D, self.K) or not np.all(i % 1 == 0 for i in _f) or \
-                        len(np.unique(np.abs(_f))) < _f.size:  # assure _f are int, absolute values of _f differ
+                        len(np.unique(np.abs(_f))) < _f.size:  # assure _f are int and absolute values of _f differ
                     _f = np.arange(1, self.D * self.K + 1, dtype=float).reshape((self.D, self.K))
 
         if _f.size and 0 not in _f and not np.array_equal(self._f, _f):
@@ -2248,20 +2251,6 @@ class Fringes:
     def _isambiguous(self) -> bool:
         """Unambiguous measument range is larger than the screen length."""
         return np.any(self.UMR < self.R * self.alpha)
-
-    @property
-    def Nmin(self) -> int:
-        """Minimum number of shifts to (uniformly) sample temporal frequencies."""
-        if self.FDM:
-            if self.static:
-                Nmin = int(np.ceil(2 * self.f.max() + 1))  # todo: 2 * D * K + 1 -> fractional periods
-            else:
-                Nmin = 2 * self.D * self.K + 1
-            B = np.ptp(self.f)
-            Nmin = int(np.ceil(2 * B + 1))
-        else:
-            Nmin = 1
-        return Nmin
 
     @property
     def lmin(self) -> float:

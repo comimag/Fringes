@@ -159,91 +159,91 @@ def median(img: np.ndarray, k: int = 3) -> np.ndarray:  # todo: test
 #
 #
 # @none2ndarray
-# @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-# def remap(
-#         reg: np.ndarray,
-#         mod: np.ndarray = np.ones(1),
-#         modmin: float = 0,
-#         scale: float = 1,
-#         Y: int = 0,
-#         X: int = 0,
-#         C: int = 0,
-#         normalize: bool = True,
-# ) -> np.ndarray:
-#     """
-#     Mapping registration points (having sub-pixel accuracy) from camera grid
-#     to (integer) positions on screen grid,
-#     with weights from modulation.
-#     This yields a grid representing the screen (light source)
-#     with the pixel values being a relative measure
-#     of how much a screen (light source) pixel contributed
-#     to the exposure of the camera sensor.
-#     """
-#
-#     if mod.ndim > 1:
-#         assert reg.shape[1:] == mod.shape[1:]
-#
-#     if reg.shape[0] == 1:
-#         # mod = np.vstack(mod, np.zeros_like(mod))
-#         reg = np.vstack((reg, np.zeros_like(reg)))  # todo: axis
-#
-#     if X is None:
-#         X = 0
-#
-#     if Y is None:
-#         Y = 0
-#
-#     X = int(X)
-#     Y = int(Y)
-#
-#     if scale <= 0:
-#         scale = 1
-#
-#     if Y <= 0:
-#         Y = max(1, int(np.nanmax(reg[1]) * scale + .5))  # todo: mod > modmin
-#     else:
-#         Y = int(Y * scale + 0.5)
-#
-#     if X <= 0:
-#         X = max(1, int(np.nanmax(reg[0]) * scale + .5))  # todo: mod > modmin
-#     else:
-#         X = int(X * scale + 0.5)
-#
-#     if C not in [1, 3, 4]:
-#         if reg.shape[-1] in [3, 4]:
-#             C = reg.shape[-1]
-#         else:
-#             C = 1
-#             # reg = reg.reshape([s for s in reg.shape] + [C])  # todo: how to get reg[..., 1] if C-axis doesn't exist?
-#
-#     src = np.zeros((Y, X, C), np.float32)
-#
-#     Xc = reg.shape[2]
-#     Yc = reg.shape[1]
-#     K = mod.shape[0]
-#     for xc in nb.prange(Xc):
-#         for yc in nb.prange(Yc):
-#             for c in nb.prange(C):
-#                 if not np.isnan(reg[0, yc, xc, c]):
-#                     xs = int(reg[0, yc, xc, c] * scale + .5)  # i.e. rint()
-#                     if xs < X:
-#                         if not np.isnan(reg[1, yc, xc, c]):
-#                             ys = int(reg[1, yc, xc, c] * scale + .5)  # i.e. rint()
-#                             if ys < Y:
-#                                 for k in nb.prange(K):
-#                                     if mod.ndim > 1:
-#                                         m = mod[k, yc, xc, c]
-#                                         if not np.isnan(m) and m >= modmin:
-#                                             src[ys, xs, c] += m
-#                                     else:
-#                                         src[ys, xs, c] += 1
-#
-#     if normalize:
-#         mx = src.max()
-#         if mx > 0:
-#             src /= mx
-#
-#     return src
+@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+def remap(
+        reg: np.ndarray,
+        mod: np.ndarray = np.ones(1),
+        modmin: float = 0,
+        scale: float = 1,
+        Y: int = 0,
+        X: int = 0,
+        C: int = 0,
+        normalize: bool = True,
+) -> np.ndarray:
+    """
+    Mapping registration points (having sub-pixel accuracy) from camera grid
+    to (integer) positions on screen grid,
+    with weights from modulation.
+    This yields a grid representing the screen (light source)
+    with the pixel values being a relative measure
+    of how much a screen (light source) pixel contributed
+    to the exposure of the camera sensor.
+    """
+
+    if mod.ndim > 1:
+        assert reg.shape[1:] == mod.shape[1:]
+
+    if reg.shape[0] == 1:
+        # mod = np.vstack(mod, np.zeros_like(mod))
+        reg = np.vstack((reg, np.zeros_like(reg)))  # todo: axis
+
+    if X is None:
+        X = 0
+
+    if Y is None:
+        Y = 0
+
+    X = int(X)
+    Y = int(Y)
+
+    if scale <= 0:
+        scale = 1
+
+    if Y <= 0:
+        Y = max(1, int(np.nanmax(reg[1]) * scale + .5))  # todo: mod > modmin
+    else:
+        Y = int(Y * scale + 0.5)
+
+    if X <= 0:
+        X = max(1, int(np.nanmax(reg[0]) * scale + .5))  # todo: mod > modmin
+    else:
+        X = int(X * scale + 0.5)
+
+    if C not in [1, 3, 4]:
+        if reg.shape[-1] in [3, 4]:
+            C = reg.shape[-1]
+        else:
+            C = 1
+            # reg = reg.reshape([s for s in reg.shape] + [C])  # todo: how to get reg[..., 1] if C-axis doesn't exist?
+
+    src = np.zeros((Y, X, C), np.float32)
+
+    Xc = reg.shape[2]
+    Yc = reg.shape[1]
+    K = mod.shape[0]
+    for xc in nb.prange(Xc):
+        for yc in nb.prange(Yc):
+            for c in nb.prange(C):
+                if not np.isnan(reg[0, yc, xc, c]):
+                    xs = int(reg[0, yc, xc, c] * scale + .5)  # i.e. rint()
+                    if xs < X:
+                        if not np.isnan(reg[1, yc, xc, c]):
+                            ys = int(reg[1, yc, xc, c] * scale + .5)  # i.e. rint()
+                            if ys < Y:
+                                for k in nb.prange(K):
+                                    if mod.ndim > 1:
+                                        m = mod[k, yc, xc, c]
+                                        if not np.isnan(m) and m >= modmin:
+                                            src[ys, xs, c] += m
+                                    else:
+                                        src[ys, xs, c] += 1
+
+    if normalize:
+        mx = src.max()
+        if mx > 0:
+            src /= mx
+
+    return src
 
 
 def coprime(n: list[int] | tuple[int] | np.ndarray) -> bool:  # n: iterable  # todo: extend to rational numbers
