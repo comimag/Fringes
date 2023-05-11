@@ -120,11 +120,7 @@ f.X = 1920              # set width of the fringe patterns
 f.Y = 1080              # set height of the fringe patterns
 f.K = 2                 # set number of sets
 f.N = 4                 # set number of shifts
-f.v = [[9, 10]]         # set spatial frequencies (also set number of directions to one and number of sets to two)
-f.v = [[9, 10],
-       [9, 10]]         # set spatial frequencies (also set number of directions to two and number of sets to two)
-f.v = [9, 10]           # set spatial frequencies (also keep number of directions and set number of sets to two, since it is 1D)
-f.T                     # get the number of frames
+f.v = [9, 10]         # set spatial frequenciesf.T                     # get the number of frames
 ```
 
 A glossary of them is obtained by the class attribute `doc`.
@@ -150,8 +146,8 @@ so usually several input types are accepted,
 e.g. `bool`, `int`, `float` for scalars
 and additionally `list`, `tuple`, `ndarray` for arrays.
 
-Note that parameters might have circular dependencies which are resolved automatically,
-hence dependent parameters might change as well.
+Note that attributes might have circular dependencies which are resolved automatically,
+hence dependent attributes might change as well.
 
 ![Parameter Interdependencies](docs/interdependencies.svg?raw=True)\
 Parameter and their Interdependencies.
@@ -184,13 +180,13 @@ and positive directions are right- resp. downwards.
 - `'log-polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
 
 `D` denotes the number of directions to be encoded.
-If <code>D &equiv; 1</code>, the parameter `axis` is used to define along which axis of the coordinate system
+If <code>D &equiv; 1</code>, the attribute `axis` is used to define along which axis of the coordinate system
 (index 0 or 1) the fringes are shifted.
 
 `angle` can be used to tilt the coordinate system. The origin stays the same.
 
 ### __Set__
-Each set consists of the following parameters:
+Each set consists of the following attributes:
 - `N`: number of shifts
 - `l`: wavelength [px]
 - `v`: spatial frequency, i.e. number of periods (per screen length `L`)
@@ -199,9 +195,10 @@ Each set consists of the following parameters:
 Each is an array with shape (number of directions `D`, number of sets `K`).\
 For example, if <code>N.shape &equiv; (2, 3)</code>, it means that we encode `D = 2` directions with `K = 3` sets each.
 
-Changing `D` or `K` directly, changes the shape of all set parameters.
-When setting a set parameter with a new shape (`D'`, `K'`),
-`D` and `K` are updated as well as the shape of the other set parameters.
+Changing `D` or `K` directly, changes the shape of all set attributes.
+When setting a set attribute with a new shape (`D'`, `K'`),
+`D` and `K` are updated as well as the shape of the other set attributes.
+If a set attribute is only 1D, then it is stacked to match the number of directions `D`.
 
 Per direction at least one set with <code>N &ge; 3</code> is necessary
 to solve for the three unknowns brightness `A`, modulation `B` and coordinates `ξ`.
@@ -321,7 +318,7 @@ because then a significant part of the coding range is not used.
 `u` denotes the minimum possible uncertainty of the measurement in pixels.
 It is based on the phase noise model from [[7]](#7),
 propagated through [generalized temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) and converted from phase to pixel units.
-It is influenced by the fringe parameters
+It is influenced by the fringe attributes
 - `M`: number of [averaged](#coloring-and-averaging) intensity samples
 - `N`: number of phase shifts
 - `l`: wavelengths of the fringes
