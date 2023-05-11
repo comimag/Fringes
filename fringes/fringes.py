@@ -336,6 +336,7 @@ class Fringes:
 
         sys = "img" if self.grid == "image" else "cart" if self.grid == "Cartesian" else "pol" if self.grid == "polar" else "logpol"
         xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[self.axis if self.D == 1 else ...]
+
         if self.grid in ["polar", "log-polar"]:
             xi *= self.L
 
@@ -937,15 +938,43 @@ class Fringes:
                 reg, res, fid = uwr
             else:
                 reg = uwr[0]
-        else:
-            # coordiante retransformation
-            if False:  # todo: self.D == 2:
+        else:  # coordiante retransformation
+            if self.D == 2:
                 if self.grid == "Cartesian":
-                    reg = grid.cart2img(reg, -self.angle)
-                elif self.grid =="polar":
-                    reg = grid.pol2cart(vu, -self.angle)
-                elif self.grid == "log-polar":
-                    reg = grid.logpol2cart(vu, -self.angle)
+                    if self.X >= self.Y:
+                        reg[0] += self.X / 2 - 0.5
+                        reg[0] %= self.X
+                        reg[1] *= -1
+                        reg[1] += self.Y / 2 - 0.5
+                        reg[1] %= self.X
+                    else:
+                        reg[0] += self.X / 2 - 0.5
+                        reg[0] %= self.Y
+                        reg[1] *= -1
+                        reg[1] += self.Y / 2 - 0.5
+                        reg[1] %= self.Y
+
+                if self.angle != 0:
+                    t = np.deg2rad(-self.angle)
+
+                    if self.angle % 90 == 0:
+                        c = np.cos(t)
+                        s = np.sin(t)
+                        R = np.array([[c, -s], [s, c]])
+                        # R = np.matrix([[c, -s], [s, c]])
+                        ur = R[0, 0] * reg[0] + R[0, 1] * reg[1]
+                        vr = R[1, 0] * reg[0] + R[1, 1] * reg[2]
+                        # u = np.dot(uu, R)  # todo: matrix multiplication
+                        # v = np.dot(vv, R)
+                    else:
+                        tan = np.tan(t)
+                        ur = reg[0] - reg[1] * np.tan(t)
+                        vr = reg[0] + reg[1] / np.tan(t)
+
+                    vv = (reg[1] - reg[0]) / (1 / tan - tan)
+                    uu = reg[0] + vv * tan
+                    reg = np.stack((uu, vv), axis=0)
+                    reg = np.stack((ur, vr), axis=0)
 
         if despike:
             reg = median(reg, k=3)
@@ -965,17 +994,6 @@ class Fringes:
 
         if denoise:
             reg = bilateral(reg, k=3)
-
-        # revert grid coordinates
-        if self.grid in self._grids[1:]:
-            if self.grid in ["log-polar"]:
-                pass  # todo: logpol -> pol
-
-            if self.grid in ["log-polar", "polar"]:
-                pass  # todo: pol -> cart
-                # scale residuals, todo: change stop criterion in unwrapper
-
-            pass  # todo: cart -> imag
 
         # create named tuple to return
         if self.verbose or verbose:
@@ -1877,10 +1895,7 @@ class Fringes:
     def N(self, N: int | tuple[int] | list[int] | np.ndarray | str):
         if isinstance(N, str):
             if N == "auto":
-                # N = np.full(self.K, self.defaults["N"][0, 0], float)
-                N = np.full(self.K, 4, int)
-            elif N == "defaults":
-                N = self.defaults["N"]
+                N = np.full((self.D, self.K), 4, int)
             else:
                 return
 
@@ -2022,8 +2037,6 @@ class Fringes:
                 l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K)))
             elif l == "linear":
                 l = np.concatenate(([np.inf], np.linspace(self.L, self.lmin, self.K - 1)))
-            elif l == "default":
-                l = self.defaults["l"]
             else:
                 return
 
@@ -2116,8 +2129,6 @@ class Fringes:
                 v = np.concatenate(([0], np.geomspace(1, self.vmax, self.K)))
             elif v == "linear":
                 v = np.concatenate(([0], np.linspace(1, self.vmax, self.K - 1)))
-            elif v == "default":
-                v = self.defaults["v"]
             else:
                 return
 
@@ -2178,8 +2189,6 @@ class Fringes:
         if isinstance(f, str):
             if f == "auto":
                 f = np.ones((self.D, self.K))
-            elif f == "default":
-                f = self.defaults[f]
             else:
                 return
 
@@ -2205,7 +2214,7 @@ class Fringes:
 
         if self.FDM:
             if self.static:
-                _f = self._v  # todo: periods to shift over: take min spatial frequency i.e. max wavelength?
+                _f = self._v  # todo: periods to shift over = one full revolution (take min spatial frequency i.e. max wavelength?)
             else:
                 if _f.shape != (self.D, self.K) or not np.all(i % 1 == 0 for i in _f) or \
                         len(np.unique(np.abs(_f))) < _f.size:  # assure _f are int, absolute values of _f differ
@@ -2248,6 +2257,8 @@ class Fringes:
                 Nmin = int(np.ceil(2 * self.f.max() + 1))  # todo: 2 * D * K + 1 -> fractional periods
             else:
                 Nmin = 2 * self.D * self.K + 1
+            B = np.ptp(self.f)
+            Nmin = int(np.ceil(2 * B + 1))
         else:
             Nmin = 1
         return Nmin

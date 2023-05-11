@@ -2,7 +2,7 @@
 Author: Christian Kludt
 
 [//]: # (![Parameter Interdependencies]&#40;docs/spirals.png&#41;)
-<img src="docs/du-bist-ein-wildschwein.gif">
+<img src="docs/du-bist-ein-wildschwein.gif?raw=True">
 
 ## Description
 This package provides the handy `Fringes` class which handles all the required parameters
@@ -120,7 +120,10 @@ f.X = 1920              # set width of the fringe patterns
 f.Y = 1080              # set height of the fringe patterns
 f.K = 2                 # set number of sets
 f.N = 4                 # set number of shifts
-f.v = [9, 10]           # set spatial frequencies
+f.v = [[9, 10]]         # set spatial frequencies (also set number of directions to one and number of sets to two)
+f.v = [[9, 10],
+       [9, 10]]         # set spatial frequencies (also set number of directions to two and number of sets to two)
+f.v = [9, 10]           # set spatial frequencies (also keep number of directions and set number of sets to two, since it is 1D)
 f.T                     # get the number of frames
 ```
 
@@ -142,13 +145,15 @@ f.logger.setLevel("DEBUG")
 Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
 
 ## Attributes
-All parameters are parsed when setting, so usually several input formats are accepted, e.g.
-`bool`, `int`, `float`, `str` for scalars and additionally `list`, `tuple`, `ndarray` for arrays.
+All attributes are implemented as class properties (managed attributes), which are parsed when setting,
+so usually several input types are accepted,
+e.g. `bool`, `int`, `float` for scalars
+and additionally `list`, `tuple`, `ndarray` for arrays.
 
 Note that parameters might have circular dependencies which are resolved automatically,
 hence dependent parameters might change as well.
 
-![Parameter Interdependencies](docs/interdependencies.svg)\
+![Parameter Interdependencies](docs/interdependencies.svg?raw=True)\
 Parameter and their Interdependencies.
 
 ### __Video Shape__

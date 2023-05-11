@@ -463,6 +463,11 @@ def test_save_load():
 if __name__ == "__main__":
     f = Fringes()
 
+    f.angle = 45
+
+    I = f.encode()
+    dec = f.decode(I)
+
     e = f._error()
 
     f.h = "rg"
