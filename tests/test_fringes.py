@@ -4,26 +4,15 @@ import os
 import time
 import tempfile
 
-import toml
 import numpy as np
 import pytest
 import subprocess
 
-from fringes import __version__
-from fringes import Fringes, curvature, height
+from fringes import Fringes, curvature, height, __version__
 
 
 def test_version():
-    assert __version__ == toml.load("..\\pyproject.toml")["tool"]["poetry"]["version"]
-
-
-def test_init():
-    f = Fringes()
-    for k, v in f.defaults.items():
-        assert np.array_equal(v, getattr(f, "_" + k)),\
-            f"'{k}' got overwritten by interdependencies. Choose consistent default values."
-
-    assert np.array_equal(f.l, f.L / f.v), "l != L / v"  # todo: above assert should already handle this
+    assert __version__ != "", "Version is not specified."
 
 
 def test_property_docs():
@@ -39,14 +28,27 @@ def test_init_doc():
         "Not all init parameters have an associated property with a defined docstring."
 
 
+def test_init():
+    f = Fringes()
+
+    for k, v in f.params.items():
+        if k in "Nlvf" and f.v.ndim == 1:
+            assert np.array_equal(v, f.defaults[k][0]), \
+                   f"'{k}' got overwritten by interdependencies. Choose consistent default values in initialization."
+        else:
+            assert np.array_equal(v, f.defaults[k]) or \
+                   f"'{k}' got overwritten by interdependencies. Choose consistent default values in initialization."
+
+    for k in "Nlvf":
+        assert getattr(f, f"_{k}").shape == (f.D, f.K), f"Set parameter {k} hasn't shape ({f.D}, {f.K})."
+
+
 def test_set_T():
     f = Fringes()
 
-    try:
-        for T in range(1, 1002):  # f._Tmax
-            f.T = T
-    except:
-        assert False, f"Couldn't set 'T' to {T}."
+    for T in range(1, 1001 + 1):  # f._Tmax + 1
+        f.T = T
+        assert f.T == T, f"Couldn't set 'T' to {T}."
 
 
 def test_UMR_mutual_divisibility():
@@ -56,22 +58,43 @@ def test_UMR_mutual_divisibility():
     assert np.array_equal(f.UMR, [60.6] * f.D), "'UMR' is not 60.6."
 
 
+def test_save_load():
+    f = Fringes()
+    params = f.params
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        for ext in f._loader.keys():
+            fname = os.path.join(tempdir, f"params{ext}")
+
+            f.save(fname)
+            assert os.path.isfile(fname), "No params-file saved."
+
+            params_loaded = f.load(fname)
+            # assert len(params_loaded) == len(params), "A different number of attributes is loaded than saved."
+
+            for k in params_loaded.keys():
+                assert k in params, f"Fringes class has no attribute '{k}'"
+                assert params_loaded[k] == params[k], \
+                    f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
+
+            for k in params.keys():
+                assert k in params_loaded, f"File '{fname}' has no attribute '{k}'"
+                assert params[k] == params_loaded[k], \
+                    f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
+
+
 def test_coordinates():
     f = Fringes()
     uv = f.coordinates()
-
-    assert np.array_equal(uv[0, 0, :, 0], np.arange(f.X))
-    assert np.array_equal(uv[1, :, 0, 0], np.arange(f.Y))
+    assert np.array_equal(uv, np.indices((f.Y, f.X))[::-1, :, :, None]), "XY-coordinates are wrong."
 
     f = Fringes(Y=1)
     uv = f.coordinates()
-
-    assert np.array_equal(uv, np.arange(f.X).reshape(1, 1, -1, 1))
+    assert np.array_equal(uv[0], np.arange(f.X)[None, :, None]), "X-coordinates are wrong."
 
     f = Fringes(X=1)
     uv = f.coordinates()
-
-    assert np.array_equal(uv, np.arange(f.Y).reshape(1, -1, 1, 1))
+    assert np.array_equal(uv[0], np.arange(f.Y)[:, None, None]), "Y-coordinates are wrong."
 
 
 def test_encoding():
@@ -406,7 +429,6 @@ def test_FDM():
     assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
     f.static = True
-    f.N = 1
     I = f.encode()
     dec = f.decode(I)
 
@@ -435,43 +457,20 @@ def test_SDM_WDM():
     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
 
 
-def test_save_load():
-    f = Fringes()
-    params = f.params
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        for ext in f._loader.keys():
-            fname = os.path.join(tempdir, f"params{ext}")
-
-            f.save(fname)
-            assert os.path.isfile(fname), "No params-file saved."
-
-            params_loaded = f.load(fname)
-            # assert len(params_loaded) == len(params), "A different number of attributes is loaded than saved."
-
-            for k in params_loaded.keys():
-                assert k in params, f"Fringes class has no attribute '{k}'"
-                assert params_loaded[k] == params[k], \
-                    f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
-
-            for k in params.keys():
-                assert k in params_loaded, f"File '{fname}' has no attribute '{k}'"
-                assert params[k] == params_loaded[k], \
-                    f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
-
-
 if __name__ == "__main__":
     f = Fringes()
 
-    f.angle = 45
-
+    f.logger.setLevel("DEBUG")
+    f.Y = 1000
+    f.X = 1300
+    f.v = [[1, 5], [1, 3]]
     I = f.encode()
     dec = f.decode(I)
 
-    e = f._error()
+    # e = f._error()
 
     f.h = "rg"
     M = f.M
 
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

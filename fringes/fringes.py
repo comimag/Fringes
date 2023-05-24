@@ -27,7 +27,7 @@ class Fringes:
     _Hmax = 101  # this is arbitrary
     _Dmax = 2  # max 2 dimensions
     _Kmax = 101  # this is arbitrary, but must be < 128 when deploying spatial or frequency multiplexing @ uint8
-    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(N); @FDM: > 2 * Dmax * Kmax + 1
+    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(N); @FDM: > 2 * fmax + 1
     _Mmax = 101  # this is arbitrary; more is better but the improvement scales with sqrt(M)
     # _Pmax: int = 35651584  # ~8K i.e. max luma picture size of h264, h265, h266 video codecs as of 2022; todo: update
     _Pmax = 2 ** 30  # 2^30 = 1,073,741,824 i.e. default size   limit of imread() in OpenCV
@@ -95,7 +95,6 @@ class Fringes:
                  grid: str = "image",
                  angle: float = 0.,
                  axis: int = 0,
-                 TDM: bool = True,
                  SDM: bool = False,
                  WDM: bool = False,
                  FDM: bool = False,
@@ -107,6 +106,7 @@ class Fringes:
                  Vmin: float = 0.,
                  esat: float = np.inf,
                  dark: float = 0.,
+                 gain: float = 0,
                  ) -> None:
 
         # given values not identical to default values
@@ -121,17 +121,12 @@ class Fringes:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
-        # set values to attributes, each using initial if initial else default values
+        # set values to attributes, each using given if given else default values
         # this is implemented by setting first default values, then given values
         for k, v in self.defaults.items():
-            setattr(self, f"_{k}", v)  # initially define private variables
-
-        for k, v in given.items():
-            if k in self.defaults:
-                setattr(self, k, v)
-        for k, v in given.items():
-            if not np.array_equal(v, getattr(self, k)):  # getattr(self, "_" + k)
-                self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent init values.")
+            if k not in ["H", "M", "T", "beta", "V"]:
+                setattr(self, f"_{k}", v)  # initially define private variables
+        self.params = given
 
         self._UMR = None
         UMR = self.UMR  # property 'UMR' logs warning if necessary
@@ -171,7 +166,7 @@ class Fringes:
         return "Fringes"
 
     def __repr__(self) -> str:
-        return f"{self.params}"
+        return f"{self.params}"  # todo: T, D, K, N?
 
     def __eq__(self, other) -> bool:
         return hasattr(other, "params") and self.params == other.params
@@ -207,12 +202,7 @@ class Fringes:
 
         if "fringes" in p:
             params = p["fringes"]
-            for k in self.params.keys():  # todo: does order in which params are loaded affect final param state?
-                if k in params and k != "T":
-                    setattr(self, k, params[k])
-            for k in self.params.keys():
-                if k in params and not np.array_equal(params[k], getattr(self, k)):
-                    self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent config values.")
+            self.params = params
 
             self.logger.info(f"Loaded parameters from '{fname}'.")
 
@@ -245,9 +235,7 @@ class Fringes:
     def reset(self) -> None:
         """Reset parameters to defaults."""
 
-        for k, v in self.params.items():
-            if k != "T":  # attention: private variables have to be defined within __init__()
-                setattr(self, k, self.defaults[v])
+        self.params = self.defaults
 
         self.logger.info("Set parameters back to defaults.")
 
@@ -1158,8 +1146,6 @@ class Fringes:
         """Error."""
         # """Mean absolute distance between decoded and true coordinates, considering only quantization noise."""
 
-        t0 = time.perf_counter()
-
         # f = Fringes(**{k: v for k, v in self.params.items() if k in Fringes.defaults})
         I = self.encode()
         dec = self.decode(I)
@@ -1194,7 +1180,6 @@ class Fringes:
                 "dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve SNR SPNR"
             )(DR, DRP, B, xavg, xmed, xmax, xstd, reserve, SNR, SPNR, )
 
-        self.logger.debug(f"{si(time.perf_counter() - t0)}s")
         return errors
 
     @property
@@ -1324,8 +1309,6 @@ class Fringes:
     def T(self, T: int):
         # attention: params may change even if Tnew == Told
 
-        Nmin = 3
-
         _T = int(min(max(1, T), self._Tmax))
 
         if _T == 1:  # WDM + SDM todo: SSB?
@@ -1348,31 +1331,33 @@ class Fringes:
             self.K = 1
 
             self.FDM = False  # reset FDM before setting N
+            self.SDM = False
             self.N = 3  # set N before WDM
             self.WDM = True
-
-            self.SDM = False
         else:
             # as long as enough shifts are there to compensate for nonlinearities,
             # it doesn't matter if we use more shifts or more sets
-            if _T < Nmin:
-                Nmin = _T
-            Nmin = max(3, Nmin)  # minimum number of phase shifts for first set to de demodulated/decoded
-            N12 = False#Nmin == 3  # allow N to be in [1, 2] if K >= 2
+
+            # set boundaries
+            Nmin = 3  # minimum number of phase shifts for first set to de demodulated/decoded
+            N12 = False
+            # todo: N12 = Nmin == 3  # allow N to be in [1, 2] if K >= 2
             # todo: N12 = 1 in self.N or 2 in self.N
             Ngood = 4  # minimum number of phase shifts to obtain good results i.e. reliable results in practice
+            Kmax = 2#3  # todo: which is better: 2 or 3?
+            self.FDM = False
             self.SDM = False
             self.WDM = False
             # todo: T == 4 -> no mod
             #  T == 5 -> FDM if _T >= Nmin?
 
-            # # try D == 2  # todo: mux
-            # if _T < 2 * Nmin:
-            #     self.D = 1
-            # else:
-            #     self.D = 2
+            # try D == 2  # todo: mux
+            if _T < 2 * Nmin:
+                self.D = 1
+            else:
+                self.D = 2
 
-            # try to keep hues  # todo: mux
+            # try to keep hues
             if _T < self.H * self.D * Nmin:
                 self.H = _T // (self.D * Nmin)
 
@@ -1383,10 +1368,8 @@ class Fringes:
                 _T //= self.H
 
             # try K = Kmax
-            Kmax = 2#3  # todo: which is better: 2 or 3?
             if N12:
                 K = _T // self.D - (Nmin - 1)  # Nmin - 1 = 2; i.e. 2 more for first set
-                # Kmax = 2
             else:
                 K = _T // (self.D * Nmin)
             self.K = min(K, Kmax)
@@ -1396,12 +1379,12 @@ class Fringes:
                 imin = np.argmin(self._v, axis=0)
                 self._v[imin] = 1
 
-            # try N >= 4  # todo: try N >= Nmin
+            # try N >= Ngood >= Nmin
             N = np.empty([self.D, self.K], int)
             Navg = _T // (self.D * self.K)
             if Navg < Nmin:  # use N12
                 N[:, 0] = Nmin
-                Nbase = (_T - self.D * Nmin) // (self.D * (self.K - 1))
+                Nbase = (_T - self.D * Nmin) // (self.D * (self.K - 1))  # attention: if K == 1 -> D == 1
                 N[:, 1:] = Nbase
                 dT = _T - np.sum(N)
                 if dT != 0:
@@ -1416,8 +1399,8 @@ class Fringes:
                     k = int(dT // self.D)
                     N[:, :k] += 1
                     if dT % self.D != 0:
-                        N[0, k] += 1
-
+                        d = dT % self.D
+                        N[:d, k] += 1
             self.N = N
 
     @property
@@ -1878,7 +1861,8 @@ class Fringes:
     def Nmin(self) -> int:
         """Minimum number of shifts to (uniformly) sample temporal frequencies."""
         if self.FDM:
-            Nmin = int(np.ceil(2 * self.f.max() + 1))  # todo: 2 * D * K + 1 -> fractional periods if static
+            Nmin = int(np.ceil(2 * self.f.max() + 1))  # sampling theorem
+            # todo: 2 * D * K + 1 -> fractional periods if static
         else:
             Nmin = 1
         return Nmin
@@ -1942,10 +1926,10 @@ class Fringes:
     def l(self) -> np.ndarray:
         """Wavelengths of fringe periods [px]."""
         if self.D == 1 or len(np.unique(self._l, axis=0)) == 1:  # sets in directions are identical
-            l = self._l[0]  # 1D
+            v = self._l[0]  # 1D
         else:
-            l = self._l  # 2D
-        return l
+            v = self._l  # 2D
+        return v
 
     @l.setter
     def l(self, l: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
@@ -2163,9 +2147,8 @@ class Fringes:
                     self.logger.warning(f"Periods were not coprime. "
                                         f"Changing values to {str(_v.round(3)).replace(chr(10), ',')}.")
             # else:
-            #     # from Nmin: fmax = (self.Nmax - 1) / 2, but this is already ensured by Nmax >= 2 * D * K + 1
             #     vmax = (self._Nmax - 1) / 2 > _v
-            #     _v = np.maximum(_v, vmax)
+            #     _v = np.minimum(_v, vmax)
 
         if _v.size and not np.array_equal(self._v, _v):
             self._v = _v  # set v before D and K
@@ -2179,7 +2162,7 @@ class Fringes:
     @property
     def fmax(self):
         """Maximum temporal frequency, i.e. maximum number of periods to shift over."""
-        return min((self.Nmax - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmax - 1) / 2
+        return min((self.Nmin - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmin - 1) / 2
 
     @property
     def f(self) -> np.ndarray:
@@ -2215,9 +2198,11 @@ class Fringes:
         else:
             _f = _f[:self._Dmax, :self._Kmax, ..., -1]
 
-        if np.any(_f % self._N == 0):
-            # _f = np.ones((self.D, self.K))
-            _f[_f % self._N == 0] = 1
+        D = min(_f.shape[0], self._N.shape[0])
+        K = min(_f.shape[1], self._N.shape[1])
+        if np.any(_f[:D, :K] % self._N[:D, :K] == 0):
+            # _f = np.ones(_f.shape)
+            _f[:D, :K][_f[:D, :K] % self._N[:D, :K] == 0] = 1
 
         if self.FDM:
             if self.static:
@@ -2259,7 +2244,8 @@ class Fringes:
     @property
     def lmin(self) -> float:
         """Minimum resolvable wavelength [px]."""
-        return min(self._lmin, self.L / self.fmax) if self.FDM and self.static else self._lmin
+        fmax = min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self.Nmin - 1) / 2  # else circular loop
+        return min(self._lmin, self.L / fmax) if self.FDM and self.static else self._lmin
 
     @lmin.setter
     def lmin(self, lmin: float):
@@ -2322,7 +2308,7 @@ class Fringes:
     @property
     def SSB(self) -> bool:
         """Flag indicating wheather single sideband demodulation is deployed."""
-        return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]  # todo: allow for H > 1 and use decolorizing, then for each color SSB
+        return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]  # todo: allow H > 1 and use decolorizing, then for each color SSB
 
     @property
     def PU(self) -> str:
@@ -2361,7 +2347,7 @@ class Fringes:
     @property
     def size(self) -> np.uint64:
         """Number of pixels of fringe pattern sequence, i.e. frames * height * width * color channels."""
-        return float(np.prod(self.shape, dtype=np.uint64))  # use uint64 prevent integer overflow
+        return float(np.prod(self.shape, dtype=np.uint64))  # using uint64 prevents integer overflow
 
     @property
     def nbytes(self) -> int:
@@ -2539,7 +2525,14 @@ class Fringes:
     @property
     def gain(self) -> float:
         """Overall system gain of digital camera [DN / electrons]."""
-        return self.Q / self._esat
+        return self._gain
+
+    @gain.setter
+    def gain(self, gain: float):
+        _gain = min(max(0, gain), 1)
+
+        if self._gain != _gain:
+            self._gain = _gain
 
     @property
     def u(self) -> np.ndarray:
@@ -2568,19 +2561,33 @@ class Fringes:
         # All property objects which have a setter method i.e. are (usually) not derived from others.
         params = {}
         for p in sorted(dir(self)):
-            if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
-                if isinstance(getattr(self, p, None), np.ndarray):
-                    params[p] = getattr(self, p, None).tolist()
-                elif isinstance(getattr(self, p, None), np.dtype):
-                    params[p] = str(getattr(self, p, None))
-                else:
-                    params[p] = getattr(self, p, None)
+            if p not in ["params"]:
+                if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
+                    if isinstance(getattr(self, p, None), np.ndarray):
+                        params[p] = getattr(self, p, None).tolist()
+                    elif isinstance(getattr(self, p, None), np.dtype):
+                        params[p] = str(getattr(self, p, None))
+                    else:
+                        params[p] = getattr(self, p, None)
         return params
 
-    # docstrings of properties
-    doc = {k: v.__doc__ for k, v in sorted(vars().items()) if isinstance(v, property) and v.__doc__ is not None}
+    @params.setter
+    def params(self, params: dict = {}):
+        for k, v in self.params.copy().items():  # iterating self.params ensures that only properies with a setter method are set
+            if k in params and k != "T":
+                setattr(self, k, params[k])
 
-    # docstring of __init__()
+        for k, v in self.params.items():
+            if k in params:
+                if k in "Nlvf" and np.array(v).ndim != np.array(params[k]).ndim:
+                    if not np.array_equal(v, params[k][0]):
+                        self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent parameter set.")
+                else:
+                    if not np.array_equal(v, params[k]):
+                        self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent parameter set.")
+
+    glossary = {k: v.__doc__ for k, v in sorted(vars().items()) if isinstance(v, property) and v.__doc__ is not None}
+
     __init__.__doc__ = ""
     for __k, __v in sorted(vars().copy().items()):
         if __k in defaults:

@@ -120,13 +120,13 @@ f.X = 1920              # set width of the fringe patterns
 f.Y = 1080              # set height of the fringe patterns
 f.K = 2                 # set number of sets
 f.N = 4                 # set number of shifts
-f.v = [9, 10]         # set spatial frequenciesf.T                     # get the number of frames
+f.v = [9, 10]           # set spatial frequenciesf.T                     # get the number of frames
 ```
 
-A glossary of them is obtained by the class attribute `doc`.
+A glossary of them is obtained by the class attribute `glossary`.
 
 ```python
-frng.Fringes.doc        # get glossary
+frng.Fringes.glossary   # get glossary
 ```
 
 You can change the [logging level](https://docs.python.org/3/library/logging.html#levels) of a `Fringes` instance.
