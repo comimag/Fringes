@@ -195,10 +195,11 @@ Each set consists of the following attributes:
 Each is an array with shape (number of directions `D`, number of sets `K`).\
 For example, if <code>N.shape &equiv; (2, 3)</code>, it means that we encode `D = 2` directions with `K = 3` sets each.
 
-Changing `D` or `K` directly, changes the shape of all set attributes.
+Changing `D` or `K` directly, changes the shape of all set attributes.\
 When setting a set attribute with a new shape (`D'`, `K'`),
-`D` and `K` are updated as well as the shape of the other set attributes.
-If a set attribute is only 1D, then it is stacked to match the number of directions `D`.
+`D` and `K` are updated as well as the shape of the other set attributes.\
+If a set attribute is 1D, then it is stacked to match the number of directions `D`.\
+If a set attribute is 0D i.e. a scalar, then all values are simply replaced by the new one.
 
 Per direction at least one set with <code>N &ge; 3</code> is necessary
 to solve for the three unknowns brightness `A`, modulation `B` and coordinates `ξ`.
@@ -214,9 +215,9 @@ Usually `f = 1` and is essentially only changed if [frequency division multiplex
 e.g. let the fringe patterns start (at the origin) with a gray value of zero.
 
 ### __Coloring and Averaging__
-The fringe pattern sequence `I` can be colorized by setting the hue `h` to any RGB color tuple
+The fringe pattern sequence `I` can be colorized by setting the hue `h` to any RGB color triple
 in the interval `[0, 255]`. However, black `(0, 0, 0)` is not allowed. `h` must be in shape `(H, 3)`:\
-`H` is the number of hues and can be set directly; 3 is the length of the RGB color tuple.\
+`H` is the number of hues and can be set directly; 3 is the length of the RGB color triple.\
 The hues `h` can also be set by assigning any combination of the following characters as a string:
 - `'r'`: red
 - `'g'`: green
@@ -308,7 +309,7 @@ The `UMR` is derived from `l` and `v`:
 - If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
 - Else, if <code>v &isin; &#8469;</code>,
   <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
-- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gdc` are extended to rational numbers.
+- Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gcd` are extended to rational numbers.
 - Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
   with a fixed length of decimal digits.
 
@@ -320,7 +321,7 @@ It is based on the phase noise model from [[7]](#7),
 propagated through [generalized temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) and converted from phase to pixel units.
 It is influenced by the fringe attributes
 - `M`: number of [averaged](#coloring-and-averaging) intensity samples
-- `N`: number of phase shifts
+- `N`: number of phase shifts                                                                    
 - `l`: wavelengths of the fringes
 - `B`: measured amplitude
 

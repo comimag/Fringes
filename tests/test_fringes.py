@@ -12,7 +12,7 @@ from fringes import Fringes, curvature, height, __version__
 
 
 def test_version():
-    assert __version__ != "", "Version is not specified."
+    assert __version__, "Version is not specified."
 
 
 def test_property_docs():
@@ -460,17 +460,56 @@ def test_SDM_WDM():
 if __name__ == "__main__":
     f = Fringes()
 
-    f.logger.setLevel("DEBUG")
-    f.Y = 1000
-    f.X = 1300
-    f.v = [[1, 5], [1, 3]]
-    I = f.encode()
-    dec = f.decode(I)
+    f.lmin = 4
+    f.l = 4.1, 5.1
+    UMR = f.UMR
+
+    f.X = 4096
+    f.Y = 1
+    f.lmin = 4
+    f.K = 3
+    l = np.empty((f.X + 1, f.K))
+    UMR = np.empty((f.X + 1, f.K))
+    for x in range(f.X + 1):
+        f.X = x
+        f.l = "auto"
+        l = f.l
+        #l[x] = f.l
+        UMR[x] = f.UMR
+        print(f.l)
+        print(f.UMR)
+        a = 1
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(range(len(l)), l[:, 0], "r.")
+    plt.plot(range(len(l)), l[:, 1], "g.")
+    plt.plot(range(len(l)), l[:, 2], "b.")
+    # plt.plot(range(len(l)), l[:, 3], "c.")
+    # plt.plot(range(len(l)), l[:, 4], "m.")
+    plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k.")
+    plt.grid(True)
+
+    plt.figure()
+    plt.plot(range(len(l)), UMR, ".")
+    plt.plot(range(len(l)), range(len(l)), "k")
+    plt.grid(True)
+
+    plt.show()
+
+    lu = np.unique(l)
+
+    # f.logger.setLevel("DEBUG")
+    # f.Y = 1000
+    # f.X = 1300
+    # f.v = [[1, 5], [1, 3]]
+    # I = f.encode()
+    # dec = f.decode(I)
 
     # e = f._error()
 
-    f.h = "rg"
-    M = f.M
+    # f.h = "rg"
+    # M = f.M
 
-    pytest.main()
+    # pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])

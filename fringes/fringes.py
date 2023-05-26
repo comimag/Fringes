@@ -1660,27 +1660,22 @@ class Fringes:
             else:
                 return
 
-        # make array, ensure dtype and clip
-        _h = np.array(h, ndmin=1).clip(0, 255).astype("uint8",
-                                                      copy=False)  # first clip, then cast dtype to avoid integer under-/overflow
+        # make array, clip first and then cast to dtype to avoid integer under-/overflow
+        _h = np.array(h).clip(0, 255).astype("uint8", copy=False)
 
         # empty array
         if not _h.size:
             return
 
-        # if _h.shape == (1,):
-        #     #_h = np.array([_h, _h, _h])
-        #     _h = np.hstack([[_h, _h, _h]])
-
-        # change shape to (H, H) or limit shape
-        if _h.shape == (1,):
-            _h = np.array([[_h[0] for c in range(3)] for h in range(self.H)])
+        # change shape to (H, 3) or limit shape
+        if _h.ndim == 0 or _h.shape[max(_h.ndim - 1, 1)] < 3:
+            _h = np.full((self.H, 3), _h)
         elif _h.ndim == 1:
             _h = np.vstack([_h[:3] for h in range(self.H)])
         elif _h.ndim == 2:
             _h = _h[:self._Hmax, :3]
         else:
-            _h = _h[:self._Hmax, :3, ..., -1]
+            f_h = _h[:self._Hmax, :3, ..., -1]
 
         if _h.shape[1] == 2:  # C-axis must equal 3
             self.logger.error("Couldn't set 'h': Only 2 instead of 3 color channels provided.")
@@ -1884,15 +1879,16 @@ class Fringes:
             else:
                 return
 
-        _N = np.array(N, int, ndmin=1).clip(self.Nmin, self._Nmax)
+        # make array, cast to dtype, clip
+        _N = np.array(N, int).clip(self.Nmin, self._Nmax)
 
         if not _N.size:  # empty array
             return
 
-        if _N.shape == (1,):
-            _N = np.array([[_N[0] for k in range(self.K)] for d in range(self.D)])
-
-        if _N.ndim == 1:  # change shape to (D, K) or limit shape
+        # change ndim to 2 and limit shape
+        if _N.ndim == 0:
+            _N = np.full((self.D, self.K), _N)
+        elif _N.ndim == 1:
             _N = np.vstack([_N[:self._Kmax] for d in range(self.D)])
         elif _N.ndim == 2:
             _N = _N[:self._Dmax, :self._Kmax]
@@ -1943,80 +1939,101 @@ class Fringes:
                 else:
                     pass
 
-                lmax = max(self.lmin, int(self.L ** (1 / self.K) + 0.5))  # wavelengths are around self.L ** (1 / self.K)
-                l = np.array([lmax])
-                if self.K >= 2:
-                    lmax += 1
-                    l = np.concatenate((l, l + 1))
-                    if self.K > 2:
-                        ith = self.K - 2
-                        lmax = sympy.ntheory.generate.nextprime(lmax, ith)
-                        li = list(sympy.sieve.primerange(l[-1] + 1, lmax))
-                        l = np.concatenate((l, li, np.array([lmax])))
+                if self.lmin > self.L:
+                    l = np.array([self.lmin])
+                else:
+                    lmax = max(int(np.ceil(self.lmin)), int(self.L ** (1 / self.K) + 0.5))  # wavelengths are around self.L ** (1 / self.K)
+                    if self.K >= 2:
+                        lmax += 1
+                        if self.K > 2:
+                            ith = self.K - 2
+                            lmax = sympy.ntheory.generate.nextprime(lmax, ith)
 
-                lmax = max(self.lmin, lmax)
-                r = np.arange(lmax, lmax - self.K + 1, -1)  # np.arange(lmax - self.K + 2, lmax + 1)
-                lmin = int(self.L / np.prod(r))
-                lmin = max(int(np.ceil(self.lmin)), lmin)
-                n = lmax - lmin + 1
-                # K = min(self.K, self.L - lmin + 1) if self.lmin < self.L else 1
-                K = min(self.K, lmax - lmin + 1) if lmin < lmax else 1
-                C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
-                # combos1 = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.max(c) >= self.L ** (1 / self.K)])
-                # combos2 = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.prod(c) >= self.L])
-                # combos3 = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.sum(np.array([c]) ** 2) <= np.sum(l ** 2)])
-                # combos4 = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.sum(np.array([c]) ** 2) <= np.sum(close(K, self.L, self.lmin) ** 2)])
-                combos = np.array([c for c in it.combinations(range(int(np.ceil(lmin)), lmax + 1), K) if np.lcm.reduce(c) >= self.L])
+                    if self.lmin < self.L < lmax:
+                        pass
+                    if lmax > self.L:
+                        if self.L > self.lmin:
+                            lmax = min(lmax, int(np.ceil(self.L)))
+                    lmin = int(np.ceil(self.lmin))
+                    n = lmax - lmin + 1
+                    K = min(self.K, n)
+                    C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
+                    combos = (c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L)
+                    cnext = next(combos)
+                    l = np.array(cnext)  # this removes first element of combos
+                    mn2 = np.sum(l ** 2)
+                    sum2min = np.sum(((lmin + np.arange(K)) ** 2))  # starting with lmin and increasing by one per set
+                    if mn2 != sum2min:
+                        mn = np.sum(l)
+                        b = list(combos)
+                        for c in combos:  # iterate over the remaining combos
+                            c = np.array(c)
+                            sum = np.sum(c)  # argmin of L1 norm is equal to argmin of L2 norm due to monotonicity
 
-                l = combos[0]
-                mn = np.sum(l ** 2)
-                sum2min2 = np.sum(((self.lmin + np.arange(
-                    K)) ** 2))  # sum of wavelengths squared starting with lmin and increasing by one per set
-                sum2min = np.sum(l ** 2)
-                for c in combos[1:]:
-                    sum2 = np.sum(c ** 2)
+                            if sum < mn:
+                                mn = sum
+                                # mn2 = np.sum(c ** 2)
+                                l = c
+                            elif sum == mn:  # under the L1 norm there may be ambiguities, so also check L2 norm
+                                sum2 = np.sum(c ** 2)
 
-                    if sum2 == mn:
-                        if min(c ** 2) < min(l ** 2):  # take set with the smallest squared wavelength  # todo
-                            l = c
-                        elif min(c ** 2) == min(l ** 2):
-                            print("==2")
-                    elif sum2 < mn:
-                        mn = sum2
-                        l = c
+                                if sum2 < mn2:
+                                    mn2 = sum2  # determine mn2 here, because (sum == mn) is rarer than (sum < mn) # todo: is this assumption true?
+                                    l = c
+                                elif sum2 == mn2:
+                                    pass  # this schould never happen since there exists only one solution in the L2 norm
 
-                    if sum2 <= sum2min:
-                        break
+                                if mn2 == sum2min:
+                                    break
 
-                # todo: K -> self.K
+                            # c = np.array(c)
+                            # sum2 = np.sum(c ** 2)
+                            #
+                            # if sum2 <= sum2min:
+                            #    l = c
+                            #    break
+                            # elif sum2 < mn2:
+                            #    mn2 = sum2
+                            #    l = c
+                            # elif sum2 == mn:
+                            #    pass  # this schould never happen since there exists only one solution in the L2 norm
 
-                # if self.K == 1:
-                #     l = self.L
-                # else:
-                #     if self.vmax > self.lmin:
-                #         vmax = int(self.vmax)
-                #
-                #         # decreasing sequence
-                #         # v = vmax - np.arange(self.K)
-                #
-                #         # alternating largest two consecutive number of periods, starting with largest
-                #         i = np.empty(self.K, int)
-                #         i[0::2] = 0
-                #         i[1::2] = 1
-                #         v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
-                #
-                #         l = self.L / v
-                #     else:
-                #         lmin = int(np.ceil(self.lmin))
-                #
-                #         # increasing sequence
-                #         l = lmin + np.arange(self.K)
-                #
-                #         # # alternating smallest two consecutive wavelengths, starting with smallest
-                #         # i = np.empty(self.K, int)  # indices which are alternating between 0 and 1
-                #         # i[0::2] = 0
-                #         # i[1::2] = 1
-                #         # l = np.array([lmin, lmin + 1])[i]
+                    # todo: K -> self.K
+                    # if K != self.K:  # then K is smaller than self.K  # todo: is this assumption true?
+                    #     c = self.K / K
+                    #     if c % 1 == 0:  # c is integer
+                    #         self.N += 1
+                    #     else:
+                    #         # l = np.repeat(l, int(np.ceil(c)))[:self.K]
+                    #         l = np.tile(l, int(np.ceil(c)))[:self.K]
+
+                    # if self.K == 1:
+                    #     l = self.L
+                    # else:
+                    #     if self.vmax > self.lmin:
+                    #         vmax = int(self.vmax)
+                    #
+                    #         # decreasing sequence
+                    #         # v = vmax - np.arange(self.K)
+                    #
+                    #         # alternating largest two consecutive number of periods, starting with largest
+                    #         i = np.empty(self.K, int)
+                    #         i[0::2] = 0
+                    #         i[1::2] = 1
+                    #         v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
+                    #
+                    #         l = self.L / v
+                    #     else:
+                    #         lmin = int(np.ceil(self.lmin))
+                    #
+                    #         # increasing sequence
+                    #         l = lmin + np.arange(self.K)
+                    #
+                    #         # # alternating smallest two consecutive wavelengths, starting with smallest
+                    #         # i = np.empty(self.K, int)  # indices which are alternating between 0 and 1
+                    #         # i[0::2] = 0
+                    #         # i[1::2] = 1
+                    #         # l = np.array([lmin, lmin + 1])[i]
             elif l == "exponential":
                 # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
                 l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K)))
@@ -2025,16 +2042,16 @@ class Fringes:
             else:
                 return
 
-        # make array, ensure dtype and clip
-        _l = np.array(l, float, ndmin=1).clip(self.lmin, np.inf)
+        # make array, cast to dtype, clip
+        _l = np.array(l, float).clip(self.lmin, np.inf)
 
         # empty array
         if not _l.size:
             return
 
-        # change shape to (D, K) or limit shape or limit shape
-        if _l.shape == (1,):
-            _l = np.array([[_l[0] for k in range(self.K)] for d in range(self.D)])
+        # change ndim to 2 and limit shape
+        if _l.ndim == 0:
+            _l = np.full((self.D, self.K), _l)
         elif _l.ndim == 1:
             _l = np.vstack([_l[:self._Kmax] for d in range(self.D)])
         elif _l.ndim == 2:
@@ -2085,8 +2102,10 @@ class Fringes:
                 if self.K == 1:
                     v = 1
                 else:
-                    if self.vmax > self.lmin:
-                        vmax = int(self.vmax)
+                    # if self.vmax > self.lmin and np.lcm.reduce(int(np.ceil(self.lmin)) + np.arange(self.K)) < self.L:
+                    if 1 / self.L * np.sum(self.vmax - np.arange(self.K)) > 1 / np.sum(self.lmin + np.arange(self.K)):
+                        vmax = int(self.vmax)  # todo: ripples from int()
+                        #vmax = self.vmax
 
                         # decreasing sequence
                         v = vmax - np.arange(self.K)
@@ -2098,6 +2117,7 @@ class Fringes:
                         # v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
                     else:
                         lmin = int(np.ceil(self.lmin))
+                        lmin = self.lmin
 
                         # increasing sequence
                         l = lmin + np.arange(self.K)
@@ -2117,16 +2137,16 @@ class Fringes:
             else:
                 return
 
-        # make array, ensure dtype and clip
-        _v = np.array(v, float, ndmin=1).clip(0, self.vmax)
+        # make array, cast to dtype, clip
+        _v = np.array(v, float).clip(0, self.vmax)
 
         # empty array
         if not _v.size:
             return
 
-        # change shape to (D, K) or limit shape
-        if _v.shape == (1,):
-            _v = np.array([[_v[0] for k in range(self.K)] for d in range(self.D)])
+        # change ndim to 2 and limit shape
+        if _v.ndim == 0:
+            _v = np.full((self.D, self.K), _v)
         elif _v.ndim == 1:
             _v = np.vstack([_v[:self._Kmax] for d in range(self.D)])
         elif _v.ndim == 2:
@@ -2181,16 +2201,16 @@ class Fringes:
             else:
                 return
 
-        # make array, ensure dtype and clip
-        _f = np.array(f, float, ndmin=1).clip(-self.fmax, self.fmax)
+        # make array, cast to dtype, clip
+        _f = np.array(f, float).clip(-self.fmax, self.fmax)
 
         # empty array
         if not _f.size:
             return
 
-        # change shape to (D, K) or limit shape
-        if _f.shape == (1,):
-            _f = np.array([[_f[0] for k in range(self.K)] for d in range(self.D)])
+        # change ndim to 2 and limit shape
+        if _f.ndim == 0:
+            _f = np.full((self.D, self.K), _f)
         elif _f.ndim == 1:
             _f = np.vstack([_f[:self._Kmax] for d in range(self.D)])
         elif _f.ndim == 2:
@@ -2252,7 +2272,7 @@ class Fringes:
         # __lmin = 2  # l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
         __lmin = 4  # l >= 4 yields sufficient modulation theoretically  # todo: test 2 and 3 if B reaches Imax / 2
         # __lmin = 8  # l >= 8 yields sufficient modulation practically
-        _lmin = float(max(__lmin, lmin))
+        _lmin = float(min(max(__lmin, lmin), self.R.max()))
 
         if self._lmin != _lmin:
             self._lmin = _lmin
