@@ -37,18 +37,14 @@ class Fringes:
     _Tmax = _Hmax * _Dmax * _Kmax * _Nmax
     _alphamax = 2
     _gammamax = 3  # most screens have a gamma of ~2.2
+    # _lminmin = 2  # l == 2 only if offset != pi / 2 + 2pi*k, best if offset == pi + 2pi*k with k is positive integer
+    #            also l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
+    _lminmin = 3  # l >= 3 yields sufficient modulation theoretically
+    # _lminmin = 8  # l >= 8 yields sufficient modulation practically [Liu2014]
 
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
     _modes = ("fast", "precise", "robust")
-    _hues = (
-        np.array([[255, 255, 255]]),  # white
-        np.array([[255, 0, 0],  # red
-                  [0, 0, 255]]),  # blue
-        np.array([[255, 0, 0],  # red
-                  [0, 255, 0],  # green
-                  [0, 0, 255]])  # blue
-    )
     _dtypes = (
         "bool",
         "uint8",
@@ -83,7 +79,7 @@ class Fringes:
                                                    [13, 7, 89]], float),
                  f: tuple | np.ndarray = np.array([[1, 1, 1],
                                                    [1, 1, 1]], float),
-                 h: tuple | np.ndarray = _hues[0],  # np.array([[255, 255, 255]], int)
+                 h: tuple | np.ndarray = np.array([[255, 255, 255]], int),
                  o: float = np.pi,
                  gamma: float = 1.,
                  A: float = 255 / 2,  # Imax / 2 @ uint8
@@ -851,11 +847,11 @@ class Fringes:
             if self.FDM:
                 frame = np.array([np.arange(t * self.D * self.K, (t + 1) * self.D * self.K) for t in frame]).ravel()
 
-            if self.WDM:
+            if self.WDM:  # WDM before SDM
                 N = 3
                 frame = np.array([np.arange(t * N, (t + 1) * N) for t in frame]).ravel()
 
-            if self.SDM:  # WDm before SDM
+            if self.SDM:  # WDM before SDM
                 EN0 = np.sum(self._N[0])
                 frame = np.array([np.arange(t, t + EN0 + 1, EN0) for t in frame]).ravel()
         else:
@@ -1604,14 +1600,14 @@ class Fringes:
         _M = min(max(1 / 255, M), self._Mmax)
 
         if np.any(self.M != _M):
-            h = np.array([[255, 255, 255]] * int(_M), np.uint8)
-
-            if _M % 1 != 0:
-                h2 = np.array([[int(255 * _M % 255) for c in range(3)]], np.uint8)
-                if len(h):
-                    h = np.concatenate((h, h2))
-                else:
-                    h = h2
+            if _M < 1:  # fractional part only
+                h = np.array([[int(255 * _M % 255) for c in range(3)]], np.uint8)
+            elif _M % 1 == 0:  # integer part only
+                h = np.array([[255, 255, 255]] * int(_M), np.uint8)
+            else:  # both, integer and fractional part
+                h_int = np.array([[255, 255, 255]] * int(_M), np.uint8)
+                h_fract = np.array([[int(255 * _M % 255) for c in range(3)]], np.uint8)
+                h = np.concatenate((h_int, h_fract))
 
             self.h = h
 
@@ -1630,11 +1626,12 @@ class Fringes:
 
         if self.H != _H:
             if self.WDM:
-                self.h = np.array([[255, 255, 255] * _H], int)
-            elif _H <= 3:  # take predefined
-                self.h = self._hues[_H - 1]
+                self.h = "w" * _H
+            elif _H == 2:
+                self.h = "rb"
             else:
-                self.h = np.tile(self._hues[-1], (_H // len(self._hues[-1]) + 1, 1))[:_H]
+                h = "rgb" * (_H // 3 + 1)
+                self.h = h[:_H]
 
     @property
     def h(self) -> np.ndarray:
@@ -1668,14 +1665,16 @@ class Fringes:
             return
 
         # change shape to (H, 3) or limit shape
-        if _h.ndim == 0 or _h.shape[max(_h.ndim - 1, 1)] < 3:
+        if _h.ndim == 0:
             _h = np.full((self.H, 3), _h)
+        elif _h.shape[min(_h.ndim - 1, 1)] < 3:
+            _h = np.full((self.H, 3), _h[min(_h.ndim - 1, 1)])
         elif _h.ndim == 1:
             _h = np.vstack([_h[:3] for h in range(self.H)])
         elif _h.ndim == 2:
             _h = _h[:self._Hmax, :3]
         else:
-            f_h = _h[:self._Hmax, :3, ..., -1]
+            _h = _h[:self._Hmax, :3, ..., -1]
 
         if _h.shape[1] == 2:  # C-axis must equal 3
             self.logger.error("Couldn't set 'h': Only 2 instead of 3 color channels provided.")
@@ -1939,22 +1938,28 @@ class Fringes:
                 else:
                     pass
 
-                if self.lmin > self.L:
-                    l = np.array([self.lmin])
-                else:
-                    lmax = max(int(np.ceil(self.lmin)), int(self.L ** (1 / self.K) + 0.5))  # wavelengths are around self.L ** (1 / self.K)
-                    if self.K >= 2:
+                lmin = int(np.ceil(self.lmin))
+
+                lmax = int(self.L ** (1 / self.K) + 0.5)  # rint; wavelengths are around kth root of self.L
+
+                if self.K >= 2:
+                    lmax += 1
+
+                    if self.K >= 3:
                         lmax += 1
-                        if self.K > 2:
-                            ith = self.K - 2
+
+                        if lmax % 2 == 0:  # kth root was even
+                            lmax += 1
+
+                        if self.K >= 3:
+                            ith = self.K - 3
                             lmax = sympy.ntheory.generate.nextprime(lmax, ith)
 
-                    if self.lmin < self.L < lmax:
-                        pass
-                    if lmax > self.L:
-                        if self.L > self.lmin:
-                            lmax = min(lmax, int(np.ceil(self.L)))
-                    lmin = int(np.ceil(self.lmin))
+                    lmax = max(lmin, lmax)
+
+                    if self.lmin < self.L:
+                        lmax = min(lmax, int(np.ceil(self.L)))
+
                     n = lmax - lmin + 1
                     K = min(self.K, n)
                     C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
@@ -2269,10 +2274,7 @@ class Fringes:
 
     @lmin.setter
     def lmin(self, lmin: float):
-        # __lmin = 2  # l <= 2 yields errors in SPU: phase jumps = 2PI / lmin >= np.pi
-        __lmin = 4  # l >= 4 yields sufficient modulation theoretically  # todo: test 2 and 3 if B reaches Imax / 2
-        # __lmin = 8  # l >= 8 yields sufficient modulation practically
-        _lmin = float(min(max(__lmin, lmin), self.R.max()))
+        _lmin = float(min(max(self._lminmin, lmin), self.R.max()))
 
         if self._lmin != _lmin:
             self._lmin = _lmin

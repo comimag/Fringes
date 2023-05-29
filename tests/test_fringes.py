@@ -458,7 +458,11 @@ def test_SDM_WDM():
 
 
 if __name__ == "__main__":
+    # pytest.main()
+
     f = Fringes()
+
+    f.M = 2.5
 
     f.lmin = 4
     f.l = 4.1, 5.1
@@ -497,8 +501,7 @@ if __name__ == "__main__":
 
     plt.show()
 
-    lu = np.unique(l)
-
+    # speed test
     # f.logger.setLevel("DEBUG")
     # f.Y = 1000
     # f.X = 1300
@@ -508,6 +511,7 @@ if __name__ == "__main__":
 
     # e = f._error()
 
+    # averaging
     # f.h = "rg"
     # M = f.M
 
