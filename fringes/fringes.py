@@ -1604,7 +1604,7 @@ class Fringes:
                 h = np.array([[int(255 * _M % 255) for c in range(3)]], np.uint8)
             elif _M % 1 == 0:  # integer part only
                 h = np.array([[255, 255, 255]] * int(_M), np.uint8)
-            else:  # both, integer and fractional part
+            else:  # integer and fractional part
                 h_int = np.array([[255, 255, 255]] * int(_M), np.uint8)
                 h_fract = np.array([[int(255 * _M % 255) for c in range(3)]], np.uint8)
                 h = np.concatenate((h_int, h_fract))

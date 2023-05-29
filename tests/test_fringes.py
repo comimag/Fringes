@@ -416,6 +416,25 @@ def test_SDM():
     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
 
+def test_SDM_WDM():
+    f = Fringes(Y=100)
+    f.N = 3
+    f.SDM = True
+    f.WDM = True
+
+    I = f.encode()
+    dec = f.decode(I)
+
+    for d in range(f.D):
+        grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
+        #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
+
+    # d = dec.registration - f.coordinates()
+    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
+    d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
+    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
+
+
 def test_FDM():
     f = Fringes(Y=100)
     f.FDM = True
@@ -438,31 +457,10 @@ def test_FDM():
     assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
 
-def test_SDM_WDM():
-    f = Fringes(Y=100)
-    f.N = 3
-    f.SDM = True
-    f.WDM = True
-
-    I = f.encode()
-    dec = f.decode(I)
-
-    for d in range(f.D):
-        grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
-        #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
-
-    # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
-    d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
-    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
-
-
 if __name__ == "__main__":
-    # pytest.main()
+    pytest.main()
 
     f = Fringes()
-
-    f.M = 2.5
 
     f.lmin = 4
     f.l = 4.1, 5.1
