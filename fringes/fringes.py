@@ -1406,9 +1406,7 @@ class Fringes:
 
     @Y.setter
     def Y(self, Y: int):
-        _Y = int(min(max(1, Y), self._Ymax))
-
-        _Y = int(min(_Y, self._Pmax / self.X))
+        _Y = int(min(max(1, Y), self._Ymax, self._Pmax / self.X))
 
         if self._Y != _Y:
             self._Y = _Y
@@ -1432,10 +1430,8 @@ class Fringes:
         return self._X
 
     @X.setter
-    def X(self, X):
-        _X = int(min(max(1, X), self._Xmax))
-
-        _X = int(min(_X, self._Pmax / self.Y))
+    def X(self, X: int):
+        _X = int(min(max(1, X), self._Xmax, self._Pmax / self.Y))
 
         if self._X != _X:
             self._X = _X
@@ -1585,7 +1581,7 @@ class Fringes:
         return eta
 
     @property
-    def M(self) -> int | np.ndarray:
+    def M(self) -> float | np.ndarray:
         """Number of averaged intensity samples."""
         M = np.sum(self.h, axis=0) / 255
         if len(set(M)) == 1:
@@ -2274,7 +2270,7 @@ class Fringes:
 
     @lmin.setter
     def lmin(self, lmin: float):
-        _lmin = float(min(max(self._lminmin, lmin), self.R.max()))
+        _lmin = float(max(self._lminmin, lmin))
 
         if self._lmin != _lmin:
             self._lmin = _lmin
