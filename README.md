@@ -23,7 +23,7 @@ link to  paper, please cite
 - Remapping
 
 ### Background
-Many applications, such as fringe projection [[11]](#11-burke-2002) or deflectometry [[1]](#1-burke-2022),
+Many applications, such as fringe projection[^1] or deflectometry [[1]](#1-burke-2022),
 require the ability to encode positional data.
 To do this, fringe patterns are used to encode the position on the screen / projector (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.
@@ -251,7 +251,7 @@ The following multiplexing methods can be activated by setting them to `True`:
   This results in crossed fringe patterns if <code>D &equiv; 2</code>.\
   Each set per direction receives an individual temporal frequency `f`,
   which is used in [temporal demodulation](#temporal-demodulation) to distinguish the individual sets.\
-  A minimal number of shifts <code>N<sub>min</sub> &ge; &LeftCeiling;</sub> 2 * f<sub>max</sub> + 1 &RightCeiling;</code>
+- A minimal number of shifts <code>N<sub>min</sub> &ge; &LeftCeiling;</sub> 2 * f<sub>max</sub> + 1 &RightCeiling;</code>
   is required to satisfy the sampling theorem and `N` is updated automatically if necessary.\
   If one wants a static pattern, i.e. one that remains congruent when shifted, set `static` to `True`.
 
@@ -339,18 +339,18 @@ The following are instance methods:
 - `load(fname)`\
   Load a parameter set from the file `fname` to a `Fringes` instance.
   Supported file formats are `*.json`, `*.yaml`, `*.toml` and `*.asdf`.
-  If the file doesn't exist or doesn't have one of the aforementioned filename extensions,
-  the file `.fringes.yaml` within the user home directory is tried to load.
+  If `fname` is not provided, the file `.fringes.yaml` within the user home directory is tried to load.
+  The parameter set is finally only loaded if the config file provides a section `fringes`.
 - `save(fname)`\
   Save the parameter set of the current `Fringes` instance to the file `fname`.
-  If `fname` is not provided or doesn't have one of the aforementioned filename extensions,
+  If `fname` is not provided,
   the parameter set are saved to the file `.fringes.yaml` within the user home directory.
 - `reset()`\
   Reset the parameter set of the current `Fringes` instance to the default values.
-- `auto(T)`\
-  Automatically set the [optimal parameters](#optimal-coding-strategy) based on the argument `T` (number of frames).
+- `optimize(T)`\
+  [Optimize](#optimal-coding-strategy) the parameters based on the argument `T` (number of frames).
   This also takes into account the minimum resolvable wavelength `lmin` and the length of the fringe patterns `L`.
-- `setMTF(B)`\
+- `mtf2vmax(B)`\
   Compute the normalized modulation transfer function at spatial frequencies `v`
   and use the result to set the optimal `lmin`.
   `B` is the modulation from decoding. For more details, see [Optimal Coding Strategy](#optimal-coding-strategy).
@@ -427,12 +427,12 @@ Be aware that in the latter case only a relative phase map is obtained,
 which lacks the information of where exactly the camera sight rays were looking at during acquisition.
 
 To simplify finding and setting the optimal parameters, the following methods can be used:
-- `setMTF()`: The optimal `vmax` is determined automativally [[18]](#18-bothe-2008)
+- `mtf2vmax()`: The optimal `vmax` is determined automativally [[18]](#18-bothe-2008)
 by measuring the **modulation transfer function** `MTF`.\
   Therefore, a sequence of exponentially increasing `v` is acquired:
     1. Set `v` to `'exponential'`.
     2. Encode, acquire and decode the fringe pattern sequence.
-    3. Call the function `setMTF(B)` with the argument `B` from decoding.
+    3. Call the function `mtf2vmax(B)` with the argument `B` from decoding.
 - `v` can be set to `'auto'`. This automatically determines the optimal integer set of `v`
   based on the maximal resolvable spatial frequency `vmax`.
 -  Equivalently, `l` can also be set to `'auto'`. This will automatically determine the optimal integer set of `l`

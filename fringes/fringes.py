@@ -19,6 +19,8 @@ from .util import vshape, bilateral, median
 from . import grid
 from .decoder import decode  # todo: fast_decode i.e. fast_unwrap
 
+import inspect
+
 
 class Fringes:
     """Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."""
@@ -43,8 +45,17 @@ class Fringes:
     # _lminmin = 8  # l >= 8 yields sufficient modulation practically [Liu2014]
 
     # allowed values; take care to only use immutable types!
-    _grids = ("image", "Cartesian", "polar", "log-polar")
-    _modes = ("fast", "precise", "robust")
+    _grids = (
+        "image",
+        "Cartesian",
+        "polar",
+        "log-polar"
+    )
+    _modes = (
+        "fast",
+        "precise",
+        "robust"
+              )
     _dtypes = (
         "bool",
         "uint8",
@@ -70,20 +81,16 @@ class Fringes:
                  M: float = 1.,  # M is inferred from h
                  D: int = 2,
                  K: int = 3,
-                 T: int = 24,
-                 N: tuple | np.ndarray = np.array([[4, 4, 4],
-                                                   [4, 4, 4]], int),
-                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89],
-                                                          [13, 7, 89]], float),
-                 v: tuple | np.ndarray = np.array([[13, 7, 89],
-                                                   [13, 7, 89]], float),
-                 f: tuple | np.ndarray = np.array([[1, 1, 1],
-                                                   [1, 1, 1]], float),
+                 T: int = 24,  # T is inferred
+                 N: tuple | np.ndarray = np.array([[4, 4, 4], [4, 4, 4]], int),
+                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89], [13, 7, 89]], float),
+                 v: tuple | np.ndarray = np.array([[13, 7, 89], [13, 7, 89]], float),
+                 f: tuple | np.ndarray = np.array([[1, 1, 1], [1, 1, 1]], float),
                  h: tuple | np.ndarray = np.array([[255, 255, 255]], int),
                  o: float = np.pi,
                  gamma: float = 1.,
-                 A: float = 255 / 2,  # Imax / 2 @ uint8
-                 B: float = 255 / 2,  # Imax / 2 @ uint8
+                 A: float = 255 / 2,  # i.e. Imax / 2 @ uint8
+                 B: float = 255 / 2,  # i.e. Imax / 2 @ uint8
                  beta: float = .5,  # beta is inferred from A and Imax
                  V: float = 1.,  # V is inferred from A and B
                  alpha: float = 1.,
@@ -104,12 +111,12 @@ class Fringes:
                  dark: float = 0.,
                  gain: float = 0,
                  ) -> None:
-
-        # given values not identical to default values
-        given = {k: v for k, v in sorted(locals().items()) if k in self.defaults and not np.array_equal(v, self.defaults[k])}
+        # given values which are in defaults but are not identical to them
+        given = {k: v for k, v in sorted(locals().items()) if
+                 k in self.defaults and not np.array_equal(v, self.defaults[k])}
 
         # logger
-        self.logger = lg.getLogger(self.__class__.__name__)  # todo: give each logger instance its own instance name
+        self.logger = lg.getLogger(self.__class__.__name__)  # todo: give each logger its own instance name, via id() ?
         self.logger.setLevel("INFO")
         if not self.logger.hasHandlers():
             formatter = lg.Formatter("%(asctime)s %(levelname)-8s %(name)7s.%(funcName)-11s: %(message)s")
@@ -117,21 +124,16 @@ class Fringes:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
-        # set values to attributes, each using given if given else default values
-        # this is implemented by setting first default values, then given values
+        # set default values
+        self._UMR = None  # used for caching
         for k, v in self.defaults.items():
-            if k not in ["H", "M", "T", "beta", "V"]:
-                setattr(self, f"_{k}", v)  # initially define private variables
+            if k not in ["H", "M", "T", "beta", "V"]:  # these properties are inferred from others
+                setattr(self, f"_{k}", v)  # define private variables from where the properties get their value from
+
+        # set given values
         self.params = given
 
-        self._UMR = None
-        UMR = self.UMR  # property 'UMR' logs warning if necessary
-
-    # default values from class initialization
-    defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
-
-    # restrict class attributes to the ones listed here (add "__dict__" or commend the next line out to circumvent this)
-    __slots__ = tuple("_" + k for k in __init__.__annotations__.keys()) + ("logger", "_UMR", "t",)
+        self.UMR  # property 'UMR' logs warning if necessary
 
     def __call__(self, *args, **kwargs) -> np.ndarray:
         """Encode fringe patterns."""
@@ -142,43 +144,41 @@ class Fringes:
         return self.encode(t=t)
 
     def __iter__(self):
-        self.t = 0
+        self._t = 0
         return self
 
     def __next__(self) -> np.ndarray:
-        if self.t < self.T:
-            I = self.encode(frame=self.t)
-            self.t += 1
+        if self._t < self.T:
+            I = self.encode(frame=self._t)
+            self._t += 1
             return I
         else:
-            del self.t
+            del self._t
             raise StopIteration()
 
     def __len__(self) -> int:
         """Number of frames."""
         return self.T
 
+    def __eq__(self, other) -> bool:
+        return hasattr(other, "params") and self.params == other.params
+
     def __str__(self) -> str:
         return "Fringes"
 
     def __repr__(self) -> str:
-        return f"{self.params}"  # todo: T, D, K, N?
+        return f"{self.params}"
 
-    def __eq__(self, other) -> bool:
-        return hasattr(other, "params") and self.params == other.params
-
-    def load(self, fname: str = "") -> dict:
-        """Load parameters from file."""
+    def load(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> dict:
+        """Load a parameter set from a file.
+        Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
+        If `fname` is not provided, the file `.fringes.yaml` within the user home directory is tried to load.
+        The parameters are only loaded if the config file provides the section `fringes`.
+        """
 
         if not os.path.isfile(fname):
             self.logger.error(f"File '{fname}' does not exist.")
-
-            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
-
-            if os.path.isfile(fname):
-                self.logger.warning(f"Using file '{fname}' instead.")
-            else:
-                return {}
+            return
 
         ext = os.path.splitext(fname)[-1]
         if ext == ".asdf":
@@ -207,12 +207,19 @@ class Fringes:
             self.logger.error(f"No 'fringes' section in file '{fname}'.")
             return {}
 
-    def save(self, fname: str = "") -> None:
-        """Save parameters to file."""
+    def save(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> None:
+        """Save the parameters to a file.
+        Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
+        If `fname` is not provided, the parameters are saved to
+        the file `.fringes.yaml` within the user home directory.
+        Within the file, the parameters are written to the section `fringes`."""
 
-        if not os.path.isdir(os.path.dirname(fname)) or os.path.splitext(fname)[-1] not in self._loader.keys():
-            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
-            self.logger.warning(f"File directory does not exist or extension is unknown. Using file '{fname}' instead.")
+        if not os.path.isdir(os.path.dirname(fname)):
+            self.logger.warning(f"File directory does not exist.")
+            return
+        elif os.path.splitext(fname)[-1] not in self._loader.keys():
+            self.logger.warning(f"File extension is unknown. Must be one of {self._loaders.keys()}")
+            return
 
         ext = os.path.splitext(fname)[-1]
         if ext == ".asdf":
@@ -233,21 +240,22 @@ class Fringes:
 
         self.params = self.defaults
 
-        self.logger.info("Set parameters back to defaults.")
+        self.logger.info("Reset parameters to defaults.")
 
-    def auto(self, T: int = 24) -> None:
-        """Automatically set the optimal parameters based on:
+    def optimize(self, T: int = 24) -> None:
+        """Optimize the parameters based on:
          T: Given number of frames.
          lmin: Minimum resolvable wavelength.
          L: Length of fringe patterns."""
         self.h = "w"
-        self.T = (T, 4)
+        self.T = T
         self.v = "auto"
-        self.logger.info("Auto set parameters.")
+        self.logger.info("Optimized parameters.")
 
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
-        """Automatically estimate and apply the gamma correction factor to linearize the display/camera response curve."""
+        """Automatically estimate and apply the gamma correction factor
+        to linearize the display/camera response curve."""
 
         # normalize to [0, 1]
         Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1
@@ -256,46 +264,50 @@ class Fringes:
         # estimate gamma correction factor
         med = np.nanmedian(J)  # median is a robust estimator for the mean
         gamma = np.log(med) / np.log(0.5)
-        invGamma = 1 / gamma
+        inv_gamma = 1 / gamma
 
         # apply inverse gamma
         # table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
         # J = cv2.LUT(J, table)
-        J **= invGamma
+        J **= inv_gamma
         J *= Imax
 
         return J
 
-    def setMTF(self, B: np.ndarray, show: bool = True) -> np.ndarray:
-        """Compute the normalized modulation transfer function at spatial frequencies v
-        and use the result to set the optimal lmin.
+    def mtf2vmax(self, B: np.ndarray) -> np.ndarray:
+        """Compute the normalized modulation transfer function at spatial frequencies `v` from decoded modulation `B`
+        and use the result to set the optimal lmin: minimum resolvable wavelength.
         """
-        # B: modulation
-
         # filter
         # MTF = np.median(B, axis=(1, 2))
         MTF = np.quantile(B, 0.1, axis=(1, 2))
 
+        # sort
+
         #  normalize (only relative weights are important)
-        MTF = MTF.reshape((self.D, -1, B.shape[-1]))  # MTF per direction
+        # MTF = MTF.reshape((self.D, -1, B.shape[-1]))  # MTF per direction
+        MTF = MTF.reshape((self.D, self.K, -1))  # MTF per direction
         MTF /= np.nanmax(MTF, axis=(1, 2))[:, None, None]
         MTF[np.isnan(MTF)] = 0
 
-        # vmax @ B / 2 @ recorded dtype, cf. Bothe
         C = MTF.shape[-1]
-        v = np.arange(self.vmax)
+        # v = np.arange(self.vmax)  # todo: limit range; what happens beyond endpoints?
+        v = np.arange(self.v.min(), self.v.max() + 1)
         vmax = np.empty((self.D, C))
         for d in range(self.D):
             for c in range(C):
                 interp = sp.interpolate.interp1d(self._v[d], MTF[d, ..., c], kind="cubic", axis=-1)
                 mtf = interp(v)
-                idx = np.argmin(mtf >= 0.5) - 1  # index of last element where MTF >= 0.5
+                idx = np.argmin(mtf >= 0.5)  # index of last element where MTF >= 0.5, cf. [Bothe2008]
+                if idx > 0:
+                    idx -= 1
                 vmax[d, c] = v[idx]
 
         self.lmin = self.L / vmax.max()
 
-        self.logger.info(f"MTF is: {MTF}")
-        return MTF  # todo: return interpolated mtf?
+        self.logger.info(f"vmax = {self.vmax}")
+
+        return self.vmax
 
     def deinterlace(self, I: np.ndarray) -> np.ndarray:
         """Deinterlace fringe patterns acquired with a line scan camera
@@ -313,7 +325,7 @@ class Fringes:
         return I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
 
     def coordinates(self) -> np.ndarray:
-        """uv-coordinates of grid to encode."""
+        """Generate the coordinate matrices of the coordinate system defined in `grid`."""
 
         t0 = time.perf_counter()
 
@@ -354,7 +366,7 @@ class Fringes:
 
         try:  # ensure frame is iterable
             T = len(frame)
-        except:
+        except TypeError:
             T = 1
             frame = [frame]
         frames = np.array(frame)
@@ -370,7 +382,7 @@ class Fringes:
         dtype = np.dtype("float64") if self.SDM or self.FDM else self.dtype
 
         I = np.empty([T, self.Y, self.X], dtype)
-        i = 0
+        idx = 0
         f = 0
         for d in range(self.D):
             if xi is None and self.grid == "image":
@@ -388,32 +400,35 @@ class Fringes:
             else:
                 x = xi[d] / self.L
 
-            for k in range(self.K):
-                q = 2 * np.pi * self._v[d, k]
-                w = 2 * np.pi * self._f[d, k]
+            for i in range(self.K):
+                k = 2 * np.pi * self._v[d, i]
+                w = 2 * np.pi * self._f[d, i]
 
                 if self.reverse:
                     w *= -1
 
-                for n in range(self._N[d, k]):
+                for n in range(self._N[d, i]):
                     if f in frames:
-                        t = n / 4 if self._N[d, k] == 2 else n / self._N[d, k]
-                        cos = np.cos(q * x - w * t - self.o)
+                        t = n / 4 if self._N[d, i] == 2 else n / self._N[d, i]
+
+                        cos = np.cos(k * x - w * t - self.o)
 
                         if self.gamma == 1:
                             val = self.A + self.B * cos
                         else:
                             val = (self.A / self.Imax + self.B / self.Imax * cos) ** self.gamma * self.Imax
 
+                        val = self.Imax * (self.beta * (1 + self.V * np.cos(k * x - w * t - self.o))) ** self.gamma
+
                         if dtype.kind in "ui" and rint:
                             # val += .5
                             np.rint(val, out=val)
-                            I[i] = val.astype(dtype, copy=False)  # todo: astype necessary?
+                            I[idx] = val.astype(dtype, copy=False)  # todo: astype necessary?
                         elif dtype.kind in "b":
-                            I[i] = val >= .5
+                            I[idx] = val >= .5
                         else:
-                            I[i] = val
-                        i += 1
+                            I[idx] = val
+                        idx += 1
                     f += 1
 
         # dt = np.float64 if self.SDM or self.FDM or np.any((self.h != 0) * (self.h != 255)) else self.dtype
@@ -424,7 +439,7 @@ class Fringes:
         return I.reshape(-1, self.Y, self.X, 1)
 
     def _demodulate(self, I: np.ndarray, verbose: bool = False) -> tuple:
-        """Decode base fringe patterns."""
+        """Decode base fringe patterns by spatio-temporal demodulation."""
 
         t0 = time.perf_counter()
 
@@ -1058,7 +1073,10 @@ class Fringes:
 
     @staticmethod
     def unwrap(phi: np.ndarray, B: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
-        """Unwrap phase maps spacially."""
+        """Unwrap phase maps spacially.
+        Based on the flag `func`, this is either done by
+        https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html or
+        https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html"""
 
         T, Y, X, C = vshape(phi).shape
         phi = phi.reshape((T, Y, X, C))
@@ -1070,6 +1088,7 @@ class Fringes:
             params.width = X
             # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)
             unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
+
         uwr = np.empty_like(phi)
         for t in range(T):
             for c in range(C):
@@ -1147,7 +1166,7 @@ class Fringes:
         dec = self.decode(I)
 
         eps = np.abs(self.coordinates() - dec.registration)  # / self.L
-        idxe = np.argwhere(eps.squeeze() > 0.1)
+        idxe = np.argwhere(eps.squeeze() > 0.1)upd
 
         xavg = np.nanmean(eps)
         xmed = np.nanmedian(eps)
@@ -2089,7 +2108,8 @@ class Fringes:
 
     @property
     def v(self) -> np.ndarray:
-        """Spatial frequencies, i.e. number of periods/fringes across maximum coding length."""
+        """Spatial frequencies,
+        i.e. number of periods/fringes across maximum coding length."""
         if self.D == 1 or len(np.unique(self._v, axis=0)) == 1:  # sets in directions are identical
             v = self._v[0]  # 1D
         else:
@@ -2182,7 +2202,8 @@ class Fringes:
 
     @property
     def fmax(self):
-        """Maximum temporal frequency, i.e. maximum number of periods to shift over."""
+        """Maximum temporal frequency,
+        i.e. maximum number of periods to shift over."""
         return min((self.Nmin - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmin - 1) / 2
 
     @property
@@ -2312,7 +2333,8 @@ class Fringes:
 
     @property
     def verbose(self) -> bool:
-        """Flag for additionally returning intermediate results, i.e. phase map and reliability/residuals map."""
+        """Flag for additionally returning intermediate results,
+        i.e. phase map and reliability/residuals map."""
         return self._verbose
 
     @verbose.setter
@@ -2358,13 +2380,14 @@ class Fringes:
 
     @property
     def shape(self) -> tuple:
-        """Shape of fringe pattern sequence in video shape, i.e. (frames, height, with, color channels).
-        """
+        """Shape of fringe pattern sequence in video shape,
+        i.e. (frames, height, with, color channels)."""
         return self.T, self.Y, self.X, self.C
 
     @property
     def size(self) -> np.uint64:
-        """Number of pixels of fringe pattern sequence, i.e. frames * height * width * color channels."""
+        """Number of pixels of fringe pattern sequence,
+        i.e. frames * height * width * color channels."""
         return float(np.prod(self.shape, dtype=np.uint64))  # using uint64 prevents integer overflow
 
     @property
@@ -2578,8 +2601,8 @@ class Fringes:
         """Base parameters required for en- & decoding fringe patterns."""
         # All property objects which have a setter method i.e. are (usually) not derived from others.
         params = {}
-        for p in sorted(dir(self)):
-            if p not in ["params"]:
+        for p in sorted(dir(self)):  # sorted() ensures setting params in the right order in the setter method
+            if p != "params":
                 if isinstance(getattr(type(self), p, None), property) and getattr(type(self), p, None).fset is not None:
                     if isinstance(getattr(self, p, None), np.ndarray):
                         params[p] = getattr(self, p, None).tolist()
@@ -2599,17 +2622,41 @@ class Fringes:
             if k in params:
                 if k in "Nlvf" and np.array(v).ndim != np.array(params[k]).ndim:
                     if not np.array_equal(v, params[k][0]):
-                        self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent parameter set.")
+                        self.logger.warning(
+                            f"'{k}' got overwritten by interdependencies. Choose consistent parameter set."
+                        )
                 else:
                     if not np.array_equal(v, params[k]):
-                        self.logger.warning(f"'{k}' got overwritten by interdependencies. Choose consistent parameter set.")
+                        self.logger.warning(
+                            f"'{k}' got overwritten by interdependencies. Choose consistent parameter set."
+                        )
 
-    glossary = {k: v.__doc__ for k, v in sorted(vars().items()) if isinstance(v, property) and v.__doc__ is not None}
+    # get default values from __init__
+    defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
 
-    __init__.__doc__ = ""
-    for __k, __v in sorted(vars().copy().items()):
+    # restrict instance attributes to the ones listed here
+    # commend the next line out or add "__dict__" to circumvent this
+    __slots__ = tuple("_" + k for k in defaults.keys()) + ("logger", "_UMR", "_t",)
+
+    # generate glossary
+    glossary = {}
+    for __k, __v in sorted(vars().items()):
+        if not __k.startswith("_"):
+            if isinstance(__v, property) and __v.__doc__ is not None:
+                glossary[__k] = __v.__doc__
+
+    # generate class docstring
+    __doc__ += "\n\nParameters:\n"
+    for __k, __v in sorted(vars().items()):
+        if not __k.startswith("_"):
+            if isinstance(__v, property) and __v.__doc__ is not None:
+                __doc__ += f"    {__k}: {__v.__doc__}\n"
+
+    # generate docstring for __init__
+    __init__.__doc__ = "Parameter:\n"
+    for __k, __v in sorted(vars().items()):
         if __k in defaults:
             if isinstance(__v, property) and __v.__doc__ is not None:
-                __init__.__doc__ += f"{__k}: {__v.__doc__}\n"
-    del __k
-    del __v
+                __init__.__doc__ += f"    {__k} ({__init__.__annotations__[__k]}): {__v.__doc__}\n"
+
+    del __k, __v

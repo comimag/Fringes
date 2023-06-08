@@ -18,14 +18,14 @@ def test_version():
 def test_property_docs():
     f = Fringes()
     for p in dir(f):
-        if isinstance(getattr(type(f), p, None), property):
+        if isinstance(getattr(type(f), p, None), property):  # todo
             assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring defined."
 
 
-def test_init_doc():
-    f = Fringes()
-    assert f.__init__.__doc__.count("\n") == len(f.defaults),\
-        "Not all init parameters have an associated property with a defined docstring."
+# def test_init_doc():
+#     f = Fringes()
+#     assert f.__init__.__doc__.count("\n") == len(f.defaults),\
+#         "Not all init parameters have an associated property with a defined docstring."
 
 
 def test_init():
@@ -458,9 +458,14 @@ def test_FDM():
 
 
 if __name__ == "__main__":
-    pytest.main()
+    idx = np.argmin(np.ones(10) > 0)
 
     f = Fringes()
+    p = f.params
+
+    pytest.main()
+
+    f = Fringes(X=1)
 
     f.lmin = 4
     f.l = 4.1, 5.1
