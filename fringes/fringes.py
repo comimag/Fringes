@@ -1024,9 +1024,11 @@ class Fringes:
             # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)
             unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
         reg = np.empty((self.D, Y, X, C), np.float32)
+
         if self.verbose:
             res = np.empty((self.D, Y, X, C), np.float32)
             fid = np.empty((self.D, self.K, Y, X, C), np.int_)
+
         for d in range(self.D):
             if self.K == 1:  # todo: self.K[d] == 1
                 self.logger.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
@@ -1042,13 +1044,22 @@ class Fringes:
                 else:
                     if func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
                         # dtype must be np.float32  # todo: test this
-                        reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[d, :, :, c])
+                        if isinstance(mask, np.ndarray) and vshape(mask).shape == phi.shape:
+                            ui = self.quant
+                            SNR = self.B[d, :, :, c] / ui
+                            upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
+                            upin = upi / (2 * np.pi)  # normalized local phase uncertainty
+                            uxi = upin * self._l  # local positional uncertainties
+                            ux = np.sqrt(1 / np.sum(1 / uxi ** 2))  # global phase uncertainty (by inverse variance weighting of uxi)
+                            mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
 
-                        # # dtype of phasemust be np.uint8, dtype of shadow_mask np.uint8  # todo: test this
-                        # reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[d, :, :, c], shadowMask=shadow_mask)
+                            reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[d, :, :, c], mask)  # todo: test this
+                        else:
+                            reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[d, :, :, c])
 
                         if self.verbose:
-                            res[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: res vs. rel
+                            res[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: test this
+                            # todo: res vs. rel
                     else:  # Scikit-image algorithm is slower but delivers better results on edges
                         reg[d, :, :, c] = ski.restoration.unwrap_phase(phi[d, :, :, c])
                         # todo: res
@@ -1072,7 +1083,7 @@ class Fringes:
         return uwr
 
     @staticmethod
-    def unwrap(phi: np.ndarray, B: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
+    def unwrap(phi: np.ndarray, mask: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
         """Unwrap phase maps spacially.
         Based on the flag `func`, this is either done by
         https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html or
@@ -1094,7 +1105,11 @@ class Fringes:
             for c in range(C):
                 if func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
                     # dtype must be np.float32  # todo: test this
-                    uwr[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[t, :, :, c])
+                    if isinstance(mask, np.ndarray) and vshape(mask).shape == phi.shape:
+                        mask = np.astype(mask[t, :, :, c], copy=False)
+                        uwr[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[t, :, :, c], mask)
+                    else:
+                        uwr[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[t, :, :, c])
 
                     # # dtype of phasemust be np.uint8, dtype of shadow_mask np.uint8  # todo: test this
                     # reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[d, :, :, c], shadowMask=shadow_mask)
@@ -1166,7 +1181,7 @@ class Fringes:
         dec = self.decode(I)
 
         eps = np.abs(self.coordinates() - dec.registration)  # / self.L
-        idxe = np.argwhere(eps.squeeze() > 0.1)upd
+        idxe = np.argwhere(eps.squeeze() > 0.1)
 
         xavg = np.nanmean(eps)
         xmed = np.nanmedian(eps)
@@ -2461,13 +2476,17 @@ class Fringes:
             self.logger.debug(f"{self._B = }")
 
     @property
+    def betamax(self):
+        return 1 / (1 + self.V)
+
+    @property
     def beta(self) -> float:
         """Relative bias i.e. relative mean intensity."""
         return self.A / self.Imax
 
     @beta.setter
     def beta(self, beta) -> float:
-        _beta = float(min(max(0, beta), 0.5))
+        _beta = float(min(max(0, beta), self.betamax))
 
         if self._A != _beta * self.Imax or self.B != _beta * self.Imax * self.V:
             self.B = _beta * self.Imax * self.V
@@ -2489,7 +2508,7 @@ class Fringes:
 
         if self._B != _V * self.A:
             self.B = _V * self.A
-            self.logger.debug(f"{self._V = }")
+            self.logger.debug(f"{self.V = }")
 
     @property
     def Vmin(self) -> float:
@@ -2578,8 +2597,8 @@ class Fringes:
     @property
     def u(self) -> np.ndarray:
         """Uncertainty of measurement (standard deviation) [px]."""
-        noise = np.sqrt(self.gain ** 2 * self.dark ** 2 + self.quant ** 2 + self.gain ** 2 * self.shot ** 2)
-        SNR = self.B / noise
+        ui = np.sqrt(self.gain ** 2 * self.dark ** 2 + self.quant ** 2 + self.gain ** 2 * self.shot ** 2)  # camera noise
+        SNR = self.B / ui
         upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
         uxi = upin * self._l  # local positional uncertainties
