@@ -427,20 +427,20 @@ Be aware that in the latter case only a relative phase map is obtained,
 which lacks the information of where exactly the camera sight rays were looking at during acquisition.
 
 To simplify finding and setting the optimal parameters, the following methods can be used:
-- `mtf2vmax()`: The optimal `vmax` is determined automativally [[18]](#18-bothe-2008)
+- `mtf2vmax()`: The optimal `vmax` is determined automatically [[18]](#18-bothe-2008)
 by measuring the **modulation transfer function** `MTF`.\
   Therefore, a sequence of exponentially increasing `v` is acquired:
     1. Set `v` to `'exponential'`.
     2. Encode, acquire and decode the fringe pattern sequence.
     3. Call the function `mtf2vmax(B)` with the argument `B` from decoding.
-- `v` can be set to `'auto'`. This automatically determines the optimal integer set of `v`
+- `v` can be set to `'optimal'`. This automatically determines the optimal integer set of `v`
   based on the maximal resolvable spatial frequency `vmax`.
--  Equivalently, `l` can also be set to `'auto'`. This will automatically determine the optimal integer set of `l`
+-  Equivalently, `l` can also be set to `'optimal'`. This will automatically determine the optimal integer set of `l`
   based on the minimal resolvable wavelength `lmin = L / vmax`.
 - `T` can be set directly, based on the desired acquisition time.
   The optimal `K`, `N` and the [multiplexing](#multiplexing) methods will be determined automatically.
 
-Alternatively, simply use the function `auto()`
+Alternatively, simply use the function `optimize()`
 to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) methods.
 
 ## Troubleshooting

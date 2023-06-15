@@ -15,6 +15,7 @@ import yaml
 import asdf
 from si_prefix import si_format as si
 
+
 from .util import vshape, bilateral, median
 from . import grid
 from .decoder import decode  # todo: fast_decode i.e. fast_unwrap
@@ -249,7 +250,7 @@ class Fringes:
          L: Length of fringe patterns."""
         self.h = "w"
         self.T = T
-        self.v = "auto"
+        self.v = "optimal"
         self.logger.info("Optimized parameters.")
 
     @staticmethod
@@ -1901,13 +1902,7 @@ class Fringes:
         return N
 
     @N.setter
-    def N(self, N: int | tuple[int] | list[int] | np.ndarray | str):
-        if isinstance(N, str):
-            if N == "auto":
-                N = np.full((self.D, self.K), 4, int)
-            else:
-                return
-
+    def N(self, N: int | tuple[int] | list[int] | np.ndarray):
         # make array, cast to dtype, clip
         _N = np.array(N, int).clip(self.Nmin, self._Nmax)
 
@@ -1959,18 +1954,9 @@ class Fringes:
     @l.setter
     def l(self, l: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(l, str):
-            if l == "auto":
-                if self.K == 1:
-                    l = self.L
-                elif self.K == 2:
-                    r = int(np.sqrt(self.L) + 0.5)  # rint(root)
-                    l = np.array([r, r + 1])  # two consecutive integers are always coprime
-                else:
-                    pass
-
+            if l == "optimal":
                 lmin = int(np.ceil(self.lmin))
-
-                lmax = int(self.L ** (1 / self.K) + 0.5)  # rint; wavelengths are around kth root of self.L
+                lmax = int(np.ceil(self.L ** (1 / self.K)))  # wavelengths are around kth root of self.L
 
                 if self.K >= 2:
                     lmax += 1
@@ -1985,93 +1971,64 @@ class Fringes:
                             ith = self.K - 3
                             lmax = sympy.ntheory.generate.nextprime(lmax, ith)
 
-                    lmax = max(lmin, lmax)
-
-                    if self.lmin < self.L:
-                        lmax = min(lmax, int(np.ceil(self.L)))
+                    lmax = max(lmin, min(lmax, int(np.ceil(self.L))))  # max in outer condition ensures lmax >= lmin even if L < lmin
+                    if lmin == lmax and lmax < self.L:
+                        lmax += 1  # ensures lmin and lmax differ so that lcm(l) >= L
 
                     n = lmax - lmin + 1
-                    K = min(self.K, n)
-                    C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
-                    combos = (c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L)
-                    cnext = next(combos)
-                    l = np.array(cnext)  # this removes first element of combos
-                    mn2 = np.sum(l ** 2)
-                    sum2min = np.sum(((lmin + np.arange(K)) ** 2))  # starting with lmin and increasing by one per set
-                    if mn2 != sum2min:
-                        mn = np.sum(l)
-                        b = list(combos)
-                        for c in combos:  # iterate over the remaining combos
-                            c = np.array(c)
-                            sum = np.sum(c)  # argmin of L1 norm is equal to argmin of L2 norm due to monotonicity
+                    K = min(self.K, n)  # ensures K <= n
 
-                            if sum < mn:
-                                mn = sum
-                                # mn2 = np.sum(c ** 2)
-                                l = c
-                            elif sum == mn:  # under the L1 norm there may be ambiguities, so also check L2 norm
-                                sum2 = np.sum(c ** 2)
+                    # C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
+                    combos = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L])
 
-                                if sum2 < mn2:
-                                    mn2 = sum2  # determine mn2 here, because (sum == mn) is rarer than (sum < mn) # todo: is this assumption true?
-                                    l = c
-                                elif sum2 == mn2:
-                                    pass  # this schould never happen since there exists only one solution in the L2 norm
+                    # idx = np.argmin(1 / np.sum(1 / combos ** 2, axis=1))
+                    idx = np.argmax(np.sum(1 / (combos ** 2), axis=1))
+                    l = combos[idx]
 
-                                if mn2 == sum2min:
-                                    break
-
-                            # c = np.array(c)
-                            # sum2 = np.sum(c ** 2)
-                            #
-                            # if sum2 <= sum2min:
-                            #    l = c
-                            #    break
-                            # elif sum2 < mn2:
-                            #    mn2 = sum2
-                            #    l = c
-                            # elif sum2 == mn:
-                            #    pass  # this schould never happen since there exists only one solution in the L2 norm
-
-                    # todo: K -> self.K
-                    # if K != self.K:  # then K is smaller than self.K  # todo: is this assumption true?
-                    #     c = self.K / K
-                    #     if c % 1 == 0:  # c is integer
-                    #         self.N += 1
-                    #     else:
-                    #         # l = np.repeat(l, int(np.ceil(c)))[:self.K]
-                    #         l = np.tile(l, int(np.ceil(c)))[:self.K]
-
-                    # if self.K == 1:
-                    #     l = self.L
-                    # else:
-                    #     if self.vmax > self.lmin:
-                    #         vmax = int(self.vmax)
+                    # cnext = next(combos)  # this removes first element of combos
+                    # l = np.array(cnext)
+                    # mn2 = np.sum(l ** 2)
+                    # sum2min = np.sum(((lmin + np.arange(K)) ** 2))  # starting with lmin and increasing by one per set
+                    # if mn2 != sum2min:
+                    #     mn = np.sum(l)
+                    #     b = list(combos)
+                    #     for c in combos:  # iterate over the remaining combos
+                    #         c = np.array(c)
+                    #         sum = np.sum(c)  # argmin of L1 norm is equal to argmin of L2 norm due to monotonicity
                     #
-                    #         # decreasing sequence
-                    #         # v = vmax - np.arange(self.K)
+                    #         if sum < mn:
+                    #             mn = sum
+                    #             # mn2 = np.sum(c ** 2)
+                    #             l = c
+                    #         elif sum == mn:  # under the L1 norm there may be ambiguities, so also check L2 norm
+                    #             sum2 = np.sum(c ** 2)
                     #
-                    #         # alternating largest two consecutive number of periods, starting with largest
-                    #         i = np.empty(self.K, int)
-                    #         i[0::2] = 0
-                    #         i[1::2] = 1
-                    #         v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
+                    #             if sum2 < mn2:
+                    #                 mn2 = sum2  # determine mn2 here, because (sum == mn) is rarer than (sum < mn) # todo: is this assumption true?
+                    #                 l = c
+                    #             elif sum2 == mn2:
+                    #                 print("sum2 == mn2")
+                    #                 pass  # this schould never happen since there exists only one solution in the L2 norm
                     #
-                    #         l = self.L / v
-                    #     else:
-                    #         lmin = int(np.ceil(self.lmin))
+                    #             if mn2 == sum2min:
+                    #                 break
                     #
-                    #         # increasing sequence
-                    #         l = lmin + np.arange(self.K)
-                    #
-                    #         # # alternating smallest two consecutive wavelengths, starting with smallest
-                    #         # i = np.empty(self.K, int)  # indices which are alternating between 0 and 1
-                    #         # i[0::2] = 0
-                    #         # i[1::2] = 1
-                    #         # l = np.array([lmin, lmin + 1])[i]
+                    #         # c = np.array(c)
+                    #         # sum2 = np.sum(c ** 2)
+                    #         #
+                    #         # if sum2 <= sum2min:
+                    #         #    l = c
+                    #         #    break
+                    #         # elif sum2 < mn2:
+                    #         #    mn2 = sum2
+                    #         #    l = c
+                    #         # elif sum2 == mn:
+                    #         #    pass  # this schould never happen since there exists only one solution in the L2 norm
+
+                    if K < self.K:
+                        l = np.concatenate((l, np.arange(l.max() + 1, l.max() + 1 + self.K - K)))
             elif l == "exponential":
-                # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
-                l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K)))
+                l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K - 1)))
             elif l == "linear":
                 l = np.concatenate(([np.inf], np.linspace(self.L, self.lmin, self.K - 1)))
             else:
@@ -2134,7 +2091,7 @@ class Fringes:
     @v.setter
     def v(self, v: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(v, str):
-            if v == "auto":
+            if v == "optimal":
                 if self.K == 1:
                     v = 1
                 else:
@@ -2151,7 +2108,7 @@ class Fringes:
                         # i[0::2] = 0
                         # i[1::2] = 1
                         # v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
-                    else:
+                    else:  # todo: self.l = "optimal" ?
                         lmin = int(np.ceil(self.lmin))
                         lmin = self.lmin
 
@@ -2167,7 +2124,7 @@ class Fringes:
                         v = self.L / l
             elif v == "exponential":
                 # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
-                v = np.concatenate(([0], np.geomspace(1, self.vmax, self.K)))
+                v = np.concatenate(([0], np.geomspace(1, self.vmax, self.K - 1)))
             elif v == "linear":
                 v = np.concatenate(([0], np.linspace(1, self.vmax, self.K - 1)))
             else:
@@ -2232,12 +2189,6 @@ class Fringes:
 
     @f.setter
     def f(self, f: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
-        if isinstance(f, str):
-            if f == "auto":
-                f = np.ones((self.D, self.K))
-            else:
-                return
-
         # make array, cast to dtype, clip
         _f = np.array(f, float).clip(-self.fmax, self.fmax)
 
@@ -2301,7 +2252,7 @@ class Fringes:
     @property
     def lmin(self) -> float:
         """Minimum resolvable wavelength [px]."""
-        fmax = min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self.Nmin - 1) / 2  # else circular loop
+        fmax = min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self.Nmin - 1) / 2  # don't use self.fmax, else circular loop
         return min(self._lmin, self.L / fmax) if self.FDM and self.static else self._lmin
 
     @lmin.setter

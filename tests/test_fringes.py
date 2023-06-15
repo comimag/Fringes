@@ -4,6 +4,7 @@ import os
 import time
 import tempfile
 
+import toml
 import numpy as np
 import pytest
 import subprocess
@@ -200,7 +201,7 @@ def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
 
     dec = f.decode(I)
 
-    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."
+    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
 
     assert np.max(dec.residuals) < 1, "Residuals are larger than 1."
@@ -448,6 +449,7 @@ def test_FDM():
     assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
     f.static = True
+    f.N = 1
     I = f.encode()
     dec = f.decode(I)
 
@@ -458,12 +460,8 @@ def test_FDM():
 
 
 if __name__ == "__main__":
-    idx = np.argmin(np.ones(10) > 0)
-
-    f = Fringes()
-    p = f.params
-
     pytest.main()
+    # subprocess.run(['pytest', '--tb=short', str(__file__)])
 
     f = Fringes(X=1)
 
@@ -471,17 +469,19 @@ if __name__ == "__main__":
     f.l = 4.1, 5.1
     UMR = f.UMR
 
-    f.X = 4096
+    f.X = 7680
     f.Y = 1
-    f.lmin = 4
+    f.lmin = 2
     f.K = 3
-    l = np.empty((f.X + 1, f.K))
-    UMR = np.empty((f.X + 1, f.K))
+    K = f.K
+    l = np.zeros((f.X + 1, K))
+    UMR = np.zeros((f.X + 1, K))
     for x in range(f.X + 1):
+        print(x)
+        f.K = K
         f.X = x
-        f.l = "auto"
-        l = f.l
-        #l[x] = f.l
+        f.l = "optimal"
+        l[x, :len(f.l)] = f.l
         UMR[x] = f.UMR
         print(f.l)
         print(f.UMR)
@@ -491,9 +491,14 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(range(len(l)), l[:, 0], "r.")
     plt.plot(range(len(l)), l[:, 1], "g.")
-    plt.plot(range(len(l)), l[:, 2], "b.")
-    # plt.plot(range(len(l)), l[:, 3], "c.")
-    # plt.plot(range(len(l)), l[:, 4], "m.")
+    if f.K >= 3:
+        plt.plot(range(len(l)), l[:, 2], "b.")
+
+        if f.K >= 4:
+            plt.plot(range(len(l)), l[:, 3], "c.")
+
+            if f.K >= 5:
+                plt.plot(range(len(l)), l[:, 4], "m.")
     plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k.")
     plt.grid(True)
 
@@ -517,6 +522,3 @@ if __name__ == "__main__":
     # averaging
     # f.h = "rg"
     # M = f.M
-
-    # pytest.main()
-    subprocess.run(['pytest', '--tb=short', str(__file__)])
