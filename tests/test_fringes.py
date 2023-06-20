@@ -460,7 +460,7 @@ def test_FDM():
 
 
 if __name__ == "__main__":
-    pytest.main()
+    # pytest.main()
     # subprocess.run(['pytest', '--tb=short', str(__file__)])
 
     f = Fringes(X=1)
@@ -471,7 +471,7 @@ if __name__ == "__main__":
 
     f.X = 7680
     f.Y = 1
-    f.lmin = 2
+    f.lmin = 7
     f.K = 3
     K = f.K
     l = np.zeros((f.X + 1, K))
@@ -485,22 +485,23 @@ if __name__ == "__main__":
         UMR[x] = f.UMR
         print(f.l)
         print(f.UMR)
+        print("---")
         a = 1
 
     import matplotlib.pyplot as plt
     plt.figure()
-    plt.plot(range(len(l)), l[:, 0], "r.")
-    plt.plot(range(len(l)), l[:, 1], "g.")
-    if f.K >= 3:
-        plt.plot(range(len(l)), l[:, 2], "b.")
-
-        if f.K >= 4:
-            plt.plot(range(len(l)), l[:, 3], "c.")
-
-            if f.K >= 5:
-                plt.plot(range(len(l)), l[:, 4], "m.")
-    plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k.")
     plt.grid(True)
+
+    plt.plot(range(len(l)), l[:, 0], "r")
+    plt.plot(range(len(l)), l[:, 1], "g")
+    if f.K >= 3:
+        plt.plot(range(len(l)), l[:, 2], "b")
+        if f.K >= 4:
+            plt.plot(range(len(l)), l[:, 3], "c")
+            if f.K >= 5:
+                plt.plot(range(len(l)), l[:, 4], "m")
+    plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k")
+
 
     plt.figure()
     plt.plot(range(len(l)), UMR, ".")

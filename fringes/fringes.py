@@ -20,8 +20,6 @@ from .util import vshape, bilateral, median
 from . import grid
 from .decoder import decode  # todo: fast_decode i.e. fast_unwrap
 
-import inspect
-
 
 class Fringes:
     """Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."""
@@ -243,15 +241,19 @@ class Fringes:
 
         self.logger.info("Reset parameters to defaults.")
 
-    def optimize(self, T: int = 24) -> None:
+    def optimize(self, T: int = 24, u: float = None) -> None:  # todo: optimize T from u
         """Optimize the parameters based on:
          T: Given number of frames.
          lmin: Minimum resolvable wavelength.
          L: Length of fringe patterns."""
-        self.h = "w"
-        self.T = T
-        self.v = "optimal"
-        self.logger.info("Optimized parameters.")
+
+        if u is not None:  # optimize N -> T based on u
+            pass
+        else:  # optimize u based on T
+            self.h = "w"
+            self.T = T
+            self.v = "optimal"
+            self.logger.info("Optimized parameters.")
 
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
@@ -1375,7 +1377,7 @@ class Fringes:
             # todo: N12 = Nmin == 3  # allow N to be in [1, 2] if K >= 2
             # todo: N12 = 1 in self.N or 2 in self.N
             Ngood = 4  # minimum number of phase shifts to obtain good results i.e. reliable results in practice
-            Kmax = 2#3  # todo: which is better: 2 or 3?
+            Kmax = 2  # 3  # todo: which is better: 2 or 3?
             self.FDM = False
             self.SDM = False
             self.WDM = False
@@ -1956,77 +1958,57 @@ class Fringes:
         if isinstance(l, str):
             if l == "optimal":
                 lmin = int(np.ceil(self.lmin))
-                lmax = int(np.ceil(self.L ** (1 / self.K)))  # wavelengths are around kth root of self.L
+                lmax = int(np.ceil(self.L / self.lmin))
 
-                if self.K >= 2:
-                    lmax += 1
+                if np.lcm(lmin, lmax) < self.L:
+                    lmax += 1  # two consecutive numbers are always corpime -> if first one is divided by a given intger, second one isn't
+                if np.lcm(lmin, lmax) < self.L:
+                    q = 1
 
-                    if self.K >= 3:
-                        lmax += 1
+                if lmax <= lmin:
+                    if lmin >= self.L:
+                        l = [lmin] * self.K
+                    else:
+                        l = [lmin] * (self.K - 1) + [lmin + 1]
+                else:
+                    l = [lmin] * (self.K - 1) + [lmax]
 
-                        if lmax % 2 == 0:  # kth root was even
-                            lmax += 1
+                # lmax = int(np.ceil(self.L ** (1 / self.K)))  # wavelengths are around kth root of self.L
+                #
+                # if self.K >= 2:
+                #     lmax += 1
+                #
+                #     if self.K >= 3:
+                #         lmax += 1
+                #
+                #         if lmax % 2 == 0:  # kth root was even
+                #             lmax += 1
+                #
+                #         if self.K > 3:
+                #             ith = self.K - 3
+                #             lmax = sympy.ntheory.generate.nextprime(lmax, ith)
+                #
+                # if lmin > lmax or lmax - lmin + 1 <= self.K:
+                #     l = lmin + np.arange(self.K)
+                # else:
+                #     lmax = max(lmin, min(lmax, int(np.ceil(self.L))))  # max in outer condition ensures lmax >= lmin even if L < lmin
+                #     if lmin == lmax and lmax < self.L:
+                #         lmax += 1  # ensures lmin and lmax differ so that lcm(l) >= L
+                #
+                #     n = lmax - lmin + 1
+                #     K = min(self.K, n)  # ensures K <= n
+                #     C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
+                #     combos = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L])
+                #
+                #     # idx = np.argmin(1 / np.sum(1 / combos ** 2, axis=1))
+                #     idx = np.argmax(np.sum(1 / combos ** 2, axis=1))
+                #     l = combos[idx]
+                #
+                #     if idx != 0:
+                #         q = 1
 
-                        if self.K >= 3:
-                            ith = self.K - 3
-                            lmax = sympy.ntheory.generate.nextprime(lmax, ith)
-
-                    lmax = max(lmin, min(lmax, int(np.ceil(self.L))))  # max in outer condition ensures lmax >= lmin even if L < lmin
-                    if lmin == lmax and lmax < self.L:
-                        lmax += 1  # ensures lmin and lmax differ so that lcm(l) >= L
-
-                    n = lmax - lmin + 1
-                    K = min(self.K, n)  # ensures K <= n
-
-                    # C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
-                    combos = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L])
-
-                    # idx = np.argmin(1 / np.sum(1 / combos ** 2, axis=1))
-                    idx = np.argmax(np.sum(1 / (combos ** 2), axis=1))
-                    l = combos[idx]
-
-                    # cnext = next(combos)  # this removes first element of combos
-                    # l = np.array(cnext)
-                    # mn2 = np.sum(l ** 2)
-                    # sum2min = np.sum(((lmin + np.arange(K)) ** 2))  # starting with lmin and increasing by one per set
-                    # if mn2 != sum2min:
-                    #     mn = np.sum(l)
-                    #     b = list(combos)
-                    #     for c in combos:  # iterate over the remaining combos
-                    #         c = np.array(c)
-                    #         sum = np.sum(c)  # argmin of L1 norm is equal to argmin of L2 norm due to monotonicity
-                    #
-                    #         if sum < mn:
-                    #             mn = sum
-                    #             # mn2 = np.sum(c ** 2)
-                    #             l = c
-                    #         elif sum == mn:  # under the L1 norm there may be ambiguities, so also check L2 norm
-                    #             sum2 = np.sum(c ** 2)
-                    #
-                    #             if sum2 < mn2:
-                    #                 mn2 = sum2  # determine mn2 here, because (sum == mn) is rarer than (sum < mn) # todo: is this assumption true?
-                    #                 l = c
-                    #             elif sum2 == mn2:
-                    #                 print("sum2 == mn2")
-                    #                 pass  # this schould never happen since there exists only one solution in the L2 norm
-                    #
-                    #             if mn2 == sum2min:
-                    #                 break
-                    #
-                    #         # c = np.array(c)
-                    #         # sum2 = np.sum(c ** 2)
-                    #         #
-                    #         # if sum2 <= sum2min:
-                    #         #    l = c
-                    #         #    break
-                    #         # elif sum2 < mn2:
-                    #         #    mn2 = sum2
-                    #         #    l = c
-                    #         # elif sum2 == mn:
-                    #         #    pass  # this schould never happen since there exists only one solution in the L2 norm
-
-                    if K < self.K:
-                        l = np.concatenate((l, np.arange(l.max() + 1, l.max() + 1 + self.K - K)))
+                    # if K < self.K:
+                    #     l = np.concatenate((l, np.arange(l.max() + 1, l.max() + 1 + self.K - K)))
             elif l == "exponential":
                 l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K - 1)))
             elif l == "linear":
@@ -2092,6 +2074,8 @@ class Fringes:
     def v(self, v: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(v, str):
             if v == "optimal":
+
+
                 if self.K == 1:
                     v = 1
                 else:
