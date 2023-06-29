@@ -20,7 +20,6 @@ opencv-contrib-python = "^4.7.0"
 pyyaml = "^6.0"
 toml = "^0.10.2"
 asdf = "^2.14.3"
-scikit-learn = "^1.2.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

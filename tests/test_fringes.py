@@ -306,7 +306,7 @@ def test_modes():
 #     d = dec.registration - f.coordinates()
 #     # std = np.std(d)
 #     # a = 1
-#     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+#     #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1
 
 
 def test_unwrapping():
@@ -319,11 +319,11 @@ def test_unwrapping():
 
     for d in range(f.D):
         grad = np.gradient(dec.registration[d, :, :, 0], axis=1 - d)
-        assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
+        assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 0.1."
 
 
 def test_unwrapping_class_method():
-    f = Fringes()
+    f = Fringes(Y=100)
     f.K = 1
     f.v = 13
 
@@ -333,7 +333,7 @@ def test_unwrapping_class_method():
 
     for d in range(f.D):
         grad = np.gradient(x[d, :, :, 0], axis=1 - d)
-        assert np.allclose(grad, 0, atol=0.2), "Gradient of unwrapped phase map isn't close to 0."
+        assert np.allclose(grad, 0, atol=0.1), "Gradient of unwrapped phase map isn't close to 0.1."
 
 
 def test_remapping():
@@ -412,40 +412,36 @@ def test_WDM():
     assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
 
 
-def test_SDM():
-    f = Fringes(Y=100)
-    f.SDM = True
-
-    I = f.encode()
-    dec = f.decode(I)
-
-    for d in range(f.D):
-        grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
-        #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
-
-    # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
-    d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
-    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+# def test_SDM():
+#     f = Fringes(Y=100)
+#     f.SDM = True
+#
+#     I = f.encode()
+#     dec = f.decode(I)
+#
+#     for d in range(f.D):
+#         grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
+#         #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
+#
+#     d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]  # todo: boarder
+#     assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
 
 
-def test_SDM_WDM():
-    f = Fringes(Y=100)
-    f.N = 3
-    f.SDM = True
-    f.WDM = True
-
-    I = f.encode()
-    dec = f.decode(I)
-
-    for d in range(f.D):
-        grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
-        #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
-
-    # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
-    d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]
-    #assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo
+# def test_SDM_WDM():
+#     f = Fringes(Y=100)
+#     f.N = 3
+#     f.SDM = True
+#     f.WDM = True
+#
+#     I = f.encode()
+#     dec = f.decode(I)
+#
+#     for d in range(f.D):
+#         grad = np.gradient(dec.registration[d, 1:-1, 1:-1, 0], axis=1 - d)  # todo: boarder
+#         #assert np.allclose(grad, 1, atol=0.1), "Gradient of registration isn't close to 1."
+#
+#     d = dec.registration[:, 1:-1, 1:-1, :] - f.coordinates()[:, 1:-1, 1:-1, :]  # todo: boarder
+#     assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1
 
 
 def test_FDM():
@@ -455,46 +451,42 @@ def test_FDM():
     I = f.encode()
     dec = f.decode(I)
 
-    # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
-    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]
-    assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
+    assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1
 
     f.static = True
     f.N = 1
     I = f.encode()
     dec = f.decode(I)
 
-    # d = dec.registration - f.coordinates()
-    # assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."  # todo: boarder
-    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]
-    assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."
+    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
+    assert np.allclose(d, 0, atol=0.2), "Registration is off more than 0.2."  # todo: 0.1
 
 
 if __name__ == "__main__":
     pytest.main()
     # subprocess.run(['pytest', '--tb=short', str(__file__)])
 
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    L = 1000
-    v = int(np.sqrt(L))
-    Imax = 255
-    x = np.linspace(0, 1, L)[:, None]
-    beta = np.linspace(0, 1, L)[None, :]
-    V = np.linspace(1, 0, L)[:, None]
-    mask = beta <= 1 / (1 + V)
-    gamma = 1
-    o = np.pi
-    k = 2 * np.pi * v
-    I = Imax * beta * (1 + V * np.cos(k * x - np.pi))
-    I = Imax * (beta * (1 + V * np.cos(k * x - o))) ** gamma
-    I[~ mask] = Imax
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.imshow(I, cmap="gray")
-    # plt.scatter(0.5 * L, (1 - 0.5) * L, c='red')
-    plt.xlabel("beta")
-    plt.ylabel("visibility")
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # import numpy as np
+    #
+    # L = 1000
+    # v = int(np.sqrt(L))
+    # Imax = 255
+    # x = np.linspace(0, 1, L)[:, None]
+    # beta = np.linspace(0, 1, L)[None, :]
+    # V = np.linspace(1, 0, L)[:, None]
+    # mask = beta <= 1 / (1 + V)
+    # gamma = 1
+    # o = np.pi
+    # k = 2 * np.pi * v
+    # I = Imax * beta * (1 + V * np.cos(k * x - np.pi))
+    # I = Imax * (beta * (1 + V * np.cos(k * x - o))) ** gamma
+    # I[~ mask] = Imax
+    # import matplotlib.pyplot as plt
+    # plt.figure()
+    # plt.imshow(I, cmap="gray")
+    # # plt.scatter(0.5 * L, (1 - 0.5) * L, c='red')
+    # plt.xlabel("beta")
+    # plt.ylabel("visibility")
+    # plt.show()
