@@ -9,6 +9,7 @@ import numpy as np
 import scipy as sp
 import sympy
 import skimage as ski
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"  # https://github.com/opencv/opencv/issues/21326
 import cv2
 import toml
 import yaml
@@ -76,21 +77,21 @@ class Fringes:
     def __init__(self,
                  Y: int = 1200,
                  X: int = 1920,
-                 H: int = 1,  # H is inferred from h
-                 M: float = 1.,  # M is inferred from h
+                 H: int = 1,  # inferred from h
+                 M: float = 1.,  # inferred from h
                  D: int = 2,
                  K: int = 3,
                  T: int = 24,  # T is inferred
                  N: tuple | np.ndarray = np.array([[4, 4, 4], [4, 4, 4]], int),
-                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89], [13, 7, 89]], float),
+                 l: tuple | np.ndarray = 1920 / np.array([[13, 7, 89], [13, 7, 89]], float),  # inferred from v
                  v: tuple | np.ndarray = np.array([[13, 7, 89], [13, 7, 89]], float),
                  f: tuple | np.ndarray = np.array([[1, 1, 1], [1, 1, 1]], float),
                  h: tuple | np.ndarray = np.array([[255, 255, 255]], int),
                  o: float = np.pi,
                  gamma: float = 1.,
-                 A: float = 255 / 2,  # i.e. Imax / 2 @ uint8
-                 B: float = 255 / 2,  # i.e. Imax / 2 @ uint8
-                 beta: float = .5,  # beta is inferred from A and Imax
+                 A: float = 255 / 2,  # i.e. Imax / 2 @ uint8; inferred from Imax and beta
+                 B: float = 255 / 2,  # i.e. Imax / 2 @ uint8; inferred from Imax and beta and V
+                 beta: float = .5,
                  V: float = 1.,  # V is inferred from A and B
                  alpha: float = 1.,
                  dtype: str | np.dtype = "uint8",
@@ -106,7 +107,6 @@ class Fringes:
                  verbose: bool = False,
                  mode: str = "fast",
                  Vmin: float = 0.,
-                 esat: float = np.inf,
                  dark: float = 0.,
                  gain: float = 0,
                  ) -> None:
@@ -126,7 +126,7 @@ class Fringes:
         # set default values
         self._UMR = None  # used for caching
         for k, v in self.defaults.items():
-            if k not in ["H", "M", "T", "beta", "V"]:  # these properties are inferred from others
+            if k not in "HMTlAB":  # these properties are inferred from others
                 setattr(self, f"_{k}", v)  # define private variables from where the properties get their value from
 
         # set given values
@@ -247,13 +247,16 @@ class Fringes:
          lmin: Minimum resolvable wavelength.
          L: Length of fringe patterns."""
 
-        if u is not None:  # optimize N -> T based on u
-            pass
-        else:  # optimize u based on T
-            self.h = "w"
+        self.v = "optimal"
+        self.h = "w"
+
+        if u is not None:  # optimize N : T based on u
+            u = self.u
+
+        else:  # distribute frames optimal (evenly) on shifts
             self.T = T
-            self.v = "optimal"
-            self.logger.info("Optimized parameters.")
+
+        self.logger.info("Optimized parameters.")
 
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
@@ -277,7 +280,7 @@ class Fringes:
 
         return J
 
-    def mtf2vmax(self, B: np.ndarray) -> np.ndarray:
+    def mtf2vmax(self, B: np.ndarray) -> np.ndarray:  # todo: rename to mtf2vopt, optimal spatial frequency
         """Compute the normalized modulation transfer function at spatial frequencies `v` from decoded modulation `B`
         and use the result to set the optimal lmin: minimum resolvable wavelength.
         """
@@ -342,7 +345,7 @@ class Fringes:
 
         return xi.reshape((self.D, self.Y, self.X, 1))
 
-    def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:  # todo: rint = False as default? influence on residuals?
+    def _modulate(self, frame: tuple = None, rint: bool = True) -> np.ndarray:
         """Encode base fringe patterns by spatio-temporal modulation."""
 
         # dd = [d for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
@@ -380,8 +383,6 @@ class Fringes:
         else:
             xi = None
 
-        # is_pure = all(c == 0 or c == 255 for h in self.h for c in h)
-        # dtype = np.dtype("float64") if self.SDM or self.FDM or not is_pure else self.dtype
         dtype = np.dtype("float64") if self.SDM or self.FDM else self.dtype
 
         I = np.empty([T, self.Y, self.X], dtype)
@@ -414,23 +415,16 @@ class Fringes:
                     if f in frames:
                         t = n / 4 if self._N[d, i] == 2 else n / self._N[d, i]
 
-                        cos = np.cos(k * x - w * t - self.o)
-
-                        if self.gamma == 1:
-                            val = self.A + self.B * cos
-                        else:
-                            val = (self.A / self.Imax + self.B / self.Imax * cos) ** self.gamma * self.Imax
-
                         val = self.Imax * (self.beta * (1 + self.V * np.cos(k * x - w * t - self.o))) ** self.gamma
 
                         if dtype.kind in "ui" and rint:
                             # val += .5
                             np.rint(val, out=val)
-                            I[idx] = val.astype(dtype, copy=False)  # todo: astype necessary?
                         elif dtype.kind in "b":
-                            I[idx] = val >= .5
-                        else:
-                            I[idx] = val
+                            val = val >= .5
+
+                        I[idx] = val
+
                         idx += 1
                     f += 1
 
@@ -1245,7 +1239,6 @@ class Fringes:
         if self._angle != _angle:
             self._angle = _angle
             self.logger.debug(f"{self._angle = }")
-            self._l = self.L / self._v
 
     @property
     def D(self) -> int:
@@ -1261,7 +1254,7 @@ class Fringes:
             self.logger.debug(f"{self._D = }")
 
             self.N = self._N[:self.D, :]
-            self.l = self._l[:self.D, :]  # l triggers v
+            self.v = self._v[:self.D, :]
             self.f = self._f[:self.D, :]
 
             if self._D == self._K == 1:
@@ -1272,8 +1265,8 @@ class Fringes:
             self._D = _D
             self.logger.debug(f"{self._D = }")
 
-            self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._l.shape[0], 1)), axis=0)
-            self.l = np.append(self._l, np.tile(self._l[-1, :], (_D - self._l.shape[0], 1)), axis=0)  # l triggers v
+            self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._N.shape[0], 1)), axis=0)
+            self.v = np.append(self._v, np.tile(self._v[-1, :], (_D - self._v.shape[0], 1)), axis=0)
             self.f = np.append(self._f, np.tile(self._f[-1, :], (_D - self._f.shape[0], 1)), axis=0)
 
             self.B = self.B
@@ -1298,7 +1291,6 @@ class Fringes:
         if self._axis != _axis:
             self._axis = _axis
             self.logger.debug(f"{self._axis = }")
-            self.l = self.L / self.v  # l triggers v
 
     @property
     def T(self) -> int:
@@ -1459,8 +1451,6 @@ class Fringes:
                 self.D = 1
                 self.axis = 0
 
-            self.l = self.L / self._v
-
     @property
     def X(self: int) -> int:
         """Width of fringe patterns [px]."""
@@ -1484,8 +1474,6 @@ class Fringes:
                 self.D = 1
                 self.axis = 0
 
-            self.l = self.L / self._v
-
     @property
     def C(self) -> int:
         """Number of color channels."""
@@ -1508,7 +1496,7 @@ class Fringes:
         if self._alpha != _alpha:
             self._alpha = _alpha
             self.logger.debug(f"{self._alpha = }")
-            self.l = self.L / self._v
+            self._UMR = None
 
     @property
     def R(self) -> np.ndarray:
@@ -1540,7 +1528,7 @@ class Fringes:
 
         UMR = np.empty(self.D)
         for d in range(self.D):
-            l = self._l[d].copy()
+            l = self._l[d]#.copy()
             v = self._v[d].copy()
 
             if 1 in self._N[d]:  # here, in TPU twice the combinations have to be tried
@@ -1820,7 +1808,7 @@ class Fringes:
             self.logger.debug(f"{self._FDM = }")
             # self.K = self._K
             self.N = self._N
-            self.l = self._l  # l triggers v
+            self.v = self._v
             if self.FDM:
                 self.f = self._f
             else:
@@ -1844,7 +1832,7 @@ class Fringes:
         if self._static != _static:
             self._static = _static
             self.logger.debug(f"{self._static = }")
-            self.l = self._l  # l triggers v
+            self.v = self._v
             self.f = self._f
 
     @property
@@ -1867,7 +1855,7 @@ class Fringes:
             self.logger.debug(f"{self._K = }")
 
             self.N = self._N[:, :self.K]
-            self.l = self._l[:, :self.K]  # l triggers v
+            self.v = self._v[:, :self.K]
             self.f = self._f[:, :self.K]
 
             if self._D == self._K == 1:
@@ -1878,8 +1866,8 @@ class Fringes:
 
             self.N = np.append(self._N, np.tile(self._N[0, 0], (self.D, _K - self._N.shape[1])),
                                axis=1)  # don't append N from defaults, this might be in conflict with WDM!
-            l = self.L ** (1 / np.arange(self._l.shape[1] + 1, _K + 1))
-            self.l = np.append(self._l, np.tile(l, (self.D, 1)), axis=1)  # l triggers v
+            v = self.L ** (1 / np.arange(self._v.shape[1] + 1, _K + 1))
+            self.v = np.append(self._v, np.tile(v, (self.D, 1)), axis=1)
             self.f = np.append(self._f, np.tile(self.defaults["f"][0, 0], (self.D, _K - self._f.shape[1])), axis=1)
 
             self.B = self.B
@@ -1947,68 +1935,83 @@ class Fringes:
     @property
     def l(self) -> np.ndarray:
         """Wavelengths of fringe periods [px]."""
-        if self.D == 1 or len(np.unique(self._l, axis=0)) == 1:  # sets in directions are identical
-            v = self._l[0]  # 1D
-        else:
-            v = self._l  # 2D
-        return v
+        return self.L / self.v
 
     @l.setter
     def l(self, l: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(l, str):
-            if l == "optimal":
+            if l == "optimal":  # todo: for each d in range(D)
                 lmin = int(np.ceil(self.lmin))
                 lmax = int(np.ceil(self.L / self.lmin))
 
-                if np.lcm(lmin, lmax) < self.L:
-                    lmax += 1  # two consecutive numbers are always corpime -> if first one is divided by a given intger, second one isn't
-                if np.lcm(lmin, lmax) < self.L:
-                    q = 1
+                l = lmin + np.arange(self.K - 1)
+                lcm = np.lcm.reduce(l)
+                q = self.L / lcm
+                if q > 1:
+                    pass
 
-                if lmax <= lmin:
-                    if lmin >= self.L:
-                        l = [lmin] * self.K
-                    else:
-                        l = [lmin] * (self.K - 1) + [lmin + 1]
+                if lmax - lmin + 1 <= self.K:
+                    l = lmin + np.arange(self.K)
                 else:
-                    l = [lmin] * (self.K - 1) + [lmax]
+                    l = lmin + np.arange(self.K - 1)
 
-                # lmax = int(np.ceil(self.L ** (1 / self.K)))  # wavelengths are around kth root of self.L
+
+                # if np.lcm(lmin, lmax) < self.L:
+                #     lmax += 1  # two consecutive numbers are always corpime -> if first one is divided by a given intger, second one isn't
+                # if np.lcm(lmin, lmax) < self.L:
+                #     q = 1
                 #
-                # if self.K >= 2:
-                #     lmax += 1
-                #
-                #     if self.K >= 3:
-                #         lmax += 1
-                #
-                #         if lmax % 2 == 0:  # kth root was even
-                #             lmax += 1
-                #
-                #         if self.K > 3:
-                #             ith = self.K - 3
-                #             lmax = sympy.ntheory.generate.nextprime(lmax, ith)
-                #
-                # if lmin > lmax or lmax - lmin + 1 <= self.K:
-                #     l = lmin + np.arange(self.K)
+                # if lmax <= lmin:
+                #     if lmin >= self.L:
+                #         l = [lmin] * self.K
+                #     else:
+                #         l = [lmin] * (self.K - 1) + [lmin + 1]
                 # else:
-                #     lmax = max(lmin, min(lmax, int(np.ceil(self.L))))  # max in outer condition ensures lmax >= lmin even if L < lmin
-                #     if lmin == lmax and lmax < self.L:
-                #         lmax += 1  # ensures lmin and lmax differ so that lcm(l) >= L
-                #
-                #     n = lmax - lmin + 1
-                #     K = min(self.K, n)  # ensures K <= n
-                #     C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
-                #     combos = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L])
-                #
-                #     # idx = np.argmin(1 / np.sum(1 / combos ** 2, axis=1))
-                #     idx = np.argmax(np.sum(1 / combos ** 2, axis=1))
-                #     l = combos[idx]
-                #
-                #     if idx != 0:
-                #         q = 1
+                #     l = [lmin] * (self.K - 1) + [lmax]
+            elif l == "close":
+                l = int(np.ceil(self.lmin)) + np.arange(self.K)
+                while np.lcm.reduce(l) < self.L:
+                    l += 1
+            elif l == "small":
+                lmin = int(np.ceil(self.lmin))
+                lmax = int(np.ceil(self.L ** (1 / self.K)))  # wavelengths are around kth root of self.L
 
-                    # if K < self.K:
-                    #     l = np.concatenate((l, np.arange(l.max() + 1, l.max() + 1 + self.K - K)))
+                if self.K >= 2:
+                    lmax += 1
+
+                    if self.K >= 3:
+                        lmax += 1
+
+                        if lmax % 2 == 0:  # kth root was even
+                            lmax += 1
+
+                        if self.K > 3:
+                            ith = self.K - 3
+                            lmax = sympy.ntheory.generate.nextprime(lmax, ith)
+
+                if lmin > lmax or lmax - lmin + 1 <= self.K:
+                    l = lmin + np.arange(self.K)
+                else:
+                    lmax = max(lmin, min(lmax, int(np.ceil(
+                        self.L))))  # max in outer condition ensures lmax >= lmin even if L < lmin
+                    if lmin == lmax and lmax < self.L:
+                        lmax += 1  # ensures lmin and lmax differ so that lcm(l) >= L
+
+                    n = lmax - lmin + 1
+                    K = min(self.K, n)  # ensures K <= n
+                    C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
+                    combos = np.array(
+                        [c for c in it.combinations(range(lmin, lmax + 1), K) if np.lcm.reduce(c) >= self.L])
+
+                    # idx = np.argmin(1 / np.sum(1 / combos ** 2, axis=1))
+                    idx = np.argmax(np.sum(1 / combos ** 2, axis=1))
+                    l = combos[idx]
+
+                    if idx != 0:
+                        q = 1
+
+                if K < self.K:
+                    l = np.concatenate((l, np.arange(l.max() + 1, l.max() + 1 + self.K - K)))
             elif l == "exponential":
                 l = np.concatenate(([np.inf], np.geomspace(self.L, self.lmin, self.K - 1)))
             elif l == "linear":
@@ -2052,13 +2055,16 @@ class Fringes:
                     _l = np.minimum(_l, lmin)
 
         if _l.size and not np.array_equal(self._l, _l):
-            self._l = _l  # set l before K
-            self.logger.debug(f"self._l = {str(self.l.round(3)).replace(chr(10), ',')}")
-            self._v = self.L / self._l
-            self.logger.debug(f"self._v = {str(self.v.round(3)).replace(chr(10), ',')}")
+            self._v = self.L / _l  # set v before KF
+            self.logger.debug(f"self.l = {str(self.l.round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self.v = {str(self.v.round(3)).replace(chr(10), ',')}")
             self._UMR = None
-            self.D, self.K = self._l.shape  # set l before K and K before f
+            self.D, self.K = self._v.shape  # set l before K and K before f
             self.f = self._f
+
+    @property
+    def _l(self) -> np.ndarray:  # keep for backwards compatibility with fringes-GUI
+        return self.L / self._v
 
     @property
     def v(self) -> np.ndarray:
@@ -2073,7 +2079,7 @@ class Fringes:
     @v.setter
     def v(self, v: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(v, str):
-            if v == "optimal":
+            if v == "optimal":  # todo: for each d in range(D)
 
 
                 if self.K == 1:
@@ -2092,7 +2098,7 @@ class Fringes:
                         # i[0::2] = 0
                         # i[1::2] = 1
                         # v = np.array([vmax, vmax - 1])[i]  # indices which are alternating between 0 and 1
-                    else:  # todo: self.l = "optimal" ?
+                    else:
                         lmin = int(np.ceil(self.lmin))
                         lmin = self.lmin
 
@@ -2149,9 +2155,8 @@ class Fringes:
 
         if _v.size and not np.array_equal(self._v, _v):
             self._v = _v  # set v before D and K
-            self.logger.debug(f"self._v = {str(self.v.round(3)).replace(chr(10), ',')}")
-            self._l = self.L / self._v
-            self.logger.debug(f"self._l = {str(self.l.round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self.v = {str(self.v.round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self.l = {str(self.l.round(3)).replace(chr(10), ',')}")
             self._UMR = None
             self.D, self.K = self._v.shape  # set l before K and K before f
             self.f = self._f
@@ -2359,10 +2364,8 @@ class Fringes:
             Imaxold = self.Imax
             self._dtype = _dtype
             self.logger.debug(f"{self._dtype = }")
-            self._A = self._A * self.Imax / Imaxold
-            self.logger.debug(f"self._A = {self._A}")
-            self._B = self._B * self.Imax / Imaxold
-            self.logger.debug(f"self._B = {self._B}")
+            self.logger.debug(f"self.A = {self.A}")
+            self.logger.debug(f"self.B = {self.B}")
 
     @property
     def Imax(self) -> int:
@@ -2377,20 +2380,20 @@ class Fringes:
     @property
     def Amax(self):
         """Maximum bias."""
-        return self.Imax - self.B / self.Vmax
+        return self.Imax - self.Amin
 
     @property
     def A(self) -> float:
         """Bias."""
-        return self._A
+        return self.Imax * self.beta
 
     @A.setter
     def A(self, A: float):
         _A = float(min(max(self.Amin, A), self.Amax))
 
-        if self._A != _A and _A != 0:
-            self._A = _A
-            self.logger.debug(f"{self._A = }")
+        if self.A != _A:
+            self.beta = _A / self.Imax
+            self.logger.debug(f"{self.A = }")
 
     @property
     def Bmax(self):
@@ -2400,15 +2403,15 @@ class Fringes:
     @property
     def B(self) -> float:
         """Amplitude."""
-        return self._B
+        return self.A * self.V
 
     @B.setter
     def B(self, B: float):
         _B = float(min(max(0, B), self.Bmax))
 
-        if self._B != _B and _B != 0:
-            self._B = _B
-            self.logger.debug(f"{self._B = }")
+        if self.B != _B:  # and _B != 0:
+            self.V = self.A / _B
+            self.logger.debug(f"{self.B = }")
 
     @property
     def betamax(self):
@@ -2417,32 +2420,37 @@ class Fringes:
     @property
     def beta(self) -> float:
         """Relative bias i.e. relative mean intensity."""
-        return self.A / self.Imax
+        return self._beta
 
     @beta.setter
     def beta(self, beta) -> float:
         _beta = float(min(max(0, beta), self.betamax))
 
-        if self._A != _beta * self.Imax or self.B != _beta * self.Imax * self.V:
-            self.B = _beta * self.Imax * self.V
-            self.A = _beta * self.Imax
+        if self._beta != _beta:
+            self._beta = _beta
+            self.logger.debug(f"{self.beta = }")
 
     @property
     def Vmax(self):
         """Maximum visibility."""
-        return 1 / (self.D * self.K) if self.FDM else 1 / self.D if self.SDM else 1
+        if self.FDM:
+            return 1 / (self.D * self.K)
+        elif self.SDM:
+            return 1 / self.D
+        else:
+            return 1
 
     @property
     def V(self) -> float:
         """Fringe visibility (fringe contrast)."""
-        return self.B / self.A
+        return self._V
 
     @V.setter
     def V(self, V: float):
         _V = float(min(max(0, V), self.Vmax))
 
-        if self._B != _V * self.A:
-            self.B = _V * self.A
+        if self._V != _V:
+            self._V = _V
             self.logger.debug(f"{self.V = }")
 
     @property
@@ -2500,22 +2508,6 @@ class Fringes:
     def shot(self) -> float:
         """Shot noise of digital camera (standard deviation) [DN]."""
         return np.sqrt(self.A / self.gain) if self.gain != 0 else 0  # average intensity is bias
-
-    @property
-    def esat(self) -> float:
-        """Saturation capacity of digital camera (standard deviation) [electrons]."""
-        return self._esat
-
-    @esat.setter
-    def esat(self, esat: float):
-        _esat = float(max(0, esat))
-
-        if _esat == 0:
-            return
-
-        if self._esat != _esat:
-            self._esat = _esat
-            self.logger.debug(f"{self._esat = }")
 
     @property
     def gain(self) -> float:
@@ -2590,7 +2582,7 @@ class Fringes:
 
     # restrict instance attributes to the ones listed here
     # commend the next line out or add "__dict__" to circumvent this
-    __slots__ = tuple("_" + k for k in defaults.keys()) + ("logger", "_UMR", "_t",)
+    __slots__ = tuple("_" + k for k in defaults.keys() if k not in "HMTlAB") + ("logger", "_UMR", "_t",)
 
     # generate glossary
     glossary = {}

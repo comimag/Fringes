@@ -23,7 +23,7 @@ link to  paper, please cite
 - Remapping
 
 ### Background
-Many applications, such as fringe projection[^1] or deflectometry [[1]](#1-burke-2022),
+Many applications, such as fringe projection[^1] or fringe reflection (deflectometry) [[1]](#1-burke-2022),
 require the ability to encode positional data.
 To do this, fringe patterns are used to encode the position on the screen / projector (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.

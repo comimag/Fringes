@@ -19,7 +19,7 @@ def test_version():
 def test_property_docs():
     f = Fringes()
     for p in dir(f):
-        if isinstance(getattr(type(f), p, None), property):  # todo
+        if isinstance(getattr(type(f), p, None), property) and getattr(type(f), p, None).fset is not None:
             assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring defined."
 
 
@@ -40,7 +40,7 @@ def test_init():
             assert np.array_equal(v, f.defaults[k]) or \
                    f"'{k}' got overwritten by interdependencies. Choose consistent default values in initialization."
 
-    for k in "Nlvf":
+    for k in "Nvf":
         assert getattr(f, f"_{k}").shape == (f.D, f.K), f"Set parameter {k} hasn't shape ({f.D}, {f.K})."
 
 
@@ -217,7 +217,7 @@ def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
     else:  # fast (fallback)
         w = np.ones((f.D, f.K), dtype=np.int_)
         idx = [np.argmax(1 / f._v[d] * (f._N[d] > 2) * (f._v[d] > 0)) for d in range(f.D)]  # the set with the least number of periods
-    fid = f.coordinates() // np.array([f._l[d, idx[d]] for d in range(f.D)])[:, None, None, None]
+    fid = f.coordinates() // np.array([f.L / f._v[d, idx[d]] for d in range(f.D)])[:, None, None, None]
     #assert np.allclose(dec.orders[[d * f.K + idx[d] for d in range(f.D)]], fid, atol=0), "Errors in fringe orders."
 
 
@@ -249,7 +249,6 @@ def test_alpha():
     f.alpha = 1.1
 
     I = f.encode()
-    # todo: add noise to I
     dec = f.decode(I)
 
     d = dec.registration - f.coordinates()
@@ -281,6 +280,19 @@ def test_dtypes():
 #         assert np.allclose(d, 0, atol=0.1), f"Registration is off more than 0.1 for grid '{f.grid}'."  # todo: fix grids
 #
 #         # todo: test angles
+
+def test_modes():
+    f = Fringes(Y=10)
+
+    I = f.encode()
+
+    for mode in f._modes:
+        f.mode = mode
+
+        dec = f.decode(I)
+
+        d = dec.registration - f.coordinates()
+        assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
 
 
 # def test_scaling():
@@ -460,66 +472,29 @@ def test_FDM():
 
 
 if __name__ == "__main__":
-    # pytest.main()
+    pytest.main()
     # subprocess.run(['pytest', '--tb=short', str(__file__)])
 
-    f = Fringes(X=1)
+    import matplotlib.pyplot as plt
+    import numpy as np
 
-    f.lmin = 4
-    f.l = 4.1, 5.1
-    UMR = f.UMR
-
-    f.X = 7680
-    f.Y = 1
-    f.lmin = 7
-    f.K = 3
-    K = f.K
-    l = np.zeros((f.X + 1, K))
-    UMR = np.zeros((f.X + 1, K))
-    for x in range(f.X + 1):
-        print(x)
-        f.K = K
-        f.X = x
-        f.l = "optimal"
-        l[x, :len(f.l)] = f.l
-        UMR[x] = f.UMR
-        print(f.l)
-        print(f.UMR)
-        print("---")
-        a = 1
-
+    L = 1000
+    v = int(np.sqrt(L))
+    Imax = 255
+    x = np.linspace(0, 1, L)[:, None]
+    beta = np.linspace(0, 1, L)[None, :]
+    V = np.linspace(1, 0, L)[:, None]
+    mask = beta <= 1 / (1 + V)
+    gamma = 1
+    o = np.pi
+    k = 2 * np.pi * v
+    I = Imax * beta * (1 + V * np.cos(k * x - np.pi))
+    I = Imax * (beta * (1 + V * np.cos(k * x - o))) ** gamma
+    I[~ mask] = Imax
     import matplotlib.pyplot as plt
     plt.figure()
-    plt.grid(True)
-
-    plt.plot(range(len(l)), l[:, 0], "r")
-    plt.plot(range(len(l)), l[:, 1], "g")
-    if f.K >= 3:
-        plt.plot(range(len(l)), l[:, 2], "b")
-        if f.K >= 4:
-            plt.plot(range(len(l)), l[:, 3], "c")
-            if f.K >= 5:
-                plt.plot(range(len(l)), l[:, 4], "m")
-    plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k")
-
-
-    plt.figure()
-    plt.plot(range(len(l)), UMR, ".")
-    plt.plot(range(len(l)), range(len(l)), "k")
-    plt.grid(True)
-
+    plt.imshow(I, cmap="gray")
+    # plt.scatter(0.5 * L, (1 - 0.5) * L, c='red')
+    plt.xlabel("beta")
+    plt.ylabel("visibility")
     plt.show()
-
-    # speed test
-    # f.logger.setLevel("DEBUG")
-    # f.Y = 1000
-    # f.X = 1300
-    # f.v = [[1, 5], [1, 3]]
-    # I = f.encode()
-    # dec = f.decode(I)
-
-    # e = f._error()
-
-    # averaging
-    # f.h = "rg"
-    # M = f.M

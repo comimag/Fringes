@@ -67,7 +67,7 @@ def decode(
     D, K = N.shape
     assert R.size == D, "Screen length must be given for each direction."
 
-    L = max(R) * a
+    L = R.max() * a
     l = L / v  # lambda i.e. period lengths in [px]
 
     # precomputations for later use in for-loops
@@ -113,10 +113,9 @@ def decode(
     # (this only accelerates if break criterion is used and reached)
     scale = R / L
     vmax = [int(np.ceil(v[d, idx[d]] * scale[d])) for d in range(D)]  # max number periods of v[:, idx] in each direction
-    vmax = max(vmax)
     # vi = [[(vmax[d] - 1) // 2 + [-1, +1][i % 2] * ((i + 1) // 2) for i in range(vmax[d])] for d in range(D)]  # indices for traversing v from the center outwards
     # vi = [[(vmax[d] + [~i, i][i % 2]) // 2 for i in range(vmax[d])] for d in range(D)]  # indices for traversing v from the center outwards
-    vi = [[(vmax + [~i, i][i % 2]) // 2 for i in range(vmax)] for d in range(D)]
+    vi = [np.array([(vmax[d] + [~i, i][i % 2]) // 2 for i in range(vmax[d])]) for d in range(D)]
 
     # starting value for TPU solver based on maximum length R[d] and Popoviciu's inequality on variances
     varmax = (R / 2) ** 2  # Popoviciu's inequality on variances
