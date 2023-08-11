@@ -11,7 +11,7 @@ def img(Y: int = 720, X: int = 720, a: float = 0):
 def cart(Y: int = 720, X: int = 720, a: float = 0):
     x = np.linspace(-(X - 1) / 2, (X - 1) / 2, X, endpoint=True)
     y = np.linspace((Y - 1) / 2, -(Y - 1) / 2, Y, endpoint=True)
-    xx, yy = np.meshgrid(x, y)
+    xx, yy = np.meshgrid(x, y, sparse=True)  # todo: sparse=False (default)
     return rot(xx, yy, a)
 
 

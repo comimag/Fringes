@@ -15,8 +15,8 @@ def vshape(I: np.ndarray) -> np.ndarray:
     """Standardizes the input data shape.
     Transforms video data of arbitrary shape and dimensionality into the standardized shape (T, Y, X, C), where
     T is number of frames, Y is height, X is width, and C is number of color channels.
-    Ensures that the array becomes 4-dimensional and that the size of the last dimension is one of the allowed ones.
-    """
+    Ensures that the array becomes 4-dimensional and that the size of the last dimension is in {1, 3, 4}.
+    To do this, leading dimensions may be flattened."""
 
     assert isinstance(I, np.ndarray)
     assert I.ndim > 0
@@ -51,8 +51,20 @@ def vshape(I: np.ndarray) -> np.ndarray:
     return I.reshape(T, Y, X, C)
 
 
+def circular_distance(a: np.ndarray, b: np.ndarray, c: float) -> np.ndarray:
+    """Shortest circular distance from a to b.
+    param a: start point
+    param b: end point
+    param c: circumference (distance) after which wrapping occurs
+    from: https://ieeexplore.ieee.org/document/9771407"""
+
+    d = c / 2 - np.abs(c / 2 - (a - b))  # todo: check
+
+    return d
+
+
 def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: test
-    """Local curvature map by deriving a slope map."""
+    """Local curvature map by differentiating a slope map."""
 
     T, Y, X, C = vshape(reg).shape
     reg = reg.reshape(T, Y, X, C)  # returns a view
@@ -73,10 +85,8 @@ def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo:
 
 
 def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
-    """
-    Local height map by dual local integration via an inverse laplace filter [[19]](#19).\
-    Think of it as a relief, where height is only relative to the local neighborhood.
-    """
+    """Local height map by iterative local integration via an inverse laplace filter.
+    Think of it as a relief, where height is only relative to the local neighborhood."""
 
     k = np.array([[0, 1, 0],
                   [1, 0, 1],
@@ -146,24 +156,10 @@ def median(img: np.ndarray, k: int = 3) -> np.ndarray:  # todo: test
     return out
 
 
-# def none2ndarray(func):
-#     def call(*args, **kwargs):
-#         if "mod" in kwargs and kwargs["mod"] is None:
-#             kwargs["mod"] = np.ones(1)
-#         elif len(args) > 1 and args[1] is None:
-#             args_new = list(args)
-#             args_new[1] = np.ones(1)
-#             args = tuple(args_new)
-#         return func(*args, **kwargs)
-#     return call
-#
-#
-# @none2ndarray
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 def remap(
         reg: np.ndarray,
         mod: np.ndarray = np.ones(1),
-        modmin: float = 0,
         scale: float = 1,
         Y: int = 0,
         X: int = 0,
@@ -200,12 +196,12 @@ def remap(
         scale = 1
 
     if Y <= 0:
-        Y = max(1, int(np.nanmax(reg[1]) * scale + .5))  # todo: mod > modmin
+        Y = max(1, int(np.nanmax(reg[1]) * scale + .5))
     else:
         Y = int(Y * scale + 0.5)
 
     if X <= 0:
-        X = max(1, int(np.nanmax(reg[0]) * scale + .5))  # todo: mod > modmin
+        X = max(1, int(np.nanmax(reg[0]) * scale + .5))
     else:
         X = int(X * scale + 0.5)
 
@@ -233,7 +229,7 @@ def remap(
                                 for k in nb.prange(K):
                                     if mod.ndim > 1:
                                         m = mod[k, yc, xc, c]
-                                        if not np.isnan(m) and m >= modmin:
+                                        if not np.isnan(m):
                                             src[ys, xs, c] += m
                                     else:
                                         src[ys, xs, c] += 1
@@ -244,6 +240,17 @@ def remap(
             src /= mx
 
     return src
+
+
+#@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+def filter(combos, K, L, lmin):
+    kroot = L ** (1 / K)
+    if lmin <= kroot:
+        lcombos = np.array([l for l in combos if np.any(l > kroot) and np.lcm.reduce(l) >= L])
+    else:
+        lcombos = np.array([l for l in combos if np.lcm.reduce(l) >= L])
+
+    return lcombos
 
 
 def coprime(n: list[int] | tuple[int] | np.ndarray) -> bool:  # n: iterable  # todo: extend to rational numbers
@@ -277,83 +284,6 @@ def coprime2(n: list[int] | tuple[int]) -> bool:
             if np.lcm.reduce(n) == np.prod(n):
                 return True
     return False
-
-
-def close(K: int, L: int, lmin: int) -> np.ndarray:
-    if K == 1:
-        l = np.array([max(lmin, L)])
-    elif K == 2:  # 2 consecutive integers are always coprime
-        r = max(lmin, int(np.sqrt(L) + 0.5))  # round(root)
-        l = np.array([r, r + 1])
-    else:
-        l = lmin + np.arange(K)
-        while (np.lcm.reduce(l)) < L:
-            l += 1
-
-        # lmax = int(L ** (1 / K) + 0.5)  # wavelengths are around self.L ** (1 / self.K)
-        # p = np.array([lmax])
-        # if K >= 2:
-        #     lmax += 1
-        #     p = np.append(p, p + 1)
-        #     if K > 2:
-        #         ith = K - 2
-        #         lmax = sympy.ntheory.generate.nextprime(lmax, ith)
-        #         p = np.append(p, -1)
-        #
-        # r = lmax - lmin - Kclip
-        # l2 = lmin + np.arange(Kclip)
-        # for _ in range(r):
-        #     umr = np.lcm.reduce(l2)
-        #     if umr < L:
-        #         l2 += 1
-        #     else:
-        #         break
-    return l
-
-
-def small(K: int, L: int, lmin: int) -> np.ndarray:
-    lclose = close(K, L, lmin)
-    summax = np.sum(lclose)
-    # lmax = max(lmin + K, summax - (K - 1) * lmin - (K - 1) * (K - 2) // 2)
-    lmax = max(lmin + K - 1, summax - (K - 1) * lmin - (K - 1) * (K - 2) // 2)  # max() because if K == 2 -> lmax = 0
-    n = lmax - lmin + 1  # number of things, is always > K
-    C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
-
-    combos = np.array([c for c in it.combinations(range(lmin, lmax + 1), K) if np.sum(c) <= summax and np.lcm.reduce(c) >= L])
-
-    l = combos[0]
-    mn = np.sum(l)
-    summin = K * lmin + K * (K - 1) // 2
-    for c in combos[1:]:
-        sum = np.sum(c)  # np.max(c)
-
-        if sum == mn:
-            if np.sum(c ** 2) < np.sum(l ** 2):  # take set with the smallest wavelength; todo: necessary? smallest squared wavelength?
-                l = c
-            elif np.sum(c ** 2) == np.sum(l ** 2):
-                # print("==1")
-                pass
-        elif sum < mn:
-            mn = sum
-            l = c
-
-        if sum <= summin:
-            break
-    return l
-
-
-def exponential(L: int, lmin: int, F: int = 2) -> np.ndarray:
-    # log(L) - log(lmin) = log(L / lmin) = log(vmax)
-    Kexp = int(np.ceil(np.log(L / lmin) / np.log(F))) + 1  # Number of sets required for hierarchical (temporal) phase unwrapping using the reversed exponential sequence approach.
-    l = np.ones(Kexp) * lmin * F ** np.arange(0, Kexp)
-
-    # todo: do upper and lower formula generate the same results?
-
-    # geometrical progression factor F should be an irrational number to minimize the number of sets required
-    l2 = np.array([lmin])
-    while umr(tuple(l2), tuple(L / l2)) < L:
-        l2.append(l2[-1] * F)
-    return l
 
 
 if __name__ == "__main__":

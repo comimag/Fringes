@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Fringes"
-version = "0.1.7"
+version = "0.2.0"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 license = "CC-BY-NC-SA-4.0"
 authors = ["Christian Kludt"]
@@ -11,11 +11,11 @@ keywords = ["phase shifting", "fringe analysis", "fringe projection", "deflectom
 [tool.poetry.dependencies]
 python = "^3.9,<3.12"
 numpy = "^1.23.5"
-numba = "^0.56.4"
+numba = "^0.57.1"
 scipy = "^1.10.0"
 sympy = "^1.11.1"
 si-prefix = "^1.2.2"
-scikit-image = "^0.19.3"
+scikit-image = "^0.21.0"
 opencv-contrib-python = "^4.7.0"
 pyyaml = "^6.0"
 toml = "^0.10.2"

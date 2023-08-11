@@ -4,7 +4,8 @@ import numba as nb
 PI2 = 2 * np.pi
 
 
-@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+# @nb.jit(nb.float64(nb.float64, nb.float64, nb.float64), cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64), cache=True, nopython=True, nogil=True, fastmath=True)
 def circ_dist(a, b, c) -> float:
     """
     Shortest circular distance from a to b.
@@ -51,11 +52,11 @@ def decode(
     v: np.ndarray,
     f: np.ndarray,
     R: np.ndarray,  # range
-    a: float = 1,  # alpha
+    alpha: float = 1,  # alpha
     o: float = np.pi,
     r: float = 0,
     mode: bool = True,
-    Vmin: float = 0.0,  # 10 / 255  # min fringe contrast i.e. min visibility (can accelerate unwrapping)
+    umin: float = 0.0,  # minium uncertainty (can accelerate unwrapping)
     verbose: bool = False,
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     """Decoding."""
@@ -70,11 +71,11 @@ def decode(
     D, K = N.shape
     assert R.size == D, "Screen length must be given for each direction."
 
-    L = R.max() * a
+    L = R.max() * alpha
     l = L / v  # lambda i.e. period lengths in [px]
 
     # precomputations for later use in for-loops
-    Nmax = np.max(N)
+    Nmax = N.max()
     sin = np.empty((D, K, Nmax))  # phase shift factors
     cos = np.empty((D, K, Nmax))  # phase shift factors
     for d in range(D):
@@ -94,13 +95,13 @@ def decode(
     KN1 = [[k for k in range(K) if N[d, k] == 1] for d in range(D)]  # k-indices where N == 1
     KN2 = [[k for k in range(K) if N[d, k] == 2] for d in range(D)]  # k-indices where N == 2
     KN3 = [[k for k in range(K) if N[d, k] >= 3] for d in range(D)]  # k-indices where N >= 3
-    EN1 = [np.sum(Nd[Nd == 1]) for Nd in N]  # number of sets where N == 1
+    EN1 = [np.sum(Nd[Nd == 1]) for Nd in N]  # sum of shifts where N == 1
     EN11 = [np.sum(Nd[Nd == 1]) + 1 for Nd in N]  # EN1 plus one, since we compare all shifts with N == 1 to one with N >= 3
-    EN3 = [np.sum(Nd[Nd >= 3]) for Nd in N]  # number of sets where N >= 3
+    EN3 = [np.sum(Nd[Nd >= 3]) for Nd in N]  # sum of shifts where N >= 3
 
     # choose that v from which the other fringe orders of the remaining sets are derived
     if mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
-        w = N * v ** 2  # weights of phase measurements are their inverse variances (must be multiplied with B later on)
+        w = N * v ** 2  # weights of phase measurements are their inverse variances (must be multiplied with B ** 2 later on)
         idx = [np.argmax(w[d] * (N[d] > 2) * (v[d] > 0)) for d in range(D)]  # the set with most precise phases
     # elif mode == "robust":  # todo: "exhaustive"?
     #     NotImplemented  # todo: try neighboring fringe orders / all permutations = exhaustive search?
@@ -113,10 +114,10 @@ def decode(
     # -> try central fringe orders first and move outwards
     # (this only accelerates if break criterion is used and reached)
     scale = R / L
-    vmax = [int(np.ceil(v[d, idx[d]] * scale[d])) for d in range(D)]  # max number periods of v[:, idx] in each direction
-    # vi = [[(vmax[d] - 1) // 2 + [-1, +1][i % 2] * ((i + 1) // 2) for i in range(vmax[d])] for d in range(D)]  # indices for traversing v from the center outwards
-    # vi = [[(vmax[d] + [~i, i][i % 2]) // 2 for i in range(vmax[d])] for d in range(D)]  # indices for traversing v from the center outwards
-    vi = [np.array([(vmax[d] + [~i, i][i % 2]) // 2 for i in range(vmax[d])]) for d in range(D)]
+    imax = [int(np.ceil(v[d, idx[d]] * scale[d])) for d in range(D)]  # max number fringe orders
+    # mi = [[(imax[d] - 1) // 2 + [-1, +1][i % 2] * ((i + 1) // 2) for i in range(imax[d])] for d in range(D)]  # indices for traversing v from the center outwards
+    # mi = [[(imax[d] + [~i, i][i % 2]) // 2 for i in range(imax[d])] for d in range(D)]  # indices for traversing v from the center outwards
+    mi = [np.array([(imax[d] + [~i, i][i % 2]) // 2 for i in range(imax[d])]) for d in range(D)]  # possible fringe orders
 
     # starting value for TPU solver based on maximum length R[d] and Popoviciu's inequality on variances
     varmax = (R / 2) ** 2  # Popoviciu's inequality on variances
@@ -142,39 +143,51 @@ def decode(
         for y in nb.prange(Y):
             for c in range(C):
                 for d in range(D):
-
                     # temporal demodulation
                     A = 0
                     B = np.empty(K)
                     p = np.empty(K)
 
-                    for k in KN3[d]:  # where N >= 3
-                        re = 0
-                        im = 0
-                        for n, t in enumerate(range(ti[d, k], ti[d, k + 1])):
-                            A += I[t, y, x, c]
-                            re += I[t, y, x, c] * cos[d, k, n]
-                            im += I[t, y, x, c] * sin[d, k, n]
-                        B[k] = np.sqrt(re ** 2 + im ** 2) / N[d, k] * 2  # factor of two because we also have to add the amplitudes of the frequencies with opposite sign
-                        p[k] = np.arctan2(im, re)  # arctan maps to [-PI, PI]
-                    A /= EN3[d]
+                    if EN3[d] == ti[d, -1]:
+                        for k in range(K):
+                            re = 0
+                            im = 0
+                            for n, t in enumerate(range(ti[d, k], ti[d, k + 1])):
+                                A += I[t, y, x, c]
+                                re += I[t, y, x, c] * cos[d, k, n]
+                                im += I[t, y, x, c] * sin[d, k, n]
+                            B[k] = np.sqrt(re ** 2 + im ** 2) / N[
+                                d, k] * 2  # factor of two because we also have to add the amplitudes of the frequencies with opposite sign
+                            p[k] = np.arctan2(im, re)  # arctan maps to [-PI, PI]
+                        A /= ti[d, -1]  # i.e. np.sum(N[d, :])
+                    else:
+                        for k in KN3[d]:  # where N >= 3
+                            re = 0
+                            im = 0
+                            for n, t in enumerate(range(ti[d, k], ti[d, k + 1])):
+                                A += I[t, y, x, c]
+                                re += I[t, y, x, c] * cos[d, k, n]
+                                im += I[t, y, x, c] * sin[d, k, n]
+                            B[k] = np.sqrt(re ** 2 + im ** 2) / N[d, k] * 2  # factor of two because we also have to add the amplitudes of the frequencies with opposite sign
+                            p[k] = np.arctan2(im, re)  # arctan maps to [-PI, PI]
+                        A /= EN3[d]
 
-                    for k in KN2[d]:  # where N == 2
-                        t1 = ti[d, k]
-                        t2 = ti[d, k] + 1
-                        re = I[t1, y, x, c] - A
-                        im = I[t2, y, x, c] - A
-                        B[k] = np.sqrt(re ** 2 + im ** 2)  # / N[d, k] * 2 is obsolete because == 1
-                        p[k] = np.arctan2(im, re)  # arctan maps to [-PI, PI]
+                        for k in KN2[d]:  # where N == 2
+                            t1 = ti[d, k]
+                            t2 = ti[d, k] + 1
+                            re = I[t1, y, x, c] - A
+                            im = I[t2, y, x, c] - A
+                            B[k] = np.sqrt(re ** 2 + im ** 2)  # / N[d, k] * 2 is obsolete because == 1
+                            p[k] = np.arctan2(im, re)  # arctan maps to [-PI, PI]
 
-                    if EN1[d]:  # if 1 in N
-                        m_avg = np.mean(B[N[d] >= 2])
-                        for k in KN1[d]:  # where N == 1
-                            t = ti[d, k]
-                            # arg = min(max(-1, (I[t, y, x, c] - A) / m_avg), 1)  # todo: clipping necessary?
-                            arg = (I[t, y, x, c] - A) / m_avg
-                            B[k] = np.nan
-                            p[k] = np.arccos(arg)  # arccos maps [-1, 1] to [0, PI]
+                        if EN1[d]:  # if 1 in N
+                            m_avg = np.mean(B[N[d] >= 2])
+                            for k in KN1[d]:  # where N == 1
+                                t = ti[d, k]
+                                # arg = min(max(-1, (I[t, y, x, c] - A) / m_avg), 1)  # todo: clipping necessary?
+                                arg = (I[t, y, x, c] - A) / m_avg
+                                B[k] = np.nan
+                                p[k] = np.arccos(arg)  # arccos maps [-1, 1] to [0, PI]
 
                     bri[d, y, x, c] = A
                     mod[d, :, y, x, c] = B
@@ -207,29 +220,20 @@ def decode(
                                 # todo: residuals are to be received from SPU (spatial phase unwrapping)
                                 fid[d, 0, y, x, c] = np.nan  # unknown
                     else:  # K > 1: temporal phase unwrapping
-                        if False:    # todo
-                            # cw = np.empty(K)  # fringe visibility (fringe contrast) squared for multiplying into weights
-                            #                         # for k in range(K):  # softmax?
-                            #                         #     if B[k] > 2 * A[k]:
-                            #                         #         cm[k] = 0
-                            #                         #     elif B[k] > A[k]:
-                            #                         #         cw[k] = np.sqrt(2 - B[k])  # (2 - B[k]) ** (1 / p)  # 1
-                            #                         #     else:
-                            #                         #         cw[k] = (B[k] / A[k]) ** 2
-                            v = A / B  # dim K ?!
-                            mask = v < Vmin or B > A or np.isnan(B)  # check for sufficient modulation i.e. fringe contrast
-                            # todo: if umr(v[mask]) < R -> SPU
-                            #     reg[d, y, x, c] = np.nan
-                            # if verbose:
-                            #   pass  # residuals are to be received from SPU (spatial phase unwrapping)
+                        if B[k] > A:  # theoretically not possible
+                            pass
+
+                        #xi = np.arctan2()
+
+                        if False:
                             continue
                         else:
                             mn = ssdmax[d] + 0  # adding zero creates a copy
                             pn = (p % PI2 + o) / PI2  # change codomain from [-PI, PI] to [-0.5, 0.5) and revert offset -> normalized phi
                             # pn = (p + o) / PI2  # change codomain from [-PI, PI] to [-0.5, 0.5] and revert offset -> normalized phi
                             pn = (p % PI2 + o) / PI2 % 1
-                            for i in vi[d]:  # fringe orders of fringe set 'idx'  # todo: start from fringe order given by CRT: move those to the beginning of vi
-                                xi = (i + pn[idx[d]]) * l[d, idx[d]]  # position for phase and i-th fringe order
+                            for m in mi[d]:  # fringe orders of fringe set 'idx'  # todo: start from fringe order given by CRT: move those to the beginning of mi
+                                xi = (m + pn[idx[d]]) * l[d, idx[d]]  # position for phase and m-th fringe order
                                 sum = xi
                                 ssd = xi ** 2  # sum of squared distances
 
@@ -254,7 +258,7 @@ def decode(
                                     mn = ssd
                                     avg = sum / K
                                     if verbose:
-                                        fid[d, idx[d], y, x, c] = i
+                                        fid[d, idx[d], y, x, c] = m
                                         for k in Ki[d]:  # indices of v without idx
                                             fid[d, k, y, x, c] = int(xi / l[d, k] - pn[k] + 0.5)  # fringe order of k-th fringe set  # todo: also try neighboring fringe orders (if phase is close to them ~ phimax / 2)
 
@@ -268,7 +272,7 @@ def decode(
                                         mn = ssd2
                                         avg = sum2 / EN11[d]
                                         if verbose:
-                                            fid[d, idx[d], y, x, c] = i
+                                            fid[d, idx[d], y, x, c] = m
                                             for k in Ki[d]:  # indices of v without idx
                                                 fid[d, k, y, x, c] = int(xi / l[d, k] - pn[k] + 0.5)  # fringe order of k-th fringe set  # todo: also try neighboring fringe orders (if phase is close to them ~ phimax / 2)
 
@@ -284,5 +288,19 @@ def decode(
                                 reg[d, y, x, c] = avg
                                 if verbose:
                                     res[d, y, x, c] = np.sqrt(mn / K)  # ssd (sum of squared distances) -> std
+
+                            if verbose:
+                                wk = N[d] ** 2 * v[d] ** 2 * B ** 2  # weights are inverse variances
+                                wk /= np.sum(wk)
+                                xk = p + fid[d, :, y, x, c] * l[d]
+                                x = np.dot(wk, xk)
+                                reg[d, y, x, c] = x
+
+    if verbose:
+        V = bri[:, None, :, :, :] / mod
+        if D == 2:
+            dir = mod[0] / mod[1]
+        else:
+            dir = np.full_like(mod, np.nan)
 
     return phi.reshape(-1, Y, X, C), bri, mod.reshape(-1, Y, X, C), reg, res, fid.reshape(-1, Y, X, C)

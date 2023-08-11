@@ -1,8 +1,7 @@
 # Fringes
 Author: Christian Kludt
 
-[//]: # (![Parameter Interdependencies]&#40;docs/spirals.png&#41;)
-<img src="docs/du-bist-ein-wildschwein.gif?raw=True">
+<img src="docs/shift.gif" width="256"/>
 
 ## Description
 This package provides the handy `Fringes` class which handles all the required parameters
@@ -15,7 +14,7 @@ link to  paper, please cite
 ### Features
 
 - Generalized Temporal Phase Unwrappting (GTPU)
-- Uncertainty Propagation
+- Noise model and Uncertainty Propagation
 - Optimal Coding Strategy
 - Deinterlacing
 - Multiplexing
@@ -23,62 +22,100 @@ link to  paper, please cite
 - Remapping
 
 ### Background
-Many applications, such as fringe projection[^1] or fringe reflection (deflectometry) [[1]](#1-burke-2022),
+Many applications, such as fringe projection [[1]](#1) or fringe reflection (deflectometry) [[2]](#2),
 require the ability to encode positional data.
-To do this, fringe patterns are used to encode the position on the screen / projector (in pixel coordinates)
+To do this, sinusoidal fringe patterns are used to encode the position on the screen (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.
 
---- FIGURE coding ---
+![Coding Scheme](docs/coding-scheme.gif?raw=True)\
+Figure 1: Phase Shifting Coding Scheme.
 
-```
-I = A + B * cos(2πvξ/L - 2πft - φ₀)
-  = A + B * cos(kx - wt - φ₀)
-  = A + B * cos(Φ)
-```
-
-- **Encoding**
-  - **Spatial Modulation**\
-The x- resp. y-coordinate `ξ` of the screen/projector is normalized into the range `[0, 1)`
-by dividing through the maximum coordinate `L`
-and used to modulate the luminance in a sinusoidal fringe pattern `I`
+- #### Encoding
+  - #### Spatial Modulation
+    The x- resp. y-coordinate `ξ` of the screen is normalized into the range `[0, 1)`
+by dividing through the maximum coordinate `L`\
+<code> x = ξ/L &isin; [0, 1)</code>\
+and used to modulate the radiance in a sinusoidal fringe pattern `I`
 with offset `A`, amplitude `B` and spatial frequency `v`.
-  - **Temporal Modulation**\
-The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each.
-An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.
-- **Decoding**
-  - **Temporal Demodulation**\
-From these shifts, the phase map `φ` is determined [[13]](#13-burke-2012). Due to the trigonometric functions used,
-the global phase `Φ` is wrapped into the interval <code>[0, 2 &pi;]</code> with `v` periods:
-<code>φ &equiv; Φ mod 2&pi;</code>.
-  - **Spatial Demodulation / Phase Unwrapping**\
-If only one set with spatial frequency <code>v &le; 1</code> is used,
+An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.\
+`I = A + B * cos(2πvx - φ₀)`
+  - #### Temporal Modulation
+    The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each:\
+`t = n / N` with <code>n &isin; {0, 1, ..., N - 1} &isin; &#8469;</code>\
+`I = A + B * cos(2πvx - 2πft - φ₀)`
+- #### Decoding
+  - #### Temporal Demodulation
+    From these shifts, the phase map `φ` is determined [[3]](#3). Due to the trigonometric functions used,
+the global phase `Φ` is wrapped into the interval <code>[0, 2 &pi;]</code> with `v` periods:\
+<code>φ &equiv; Φ mod 2&pi;</code> with `Φ = kx - φ₀`.
+  - #### Spatial Demodulation (Phase Unwrapping)
+    If only one set with spatial frequency <code>v &le; 1</code> is used,
 no unwrapping is required because one period covers the complete coding range.
-Hence, the coordinates `ξ` are computed directly by scaling: <code>ξ = φ / (2&pi;) * L / v</code>.
+Hence, the coordinate `ξ` is computed directly by scaling: <code>ξ = φ / (2&pi;) * L / v</code>.
 This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
 and contains the information where each camera pixel, i.e. each camera sightray, was looking at
 during the fringe pattern acquisition.
 Note that in contrast to binary coding schemes, e.g. Gray code,
-the coordinates are obtained with sub-pixel precision.
-    - **Temporal Phase Unwrapping (TPU)**\
-If multiple sets with different spatial frequencies `v` are used
-and the [unambiguous measurement range](#quality-metrics) is larger than the coding range <code>UMR &ge; L</code>,
+the coordinate is obtained with sub-pixel precision.
+    - #### Temporal Phase Unwrapping (TPU)
+        If multiple sets with different spatial frequencies `v` are used
+and the unambiguous measurement range is larger than the coding range, i.e. <code>UMR &ge; L</code>,
 the ambiguity of the phase map is resolved by
-generalized multi-frequency temporal phase unwrapping (GTPU) [[14]](#14-kludt-2024).
-    - **Spatial Phase Unwrapping (SPU)**\
-However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`, the ambiguous phase `φ`
-is unwrapped analyzing the neighbouring phase values [[15]](#15-herráez-2002) [[16]](#16-lei-2015).
+generalized multi-frequency temporal phase unwrapping (GTPU).
+    - #### Spatial Phase Unwrapping (SPU)
+        However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`, the ambiguous phase `φ`
+is unwrapped analyzing the neighbouring phase values [[4]](#4), [[5]](#5).
 This only yields a relative phase map, therefore absolute positions are unknown.
+    - #### Single Sideband Demodulation
+        If only one frame with `v >> 1` is used,
+[[6]](#6)
+the pattern is Fourier-transformed and processed in its spatial frequency domain as well as in its space-signal domain.
+There is no requirement for unwrapping, because 
+Again, this only yields a relative phase map, therefore absolute positions are unknown.
+
+In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
+are replaced by the maximal possible gray value `Imax`
+and the relative quantities exposure (relative average intensity) `β` and visibilty (relative fringe contrast) `V`
+[[7]](#7):
+
+```
+I = A + B * cos(Φ) = Imax * β * (1 + V * cos(Φ))
+```
+
+The two parameters `β` and `V` describe the phase shifting signal `I`
+independently of the value range of the light source or camera.
+Both lie within the interval `[0, 1]` with the additional condition <code>β &le; 1 / (1 + V)</code>;
+else, the radiance of the light source would be higher than the maximal possible value `Imax`.
+Therefore, the valid values are limited for <code>β &ge; 0.5 </code>.
+The optimal fringe contrast is achieved for `β = 0.5` and `V = 1`. 
+
+<img src="docs/codomain.png" width="480"/>\
+Figure 2: Fringe pattern as a function of `β` and `V`.
+
+The advantage of this representation is the normalization of the descriptive parameters `β` and `V`
+and thereby the separation of additive and multiplicative influences.
+
+The exposure `β` is affected by additional, constant light (not modulating the signal):
+- the maximum brightness of the light source,
+- the exposure time and the aperture setting of the camera,
+- the absorption of optical elements (e.g. filters).
+
+The visibility `V` of the fringes is influenced by:
+- the maximum contrast of the light source,
+- the modulation transfer function of the optical elements (e.g. the scattering characteristics of the test object),
+- the depth of field and defocus,
+- the resolution of the camera
+(the camera pixel size projected onto the light source acts as a low pass filter, reducing the modulation of the signal).
 
 ## Contents
 - [Installation](#installation)
 - [Usage](#usage)
 - [Graphical User Interface](#graphical-user-interface)
-- [Attributes](#attributes)
-- [Methods](#methods)
 - [Optimal Coding Strategy](#optimal-coding-strategy)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 - [Project Status](#project-status)
+- [References](#references)
 
 ## Installation
 You can install `fringes` directly from [PyPi](https://pypi.org/) via `pip`:
@@ -88,105 +125,53 @@ pip install fringes
 ```
 
 ## Usage
-You instantiate and deploy the `Fringes` class:
+You instantiate, parameterize and deploy the `Fringes` class:
 
 ```python
-import fringes as frng
+import fringes as frng      # import module
 
-f = frng.Fringes()      # instanciate class
-```
+f = frng.Fringes()          # instantiate class
+f.logger.setLevel("DEBUG")  # set logging level
 
-For creating the fringe pattern sequence `I`, use the method `encode()`.
-It will return a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
-in [videoshape](#video-shape) (frames, width, height, color channels).
-
-```python
-I = f.encode()          # encode fringe patterns
-```
-
-For analyzing (recorded) fringe patterns, use the method `decode()`.
-It will return a [namedtuple](https://docs.python.org/3/library/collections.html#collections.namedtuple), 
-containing the Numpy arrays brightness `A`, modulation `B` and the coordinates `ξ`,
-all in [videoshape](#video-shape).
-
-```python
-A, B, xi = f.decode(I)  # decode fringe patterns
-```
-
-All parameters are accesible by the respective attributes of the `Fringes` class.
-
-```python
-f.X = 1920              # set width of the fringe patterns
-f.Y = 1080              # set height of the fringe patterns
-f.K = 2                 # set number of sets
-f.N = 4                 # set number of shifts
-f.v = [9, 10]           # set spatial frequenciesf.T                     # get the number of frames
-```
-
-A glossary of them is obtained by the class attribute `glossary`.
-
-```python
-frng.Fringes.glossary   # get glossary
+f.glossary                  # get glossary
+f.X = 1920                  # set width of the fringe patterns
+f.Y = 1080                  # set height of the fringe patterns
+f.K = 2                     # set number of sets
+f.N = 4                     # set number of shifts
+f.v = [9, 10]               # set spatial frequencies
+f.T                         # get number of frames
+                            
+I = f.encode()              # encode fringe patterns
+A, B, xi = f.decode(I)      # decode fringe patterns
 ```
 
 You can change the [logging level](https://docs.python.org/3/library/logging.html#levels) of a `Fringes` instance.
-Changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
+For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
 and how long functions take to execute.
 
-```python
-f.logger.setLevel("DEBUG")
-```
+All parameters are accesible by the respective attributes of the `Fringes` class
+(a glossary of them is obtained by the class attribute `glossary`).
+They are implemented as class properties (managed attributes), which are parsed when setting,
+so usually several input types are accepted
+(e.g. `bool`, `int`, `float` for scalars
+and additionally `list`, `tuple`, `ndarray` for arrays).
+Note that some attributes have subdependencies (cf. Figure 3), hence dependent attributes might change as well.
+Circular dependencies are resolved automatically.
 
-## Graphical User Interface
-Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
+For creating the fringe pattern sequence `I`, use the method `encode()`.
+It will return a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
+in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
-## Attributes
-All attributes are implemented as class properties (managed attributes), which are parsed when setting,
-so usually several input types are accepted,
-e.g. `bool`, `int`, `float` for scalars
-and additionally `list`, `tuple`, `ndarray` for arrays.
+For analyzing (recorded) fringe patterns, use the method `decode()`.
+It will return a [namedtuple](https://docs.python.org/3/library/collections.html#collections.namedtuple), 
+containing the Numpy arrays brightness `A`, modulation `B` and the coordinate `ξ`,
+all in videoshape.
 
-Note that attributes might have circular dependencies which are resolved automatically,
-hence dependent attributes might change as well.
+<img src="docs/interdependencies.svg" width="720"/>\
+Figure 3: Parameter and their Interdependencies.
 
-![Parameter Interdependencies](docs/interdependencies.svg?raw=True)\
-Parameter and their Interdependencies.
-
-### __Video Shape__
-Standardized `shape` `(T, Y, X, C)` of fringe pattern sequence, with
-- `T`: number of frames
-- `Y`: height
-- `X`: width
-- `C`: number of color channels
-
-`T` depends on the paremeters `H`, `D`, `K`, `N` and the [multiplexing](#multiplexing) methods:\
-If all `N` are identical, then `T = H * D * K * N` with `N` as a scalar,
-else <code>T = H * &sum; N<sub>i</sub></code> with `N` as an array.\
-If a [multiplexing](#multiplexing) method is activated, `T` reduces further.
-
-`C` depends on the [coloring](#coloring-and-averaging) and [multiplexing](#multiplexing) methods.
-
-The length `L` is the maximum of `X` and `Y` and denotes the length in [px] to be encoded.\
-It can be extended by the factor `alpha`.
-
-`size` is the product of `shape`.
-
-### __Coordinate System__
-The following coordinate systems can be used by setting `grid` to:
-- `'image'`: The top left corner pixel of the grid is the origin (0, 0)
-and positive directions are right- resp. downwards.
-- `'Cartesian'`: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.
-- `'polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
-- `'log-polar'`: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
-
-`D` denotes the number of directions to be encoded.
-If <code>D &equiv; 1</code>, the attribute `axis` is used to define along which axis of the coordinate system
-(index 0 or 1) the fringes are shifted.
-
-`angle` can be used to tilt the coordinate system. The origin stays the same.
-
-### __Set__
-Each set consists of the following attributes:
+Each set (cf. frames in middle column in Figure 1)
+consists of the following attributes (cf. black box in Figure 3):
 - `N`: number of shifts
 - `l`: wavelength [px]
 - `v`: spatial frequency, i.e. number of periods (per screen length `L`)
@@ -201,110 +186,15 @@ When setting a set attribute with a new shape (`D'`, `K'`),
 If a set attribute is 1D, then it is stacked to match the number of directions `D`.\
 If a set attribute is 0D i.e. a scalar, then all values are simply replaced by the new one.
 
-Per direction at least one set with <code>N &ge; 3</code> is necessary
-to solve for the three unknowns brightness `A`, modulation `B` and coordinates `ξ`.
-
 `l` and `v` are related by `l = L / v`.
 When `L` changes, `v` is kept constant and only `l` is changed.
 
-Usually `f = 1` and is essentially only changed if [frequency division multiplexing](#multiplexing) `FDM` is activated.
+## Graphical User Interface
+Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
 
-`reverse` is a boolean which reverses the direction of the shifts (by multiplying `f` with `-1`).
-
-`o` denotes the phase offset `φ₀` which can be used to
-e.g. let the fringe patterns start (at the origin) with a gray value of zero.
-
-### __Coloring and Averaging__
-The fringe pattern sequence `I` can be colorized by setting the hue `h` to any RGB color triple
-in the interval `[0, 255]`. However, black `(0, 0, 0)` is not allowed. `h` must be in shape `(H, 3)`:\
-`H` is the number of hues and can be set directly; 3 is the length of the RGB color triple.\
-The hues `h` can also be set by assigning any combination of the following characters as a string:
-- `'r'`: red
-- `'g'`: green
-- `'b'`: blue
-- `'c'`: cyan
-- `'m'`: magenta
-- `'y'`: yellow
-- `'w'`: white
-
-`C` is the number of color channels required for either the set of hues `h`
-or [wavelength division multiplexing](#multiplexing).
-For example, if all hues are monochromatic, i.e. the RGB values are identical for each hue, `C` equals 1, else 3.
-
-Repeating hues will be fused by averaging them before decoding.\
-`M` is the number of averaged intensity samples and can be set directly.
-
-### __Multiplexing__
-The following multiplexing methods can be activated by setting them to `True`:
-- `SDM`: Spatial Division Multiplexing [[2]](#2)\
-  This results in crossed fringe patterns. The amplitude `B` is halved.\
-  It can only be activated if we have two directions <code>D &equiv; 2</code>.\
-  The number of frames `T` is reduced by a factor of 2.
-- `WDM`: Wavelength Divison Multiplexing [[3]](#3)\
-  All shifts `N` must equal 3. Then, the shifts are multiplexed into the color channel,
-  resulting in an RGB fringe pattern.\
-  The number of frames `T` is reduced by a factor of 3.
-- `FDM`: Frequency Division Multiplexing [[4]](#4), [[5]](#5)\
-  Here, the directions `D` and the sets `K` are multiplexed.
-  Hence, the amplitude `B` is reduced by a factor of `D * K`.\
-  It can only be activated if <code>D &or; K > 1</code> i.e. `D * K > 1`.\
-  This results in crossed fringe patterns if <code>D &equiv; 2</code>.\
-  Each set per direction receives an individual temporal frequency `f`,
-  which is used in [temporal demodulation](#temporal-demodulation) to distinguish the individual sets.\
-- A minimal number of shifts <code>N<sub>min</sub> &ge; &LeftCeiling;</sub> 2 * f<sub>max</sub> + 1 &RightCeiling;</code>
-  is required to satisfy the sampling theorem and `N` is updated automatically if necessary.\
-  If one wants a static pattern, i.e. one that remains congruent when shifted, set `static` to `True`.
-
-`SDM` and `WDM` can be used together [[6]](#6) (reducing `T` by a factor of 2 * 3 = 6), `FDM` with neighter.
-
-By default, the aforementioned multiplexing methods are deactivated,
-so we then only have `TDM`: Time Divison Multiplexing.
-
-### __Values__
-`dtype` denotes the data type of the fringe pattern sequence `I`.\
-Possible values are:
-- `'bool'`
-- `'uint8'` (the default)
-- `'uint16'`
-- `'float32'`
-- `'float64'`
-
-The total number of bytes `nbytes` consumed by the fringe pattern sequence
-as well as its maximum gray value `Imax` are derived directly from it:\
-`Imax = 1` for `float` and `bool`,
-and <code>Imax = 2<sup>Q</sup> - 1</code> for `unsigned integers` with `Q` bits.
-
-`Imax` in turn limits the offset `A` and the amplitude `B`.
-
-`beta` denotes the relative bias i.e. the relative mean intensity with <code>beta &isin; [0, 1]</code> 
-
-The fringe visibility (also called fringe contrast) is `V = A / B` with <code>V &isin; [0, 1]</code>.
-
-The quantization step size `q` is also derived from `dtype`:
-`q = 1` for `bool` and `Q`-bit `unsigned integers`, 
-and for `float` its corresponding [resolution](https://numpy.org/doc/stable/reference/generated/numpy.finfo.html).
-
-The standard deviation of the quantization noise  is <code>quant = q / &radic; 12</code>.
-
-`gamma` denotes the gamma correction factor and can be used to compensate for nonlinearities
-of the display response curve.
-
-### Unwrapping
-- `PU` denotes the phase unwrapping method and is eihter `'none'`, `'temporal'`, `'spatial'` or `'SSB'`.
-See [spatial demodulation](#spatial-demodulation--phase-unwrapping--pu-) for more details.
-- `mode` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
-  Choose either `'fast'` (the default) or `'precise'`.
-- `Vmin` denotes the minimal fringe visibility (fringe contrast) required for the measurement to be valid
-and is in the interval `[0, 1]`. During decoding, pixels with less are discarded, which can speed up the computation.
-- `verbose` can be set to `True` to also receive the wrapped phase map `φ`,
-the fringe orders `k` and the residuals `r` from decoding.
-- `SSB` denotes **Single Sideband Demodulation** [[17]](#17-takeda) and is deployed
-if <code>K &equiv; H &equiv; N &equiv; 1</code>, i.e. <code>T &equiv; 1</code>
-and the [coordinate system](#coordinate-system) is eighter `'image'` or `'Cartesian'`.
-
-### __Quality Metrics__
+## __Quality Metrics__
 `UMR` denotes the unambiguous measurement range.
-The coding is only unique in the interval `[0, UMR)`; after that it repeats itself.
+The coding is only unique within the interval `[0, UMR)`; after that it repeats itself.
 The `UMR` is derived from `l` and `v`:
 - If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
 - Else, if <code>v &isin; &#8469;</code>,
@@ -317,94 +207,31 @@ The `UMR` is derived from `l` and `v`:
 because then a significant part of the coding range is not used.
 
 `u` denotes the minimum possible uncertainty of the measurement in pixels.
-It is based on the phase noise model from [[7]](#7),
-propagated through [generalized temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) and converted from phase to pixel units.
+It is based on the phase noise model from [[8]](#8)
+and propagated through the unwrapping process and the phase fusion.
 It is influenced by the fringe attributes
-- `M`: number of [averaged](#coloring-and-averaging) intensity samples
-- `N`: number of phase shifts                                                                    
-- `l`: wavelengths of the fringes
+- `M`: number of averaged intensity samples,
+- `N`: number of phase shifts,
+- `l`: wavelengths of the fringes,
 - `B`: measured amplitude
 
-and the measurement hardware-specific noise sources [[8]](#8), [[9]](#9)
-- `shot`: photon noise of light itself
-- `quant`: quantization noise of the light source or camera
-- `dark`: dark noise of the used camera
+and the measurement hardware-specific noise sources [[9]](#9), [[10]](#10)
+- `quant`: quantization noise of the light source or camera,
+- `dark`: dark noise of the used camera,
+- `shot`: photon noise of light itself,
+- `gain`: system gain of the used camera.
 
-The maximum possible dynamic range of the measurement is `DR = UMR / u`.
-It describes how many points can be discriminated on the interval `[0, UMR)`.
+`DR = UMR / u` is the dynamic range of the phase shift coding
+and is a measure of how many points can be distinguished within the unambiguous measurement range `[0, UMR)`.
 It remains constant if `L` and hence `l` are scaled (the scaling factor cancels out).
 
-## Methods
-The following are instance methods:
-- `load(fname)`\
-  Load a parameter set from the file `fname` to a `Fringes` instance.
-  Supported file formats are `*.json`, `*.yaml`, `*.toml` and `*.asdf`.
-  If `fname` is not provided, the file `.fringes.yaml` within the user home directory is tried to load.
-  The parameter set is finally only loaded if the config file provides a section `fringes`.
-- `save(fname)`\
-  Save the parameter set of the current `Fringes` instance to the file `fname`.
-  If `fname` is not provided,
-  the parameter set are saved to the file `.fringes.yaml` within the user home directory.
-- `reset()`\
-  Reset the parameter set of the current `Fringes` instance to the default values.
-- `optimize(T)`\
-  [Optimize](#optimal-coding-strategy) the parameters based on the argument `T` (number of frames).
-  This also takes into account the minimum resolvable wavelength `lmin` and the length of the fringe patterns `L`.
-- `mtf2vmax(B)`\
-  Compute the normalized modulation transfer function at spatial frequencies `v`
-  and use the result to set the optimal `lmin`.
-  `B` is the modulation from decoding. For more details, see [Optimal Coding Strategy](#optimal-coding-strategy).
-- `coordinates()`\
-  Generate the coordinate matrices of the defined [coordinate system](#coordinate-system).
-- `encode(frames)`\
-  [Encode](#encoding) the fringe pattern sequence `I`.\
-  The frames <code>I<sub>t</sub></code> can be encoded indiviually
-  by passing the frame indices `frames`, either as an `integer` or a `tuple`.
-  The default is `None` in which case all frames are encoded.\
-  To receive the frames iteratively (i.e. in a lazy manner), simply iterate over the `Fringes` instance.
-- `decode(I, verbose)`\
-  [Decode](#decoding) the fringe pattern sequence `I`.\
-  If either the argument `verbose` or the attribute with the same name is `True`,
-  additional infomation is computed and retuned: phase maps `φ`, residuals `r` and fringe orders `k`.\
-  If the argument `despike` is `True`, single pixel outliers in the unwrapped phase map
-  are replaced by their local neighborhood using a median filter.\
-  If the argument `denoise` is `True`, the unwrapped phase map is smoothened by a bilateral filter
-  which is edge-preserving.
-- `remap(registration, modulation)`\
-  Mapping decoded, registered coordinates `ξ` (having sub-pixel accuracy)
-  from camera grid to (integer) positions on the pattern/screen grid
-  with weights from modulation `B`.
-  The default for `modulation` is `None`, in which case all weights are assumed to equal one.
-  The method yields a grid representing the screen (light source)
-  with the pixel values being a relative measure
-  of how much a screen (light source) pixel contributed
-  to the exposure of the camera sensor.
-- `deinterlace(I)`\
-  Deinterlace a fringe pattern sequence `I` acquired with a line scan camera
-  while each frame has been displayed and captured
-  while the object has been moved by one camera pixel.
-
-The next methods are static methods:
-- `gamma_auto_correct(I)`\
-  Automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
-- `unwrap(phi)`\
-  [Unwrap](#spatial-phase-unwrapping--spu-) the phase map `phi` i.e. `φ` spacially.
-
-The next methods are package methods:
-- `vshape(I)`\
-  Transforms video data of arbitrary shape and dimensionality into the standardized shape `(T, Y, X, C)`, where
-  `T` is number of frames, `Y` is height, `X` is width, and `C` is number of color channels.
-  Ensures that the array becomes 4-dimensional and that the size of the last dimension,
-  i.e. the number of color channels <code>C &isin; {1; 3; 4}</code>. To do this, leading dimensions may be flattened.
-- `curvature(registration)`\
-  Returns a curvature map. 
-- `height(curvature)`\
-  Local height map by local integration via an inverse laplace filter [[19]](#19).\
-  Think of it as a relief, where height is only relative to the local neighborhood.
+`SNR = L / u` is the signal-to-noise ratio of the phase shift coding
+and is a masure of how many points can be distinguished within the screen length `[0, L)`.
+Again, it remains constant if `L` and hence `l` are scaled (the scaling factor cancels out).
 
 ## __Optimal Coding Strategy__
 As makes sense intuitively, more sets `K` as well as more shifts `N` per set reduce the uncertainty `u` after decoding.
-A minimum of 3 shifts is needed to solve for the 3 unknowns brightness `A`, modulation `B` and coordinates `ξ`.
+A minimum of 3 shifts is needed to solve for the 3 unknowns brightness `A`, modulation `B` and coordinate `ξ`.
 Any additional 2 shifts compensate for one harmonic of the recorded fringe pattern.
 Therefore, higher accuracy can be achieved using more shifts `N`, but the time required to capture them 
 sets a practical upper limit to the feasible number of shifts.
@@ -424,24 +251,33 @@ the width `X` and the height `Y`.
 Else, [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) would yield wrong results and thus instead
 [spatial phase unwrapping](#spatial-phase-unwrapping--spu-) is used.
 Be aware that in the latter case only a relative phase map is obtained,
-which lacks the information of where exactly the camera sight rays were looking at during acquisition.
+which lacks the information of where exactly the camera pixels were imaged to during acquisition.
 
-To simplify finding and setting the optimal parameters, the following methods can be used:
-- `mtf2vmax()`: The optimal `vmax` is determined automatically [[18]](#18-bothe-2008)
-by measuring the **modulation transfer function** `MTF`.\
-  Therefore, a sequence of exponentially increasing `v` is acquired:
-    1. Set `v` to `'exponential'`.
-    2. Encode, acquire and decode the fringe pattern sequence.
-    3. Call the function `mtf2vmax(B)` with the argument `B` from decoding.
-- `v` can be set to `'optimal'`. This automatically determines the optimal integer set of `v`
-  based on the maximal resolvable spatial frequency `vmax`.
--  Equivalently, `l` can also be set to `'optimal'`. This will automatically determine the optimal integer set of `l`
+To simplify finding and setting the optimal parameters, one can choose from the followng options:
+- `v` can be set to `'optimal'`.
+  This automatically determines the optimal integer set of `v`,
+  based on the maximal resolvable spatial frequency `vmax`.\
+- Equivalently, `l` can also be set to `'optimal'`.
+  This will automatically determine the optimal integer set of `l`,
   based on the minimal resolvable wavelength `lmin = L / vmax`.
 - `T` can be set directly, based on the desired acquisition time.
-  The optimal `K`, `N` and the [multiplexing](#multiplexing) methods will be determined automatically.
+  The optimal `K`, `N` and  - if necessary - the multiplexing methods will be determined automatically.
+- Instead of the options above, one can simply use the function `optimize()`
+  to automatically set the optimal `v`, `l`, `T` and multiplexing methods.
 
-Alternatively, simply use the function `optimize()`
-to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) methods.
+However, those methods only perform optimally if the recorded modulation `B` is known for each chosen `v` or `l`.
+This can be achieved by recording the **modulation transfer function** at a given number of sample points:
+1. Set `K` to the required number of sample ponts (usually 10 is a good value).
+2. Set `v` to `'exponential'`.
+   This will create spatial frequencies `v` spaced evenly on a log scale (a geometric progression),
+   starting from `0` up to `vmax`.
+3. Ensure that the screen covers the complete field of view of the camera.
+4. Encode, acquire and decode the fringe pattern sequence.
+4. Call the method `setMTF` with the estimated modulation `B` from the measurement.
+5. 
+- `mtf2vmax()`: The optimal `vmax` is determined automatically by measuring the **modulation transfer function** `MTF`.\
+  Therefore, a sequence of exponentially increasing `v` is acquired:
+    3. Call the function `mtf2vmax(B)` with the argument `B` from decoding.
 
 ## Troubleshooting
 <!---
@@ -479,71 +315,12 @@ to automatically set the optimal `v`, `T` and [multiplexing](#multiplexing) meth
   - First, ensure that the correct frames were captured while acquiring the fringe pattern sequence.
     If the timings are not set correctly, the sequence may be a frame off.
   - Secondly, this might occur if either the camera or the display used have a gamma value very different from 1.
-    - Typical screens have a gamma value of 2.2; therefore compensate by setting the inverse value
+    - Typically, screens have a gamma value of 2.2; therefore compensate by setting the inverse value
       <code>gamma<sup>-1</sup> = 1 / 2.2 &approx; 0.45</code> to the `gamma` attribute of the `Fringes` instance.\
       Alternatively, change the gamma value of the light source or camera directly.
     - You can use the static method `gamma_auto_correct` to
       automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
     - You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
-
-## References
-
-#### [11] [Burke 2002]
-[J. Burke, T. Bothe, W. Osten, and C. Hess,
-“Reverse engineering by fringe projection,”
-in Interferometry XI: Applications (W. Osten, ed.), vol. 4778, pp. 312–324, SPIE,
-2002.](https://doi.org/10.1117/12.473547)
-
-#### [1] [Burke 2022] 
-[J. Burke, A. Pak, S. Höfer, M. Ziebarth, M. Roschani, J. Beyerer,
-"Deflectometry for specular surfaces: an overview",
-arXiv:2204.11592v1 [physics.optics],
-2022.](https://arxiv.org/abs/2204.11592)
-
-#### [2] [Park2008]?
-
-#### [3] [Huang 1999]
-
-#### [4] [Liu 2014] [Liu2010] [Park2008]?
-
-#### [5] [Kludt 2018]
-
-#### [6] [Trumper 2016]
-
-#### [7] [Surrel 1997]
-
-#### [8] [EMVA1288]
-
-#### [9] [Bothe2008]
-
-#### [10] [Fischer]
-
-#### [13] [Burke 2012]
-[J. Burke,
-"Phase Decoding and Reconstruction",
-vol. Optical Methods for Solid Mechanics: A Full-Field Approach, ch. 3, pp. 83–141. Wiley, Weinheim,
-2012.](https://www.wiley.com/en-us/Optical+Methods+for+Solid+Mechanics%3A+A+Full+Field+Approach-p-9783527411115)
-
-#### [14] [Kludt 2024]
-
-#### [15] [Herráez 2002]
-[Miguel Arevallilo Herráaez, David R. Burton, Michael J. Lalor, and Munther A. Gdeisat.
-Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path.
-Appl. Opt., 41(35):7437-7444,
-Dec 2002.](https://opg.optica.org/ao/abstract.cfm?uri=ao-41-35-7437)
-
-#### [16] [Lei 2015]
-[Hai Lei, Xin yu Chang, Fei Wang, Xiao-Tang Hu, and Xiao-Dong Hu.
-A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping.
-Optik - International Journal for Light and Electron Optics, 126(18):1640 - 1644,
-2015.](https://www.sciencedirect.com/science/article/abs/pii/S0030402615003228?via%3Dihub)
-
-#### [17] [Takeda]
-
-#### [18] [Bothe 2008]
-
-#### [19]
-Inverse Laplace Filter
 
 ## License
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
@@ -551,3 +328,106 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public L
 ## Project Status
 This package is under active development, so features and functionally will be added in the future.
 Feature requests are warmly welcomed!
+
+## References
+<a id="1">[1]</a>
+[Burke et al.,
+“Reverse engineering by fringe projection,”
+Interferometry XI: Applications,
+2002.](https://doi.org/10.1117/12.473547)
+
+<a id="2">[2]</a>
+[Burke et al.,
+"Deflectometry for specular surfaces: an overview",
+Advanced Optical Technologies,
+2023.](https://doi.org/10.3389/aot.2023.1237687)
+
+<a id="3">[3]</a>
+[Burke,
+"Phase Decoding and Reconstruction",
+Optical Methods for Solid Mechanics: A Full-Field Approach,
+2012.](https://www.wiley.com/en-us/Optical+Methods+for+Solid+Mechanics%3A+A+Full+Field+Approach-p-9783527411115)
+
+<a id="4">[4]</a>
+[Herráez et al.,
+"Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
+Appl. Opt.,
+2002.](https://doi.org/10.1364/AO.41.007437)
+
+<a id="5">[5]</a>
+[Lei et al.,
+"A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping",
+Optik - International Journal for Light and Electron Optics,
+2015.](https://doi.org/10.1016/j.ijleo.2015.04.070)
+
+<a id="6">[6]</a>
+[Takeda et al.,
+"Fourier-transform method of fringe-pattern analysis for computer-based topography and interferometry",
+Journal of the Optical Society of America,
+1982.](https://doi.org/10.1364/JOSA.72.000156)
+
+<a id="7">[7]</a>
+[Fischer et al.,
+"Vorhersage des Phasenrauschens in optischen Messsystemen mit strukturierter Beleuchtung",
+Technisches Messen,
+2012.](https://doi.org/10.1524/teme.2012.0256)
+
+<a id="8">[8]</a>
+[Surrel,
+"Additive noise effect in digital phase detection",
+Applied Optics,
+1997.](https://doi.org/10.1364/AO.36.000271)
+
+<a id="9">[9]</a>
+[EMVA,
+"Standard for Characterization of Image Sensors and Cameras Release 4.0 Linear",
+European Machine Vision Association,
+2021.](https://www.emva.org/standards-technology/emva-1288/emva-standard-1288-downloads-2/)
+
+<a id="10">[10]</a>
+[Bothe,
+"Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
+Dissertation,
+ISBN 978-3-933762-24-5,
+BIAS Bremen,
+2008.](https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2)
+
+<!---
+<a id="8">[8]</a>
+[Park,
+"A two dimensional phase-shifting method for deflectometry",
+International Symposium on Optomechatronic Technologies,
+2008.](https://doi.org/10.1117/12.816472)
+
+<a id="9">[9]</a>
+[Huang,
+"Color-encoded digital fringe projection technique for high-speed three-dimensional surface contouring",
+Optical Engineering,
+1999.](https://doi.org/10.1117/1.602151)
+
+<a id="10">[10]</a>
+[Trumper et al.,
+"Instantaneous phase shifting deflectometry",
+Optics Express,
+2016.](10.1364/OE.24.027993)
+
+<a id="11">[11]</a>
+[Liu et al.,
+"Dual-frequency pattern scheme for high-speed 3-D shape measurement",
+Optics Express,
+2010.](https://doi.org/10.1364/OE.18.005229)
+
+<a id="12">[12]</a>
+[Liu et al.,
+"Fast and accurate deflectometry with crossed fringes",
+Advanced Optical Technologies,
+2014.](10.1515/aot-2014-0032)
+
+<a id="13">[13]</a>
+[Kludt and Burke,
+"Coding strategies for static patterns suitable for UV deflectometry",
+Forum Bildverarbeitung 2018,
+2018.](https://publikationen.bibliothek.kit.edu/1000088264)
+
+#### [19] Inverse Laplace Filter
+--->
