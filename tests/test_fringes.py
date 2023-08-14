@@ -505,12 +505,27 @@ def test_simulation():
 
 
 if __name__ == "__main__":
+    T = 10
+    I = np.empty(T, object)
+    I[0] = np.ones(1)
+    I[1] = np.ones(2)
+
     f = Fringes()
+    Igen = (frame for frame in f)
+    I = np.array([f for f in Igen])
+
+    from fringes import vshape
+    I = vshape(I)
+
+    I = f[3::]
+    I = f[1, 2, 3]
+    I = f[0]
     #f.PSF = 3  # 0.001
     f.X = 1920
     f.Y = 1
     f.K = 3
-    f.PSF = 0.001 * f.L
+    f.X = 1280
+    f.PSF = 0.001 * f.L  # 1.2  # 3
     f.lmin = 16
     f.l = "optimal"
 

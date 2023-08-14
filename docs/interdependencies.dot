@@ -4,7 +4,7 @@ digraph G {
     nodesep=0.4  // default: 0.25
     ranksep=0.6  // default: 0.5
 
-    {rank=same; H -> TDM -> WDM -> FDM -> SDM -> grid -> SSB[style=invis][group=1]}
+    {rank=same; H -> TDM -> WDM -> FDM -> SDM -> grid -> FTM[style=invis][group=1]}
     {rank=same; h -> C -> T -> D -> K -> reverse[style=invis][group=2]}
     {rank=same; size -> shape -> P -> N -> l -> v -> f -> o[style=invis][group=3]}
     {rank=same; X -> axis -> Y -> UMR -> static[style=invis][group=4]}
@@ -14,7 +14,7 @@ digraph G {
     {rank=same; A -> B -> QN -> DN -> PN[style=invis][group=8]}
     {rank=same; gamma -> V -> Vmin -> verbose -> mode[style=invis][group=9]}
 
-    SSB[shape=box][fillcolor=white]
+    FTM[shape=box][fillcolor=white]
 
     H -> {T} [dir=both][color=green]
     TDM -> WDM [style=invis]
@@ -31,7 +31,7 @@ digraph G {
     SDM:e -> grid
     SDM -> B
     FDM -> B
-    grid:e -> SSB
+    grid:e -> FTM
 
     C -> shape
     h:e -> C
@@ -45,10 +45,10 @@ digraph G {
     D -> {N l v f}[dir=both][color=blue]
     K -> {N l v f}[dir=both][color=red]
     K -> {FDM B PU}
-    K -> SSB [weight=5]
+    K -> FTM [weight=5]
     reverse -> f [style=dashed]
 
-    N -> {SSB UMR}
+    N -> {FTM UMR}
     l -> UMR [weight=13]
     l:e -> v [dir=both]
     v:e -> f

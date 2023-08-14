@@ -32,51 +32,104 @@ Figure 1: Phase Shifting Coding Scheme.
 
 - #### Encoding
   - #### Spatial Modulation
-    The x- resp. y-coordinate `ξ` of the screen is normalized into the range `[0, 1)`
-by dividing through the maximum coordinate `L`\
-<code> x = ξ/L &isin; [0, 1)</code>\
-and used to modulate the radiance in a sinusoidal fringe pattern `I`
-with offset `A`, amplitude `B` and spatial frequency `v`.
-An additional phase offset `φ₀` may be set, e.g. to let the fringe patterns start with a gray value of zero.\
-`I = A + B * cos(2πvx - φ₀)`
+    <code>I = A + B cos(2&pi;v<sub>i</sub>x - &straightphi;<sub>i</sub>)</code>
+  
+    The x- resp. y-coordinate `ξ` of the screen
+    is normalized into the range `X = [0, 1)` by dividing through the pattern length `L`
+    and used to modulate the radiance in a sinusoidal fringe pattern `I`
+    with offset `A`, amplitude `B` and spatial frequency `v`.
+    An additional phase offset <code>&straightphi;<sub>i</sub></code> may be set,
+    e.g. to let the fringe patterns start with a gray value of zero.
+    There can be `K` sets, with `K` being the number of fringe patterns
+    with different spatial frequency <code>v<sub>i</sub></code>, <code>i &isin; {&Nopf;<sub>0</sub> | i < K}</code>.
+
   - #### Temporal Modulation
-    The pattern is then shifted `N` times with an equidistant phase shift of `2πf/N` radian each:\
-`t = n / N` with <code>n &isin; {0, 1, ..., N - 1} &isin; &#8469;</code>\
-`I = A + B * cos(2πvx - 2πft - φ₀)`
+    <code>I = A + B cos(2&pi;v<sub>i</sub>x - 2&pi;f<sub>i</sub>t - &straightphi;<sub>i</sub>)</code>
+    
+    The patterns are then shifted <code>N<sub>i</sub></code> times
+    with an equidistant phase shift of <code>2&pi;f<sub>i</sub>/N<sub>i</sub></code>.
+    This is equal to sampling over <code>f<sub>i</sub></code> periods
+    with <code>N<sub>i</code> sample points
+    at time steps <code>t = n / N<sub>i</sub></code>, <code>n &isin; {&Nopf;<sub>0</sub> | n < N<sub>i</sub>}</code>.
+
 - #### Decoding
   - #### Temporal Demodulation
-    From these shifts, the phase map `φ` is determined [[3]](#3). Due to the trigonometric functions used,
-the global phase `Φ` is wrapped into the interval <code>[0, 2 &pi;]</code> with `v` periods:\
-<code>φ &equiv; Φ mod 2&pi;</code> with `Φ = kx - φ₀`.
-  - #### Spatial Demodulation (Phase Unwrapping)
-    If only one set with spatial frequency <code>v &le; 1</code> is used,
-no unwrapping is required because one period covers the complete coding range.
-Hence, the coordinate `ξ` is computed directly by scaling: <code>ξ = φ / (2&pi;) * L / v</code>.
-This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
-and contains the information where each camera pixel, i.e. each camera sightray, was looking at
-during the fringe pattern acquisition.
-Note that in contrast to binary coding schemes, e.g. Gray code,
-the coordinate is obtained with sub-pixel precision.
-    - #### Temporal Phase Unwrapping (TPU)
-        If multiple sets with different spatial frequencies `v` are used
-and the unambiguous measurement range is larger than the coding range, i.e. <code>UMR &ge; L</code>,
-the ambiguity of the phase map is resolved by
-generalized multi-frequency temporal phase unwrapping (GTPU).
-    - #### Spatial Phase Unwrapping (SPU)
-        However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`, the ambiguous phase `φ`
-is unwrapped analyzing the neighbouring phase values [[4]](#4), [[5]](#5).
-This only yields a relative phase map, therefore absolute positions are unknown.
-    - #### Single Sideband Demodulation
-        If only one frame with `v >> 1` is used,
-[[6]](#6)
-the pattern is Fourier-transformed and processed in its spatial frequency domain as well as in its space-signal domain.
-There is no requirement for unwrapping, because 
-Again, this only yields a relative phase map, therefore absolute positions are unknown.
+    <code>&straightphi;<sub>i</sub> &equiv; &phi;<sub>i</sub> mod 2&pi;</code>\
+    From these shifts, the phase maps <code>&straightphi;<sub>i</sub></code> are determined [[3]](#3).
+    Due to the trigonometric functions used,
+    the global phase <code>&phi;<sub>i</sub> = 2&pi;v<sub>i</sub>x - &straightphi;<sub>i</sub></code>
+    is wrapped into the interval <code>[0, 2 &pi;]</code> with <code>v<sub>i</sub></code> periods.
+    - #### Spatial Demodulation (Phase Unwrapping)
+      To obtain the encoded coordinate <code>&xi;</code>, three tasks must be executed:
+      1. Undo the spatial modulation
+         by finding the correct period order number
+         <code>k<sub>i</sub> &isin; {&Nopf;<sub>0</sub> | k<sub>i</sub> < &lceil;v<sub>i</sub>&rceil;}</code> for each set `i`.
+         The global phase is then estimated to be <code>&phi;<sub>i</sub> = k<sub>i</sub> 2&pi; + &straightphi;<sub>i</sub></code>\.
+      2. Recover the common independent variables, i.e. the coordinates <code>&xi;<sub>i</sub></code>,
+         by linearly rescaling the global phase map: 
+         <code>&xi;<sub>i</sub> = L&phi;<sub>i</sub> / 2&pi;</code>,
+         with `L` being is the pattern length (in pixel).
+      3. Fuse the K coordinate maps by weighted averaging:
+         <code>&xi; = &sum;<sub>i</sub>&xi;<sub>i</sub>w<sub>i</sub> / &sum;<sub>i</sub>w<sub>i</sub></code>.
+         To obtain an optimal estimate, use inverse variance weighting,
+        i.e. use the inverse variances of the coordinate maps as the weights for averaging:
+         <code>w<sub>i</sub> = 1 / &sigma;<sub>&straightphi;,i</sub><sup>2</sup></code>,
+         with <code>&sigma;<sub>&straightphi;,i</sub> &prop; B<sub>i</sub> / v<sub>i</sub> / &radic;N<sub>i</sub></code>
+         [[4]](#4).
+      
+      This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
+      and contains the information where each camera pixel, i.e. each camera sightray, was looking at
+      during the fringe pattern acquisition.
+      Note that in contrast to binary coding schemes, e.g. Gray code,
+      the coordinate is obtained with sub-pixel precision.
+      
+      - #### No Unwrapping
+        If only one set `K = 1` with spatial frequency <code>v &le; 1</code> is used,
+        no unwrapping is required because one period covers the complete coding range.
+        In this case, only the scaling part has to be executed.
 
+      - #### Temporal Phase Unwrapping (TPU)
+        If multiple sets with different spatial frequencies <code>v<sub>i</sub></code> are used
+        and the unambiguous measurement range is larger than the coding range, i.e. <code>UMR &ge; L</code>,
+        the ambiguity of the phase map is resolved by
+        generalized multi-frequency temporal phase unwrapping (GTPU).
+      
+      - #### Spatial Phase Unwrapping (SPU)
+        However, if only one set with `v > 1` is used, or multiple sets but  `UMR < L`,
+        the ambiguous phase <code>&straightphi;</code> is unwrapped
+        analyzing the neighbouring phase values [[5]](#5), [[6]](#6).
+        This only yields a relative phase map, therefore absolute positions are unknown.
+      
+      - #### Fourier-transform method (FTM)
+        In some cases, the phase signal introduced by the object's distortion of the fringe pattern
+        can be extracted with a purely spatial analysis by virtue of the Fourier-transform method [[7]](#7), [[8]](#8):
+        The recorded phase consists of a carrier with the spatial frequency `v` and the signal:\
+        <code>&phi; = &phi;<sub>c</sub> + &phi;<sub>s</sub> = 2&pi;vx + &straightphi;<sub>0</sub> + &phi;<sub>s</sub></code>.
+        If the offset `A`, the amplitude `B` anf the signal phase <code>&phi;<sub>s</sub></code> vary slowly
+        compared with the variation introduced by the spatial-carrier frequency `v`,
+        i.e. the surface is rather smooth and has no sharp edges, and the spatial carrier frequency `v` is high enough,
+        i.e. `v >> 1`, their spetra can be separated and therefore filtered in the frequency space.
+        For this purpose, the recorded fringe pattern is Fourier transformed
+        by the use of the two-dimensional fast-Fourier-transform (2DFFT) algorithm - hence the name - 
+        and processed in its spatial frequency domain.
+        Here, the Fourier spectra are separated by the carrier frequency `v`.
+        We filter out the background variation `A`,
+        make use of either of the two spectra on the carrier,
+        and translate it by `v` on the frequency axis toward the origin.
+        Again using the 2DFFT algorithm, we compute the inverse Fourier-transform.
+        Now we have the signal phase <code>&phi;<sub>s</sub></code> in the imaginary part
+        completely separated from the unwanted amplitude variation `B` in the real part.
+        Subsequently, a spatial phase-unwrapping algorithm may be deployed to remove any remaining phase jumps.
+        This phase unwrapping method is not critical
+        if the signal-to-noise ratio is higher than 10
+        and the gradients of the signal phase <code>&phi;<sub>s</sub></code> are less than <code>&pi;</code> per pixel.
+        Again, this only yields a relative phase map, therefore absolute positions are unknown.
+
+<!---
 In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
 are replaced by the maximal possible gray value `Imax`
 and the relative quantities exposure (relative average intensity) `β` and visibilty (relative fringe contrast) `V`
-[[7]](#7):
+[[9]](#9):
 
 ```
 I = A + B * cos(Φ) = Imax * β * (1 + V * cos(Φ))
@@ -106,6 +159,7 @@ The visibility `V` of the fringes is influenced by:
 - the depth of field and defocus,
 - the resolution of the camera
 (the camera pixel size projected onto the light source acts as a low pass filter, reducing the modulation of the signal).
+--->
 
 ## Contents
 - [Installation](#installation)
@@ -151,6 +205,7 @@ and how long functions take to execute.
 
 All parameters are accesible by the respective attributes of the `Fringes` class
 (a glossary of them is obtained by the class attribute `glossary`).
+
 They are implemented as class properties (managed attributes), which are parsed when setting,
 so usually several input types are accepted
 (e.g. `bool`, `int`, `float` for scalars
@@ -164,11 +219,11 @@ in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
 For analyzing (recorded) fringe patterns, use the method `decode()`.
 It will return a [namedtuple](https://docs.python.org/3/library/collections.html#collections.namedtuple), 
-containing the Numpy arrays brightness `A`, modulation `B` and the coordinate `ξ`,
+containing the Numpy arrays brightness `A`, modulation `B` and the coordinates `ξ`,
 all in videoshape.
 
 <img src="docs/interdependencies.svg" width="720"/>\
-Figure 3: Parameter and their Interdependencies.
+Figure 3: Parameters and their Interdependencies.
 
 Each set (cf. frames in middle column in Figure 1)
 consists of the following attributes (cf. black box in Figure 3):
@@ -196,8 +251,8 @@ Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: 
 `UMR` denotes the unambiguous measurement range.
 The coding is only unique within the interval `[0, UMR)`; after that it repeats itself.
 The `UMR` is derived from `l` and `v`:
-- If <code>l &isin; &#8469;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
-- Else, if <code>v &isin; &#8469;</code>,
+- If <code>l &isin; &Nopf;</code>, <code>UMR = lcm(l<sub>i</sub>)</code> with `lcm` being the least common multiple.
+- Else, if <code>v &isin; &Nopf;</code>,
   <code>UMR = `L`/ gcd(v<sub>i</sub>)</code> with `gcd` being the greatest common divisor.
 - Else, if <code>l &and; v &isin; &#8474;</code>, `lcm` resp. `gcd` are extended to rational numbers.
 - Else, if <code>l &and; v &isin; &#8477; \ &#8474;</code>, `l` and `v` are approximated by rational numbers
@@ -207,7 +262,7 @@ The `UMR` is derived from `l` and `v`:
 because then a significant part of the coding range is not used.
 
 `u` denotes the minimum possible uncertainty of the measurement in pixels.
-It is based on the phase noise model from [[8]](#8)
+It is based on the phase noise model from [[4]](#4)
 and propagated through the unwrapping process and the phase fusion.
 It is influenced by the fringe attributes
 - `M`: number of averaged intensity samples,
@@ -215,7 +270,7 @@ It is influenced by the fringe attributes
 - `l`: wavelengths of the fringes,
 - `B`: measured amplitude
 
-and the measurement hardware-specific noise sources [[9]](#9), [[10]](#10)
+and the measurement hardware-specific noise sources [[10]](#10), [[11]](#11)
 - `quant`: quantization noise of the light source or camera,
 - `dark`: dark noise of the used camera,
 - `shot`: photon noise of light itself,
@@ -265,19 +320,23 @@ To simplify finding and setting the optimal parameters, one can choose from the 
 - Instead of the options above, one can simply use the function `optimize()`
   to automatically set the optimal `v`, `l`, `T` and multiplexing methods.
 
-However, those methods only perform optimally if the recorded modulation `B` is known for each chosen `v` or `l`.
-This can be achieved by recording the **modulation transfer function** at a given number of sample points:
-1. Set `K` to the required number of sample ponts (usually 10 is a good value).
-2. Set `v` to `'exponential'`.
-   This will create spatial frequencies `v` spaced evenly on a log scale (a geometric progression),
-   starting from `0` up to `vmax`.
-3. Ensure that the screen covers the complete field of view of the camera.
-4. Encode, acquire and decode the fringe pattern sequence.
-4. Call the method `setMTF` with the estimated modulation `B` from the measurement.
-5. 
-- `mtf2vmax()`: The optimal `vmax` is determined automatically by measuring the **modulation transfer function** `MTF`.\
-  Therefore, a sequence of exponentially increasing `v` is acquired:
-    3. Call the function `mtf2vmax(B)` with the argument `B` from decoding.
+However, those methods only perform optimally
+if the recorded modulation `B` is known (or can be estimated) for each certain spatial frequencies `v`.
+1. Option A: Measure the **modulation transfer function (MTF)** at a given number of sample points:
+   1. Set `K` to the required number of sample ponts (usually 10 is a good value).
+   2. Set `v` to `'exponential'`.
+      This will create spatial frequencies `v` spaced evenly on a log scale (a geometric progression),
+      starting from `0` up to `vmax`.
+   3. Encode, acquire and decode the fringe pattern sequence.
+   4. Mask the values of `B` with nan where the camera wasn't looking at the screen.
+   5. Call `Bv(B)` with the estimated modulation from the measurement as the argument.
+   6. Finlly, to get the modulation `B` at certain spatial frequencies `v`, simply call `MTF(v)`. 
+      This method interpolates the modulation from the measurements `Bv` at the points `v`.
+2. Option B: Estimate the **magnification** and the **Point Spread Function (PSF)** of the imaging system:
+   1. Set the attributes `magnification` and `PSF` of the `Fringes` instance.
+      `PSF` is given as the standard deviation of the Point Spread Function.
+   2. Finlly, to get the modulation `B` at certain spatial frequencies `v`, simply call `MTF(v)`. 
+      This method computes the modulation from the specified attributes `magnifiction` and `PSF` directly.
 
 ## Troubleshooting
 <!---
@@ -290,8 +349,8 @@ This can be achieved by recording the **modulation transfer function** at a give
 --->
 
 - __Decoding takes a long time__  
-  This is probably related to the just-in-time compiler [Numba](https://numba.pydata.org/) 
-  used for this computationally expensive function:
+  This is most likely due to the just-in-time compiler [Numba](https://numba.pydata.org/), 
+  which is used for this computationally expensive functions:
   During the first execution, an initial compilation is executed. 
   This can take several tens of seconds up to single digit minutes, depending on your CPU.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster, 
@@ -349,42 +408,48 @@ Optical Methods for Solid Mechanics: A Full-Field Approach,
 2012.](https://www.wiley.com/en-us/Optical+Methods+for+Solid+Mechanics%3A+A+Full+Field+Approach-p-9783527411115)
 
 <a id="4">[4]</a>
-[Herráez et al.,
-"Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
-Appl. Opt.,
-2002.](https://doi.org/10.1364/AO.41.007437)
-
-<a id="5">[5]</a>
-[Lei et al.,
-"A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping",
-Optik - International Journal for Light and Electron Optics,
-2015.](https://doi.org/10.1016/j.ijleo.2015.04.070)
-
-<a id="6">[6]</a>
-[Takeda et al.,
-"Fourier-transform method of fringe-pattern analysis for computer-based topography and interferometry",
-Journal of the Optical Society of America,
-1982.](https://doi.org/10.1364/JOSA.72.000156)
-
-<a id="7">[7]</a>
-[Fischer et al.,
-"Vorhersage des Phasenrauschens in optischen Messsystemen mit strukturierter Beleuchtung",
-Technisches Messen,
-2012.](https://doi.org/10.1524/teme.2012.0256)
-
-<a id="8">[8]</a>
 [Surrel,
 "Additive noise effect in digital phase detection",
 Applied Optics,
 1997.](https://doi.org/10.1364/AO.36.000271)
 
+<a id="5">[5]</a>
+[Herráez et al.,
+"Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
+Applied Optics,
+2002.](https://doi.org/10.1364/AO.41.007437)
+
+<a id="6">[6]</a>
+[Lei et al.,
+"A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping",
+Optik - International Journal for Light and Electron Optics,
+2015.](https://doi.org/10.1016/j.ijleo.2015.04.070)
+
+<a id="7">[7]</a>
+[Takeda et al.,
+"Fourier-transform method of fringe-pattern analysis for computer-based topography and interferometry",
+Journal of the Optical Society of America,
+1982.](https://doi.org/10.1364/JOSA.72.000156)
+
+<a id="8">[8]</a>
+[Massig and Heppner,
+"Fringe-pattern analysis with high accuracy by use of the Fourier-transform method: theory and experimental tests",
+Applied Optocs,
+2001.](https://doi.org/10.1364/AO.40.002081)
+
 <a id="9">[9]</a>
+[Fischer et al.,
+"Vorhersage des Phasenrauschens in optischen Messsystemen mit strukturierter Beleuchtung",
+Technisches Messen,
+2012.](https://doi.org/10.1524/teme.2012.0256)
+
+<a id="10">[10]</a>
 [EMVA,
 "Standard for Characterization of Image Sensors and Cameras Release 4.0 Linear",
 European Machine Vision Association,
 2021.](https://www.emva.org/standards-technology/emva-1288/emva-standard-1288-downloads-2/)
 
-<a id="10">[10]</a>
+<a id="11">[11]</a>
 [Bothe,
 "Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
 Dissertation,

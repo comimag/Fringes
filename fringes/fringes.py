@@ -108,6 +108,7 @@ class Fringes:
                  mode: str = "fast",
                  umin: float = 0.,
                  Bv: tuple | np.ndarray = None,
+                 magnification: float = 1,
                  PSF: float = 0.,
                  dark: float = 0.,
                  gain: float = 0.,
@@ -138,12 +139,13 @@ class Fringes:
         #_ = self.UMR  # property 'UMR' logs warning if necessary
 
     def __call__(self, *args, **kwargs) -> np.ndarray:
-        """Encode fringe patterns."""
         return self.encode(*args, **kwargs)
 
-    def __getitem__(self, frame: int | tuple | list) -> np.ndarray:
-        """Single frame of fringe pattern sequence."""
-        return self.encode(frames=frame)
+    def __getitem__(self, frames: int | tuple | slice) -> np.ndarray:
+        if isinstance(frames, slice):
+            frames = np.arange(self.T)[frames]
+
+        return self.encode(frames=frames)
 
     def __iter__(self):
         self._t = 0
@@ -347,7 +349,7 @@ class Fringes:
         except TypeError:
             T = 1
             frames = [frames]
-        frames = np.array(frames)
+        frames = np.array(frames, int)
 
         if self.grid != "image" or self.angle != 0:
             xi = self.coordinates()[..., 0]
@@ -429,7 +431,7 @@ class Fringes:
         #    # i = np.argsort(a[1:], axis=0)[::-1]  # indices of frequencies, sorted by their magnitude
         #    phi = -np.angle(c * np.exp(-1j * (self.o - np.pi)))[_f.flatten().astype(int, copy=False)]  # todo: why offset - PI???
 
-        if self.SSB:
+        if self.FTM:
             # todo: make passband symmetrical around carrier frequency?
             if self.D == 2:
                 fx = np.fft.fftshift(np.fft.fftfreq(X))  # todo: hfft
@@ -802,13 +804,53 @@ class Fringes:
 
         return I
 
-    def encode(self, frames: int | tuple | list = None, rint: bool = True, simulate: bool = True) -> np.ndarray:
-        """Encode fringe patterns.
-         The frames can be encoded indiviually by passing the frame indices
-        via the parameter 'frames', either as an integer or a tuple.
-        The default is None in which case all frames are encoded.
+    def encode(self,
+               frames: int | tuple = None,
+               dtype: str | np.dtype = None,
+               rint: bool = True,
+               simulate: bool = True
+               ) -> np.ndarray:
+        """Encode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).
+
+        Parameters
+        ----------
+        frames : None or int or tuple of ints, optional
+            Indices of the frame or frames to be encoded.
+            The default, frames=None, will encode all frames at once.
+            If frames is negative, it counts from the last to the first frame.
+            If frames contains numbers whose magnitude is larger than the total number of frames
+            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            If frames is a tuple of ints, only the frames specified in the tuple are encoded.
+        dtype: dtype, optional
+            The type of the returned array.
+            The default, dtype=None, will use the dtype specified in the attribute 'dtype' of the Fringes instance.
+        rint : bool, optional
+            If this is set to True (the default)
+            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            the encoded patterns will be rounded to the nearest integer.
+            If this is set False and the used dtype is of type interger,
+            the fractional part of the encoded patterns will be discarded.
+        simulate : bool, optional
+            If this is set to True, the acquisition, i.e. the transmission channel, will be simulated.
+            This includes the modulation transfer function
+            (computed from the imaging system's point spread function)
+            and intensity noise added by the camera.
+            The required parameters for this are the instance's attributes
+            'magnification', 'PSF', 'system_gain', 'dark_current' and 'dark_noise'.
+        Returns
+        ----------
+        I : np.ndarray
+
+
+        Notes
+        ----------
         To receive the frames iteratively (i.e. in a lazy manner),
-        simply iterate over the Fringes instance."""
+        simply iterate over the Fringes instance.
+
+        Alternatively, to receive arbitrary frames,
+        index the Fringes instance directly,
+        either with an integer, a tuple or a slice.
+        """
 
         t0 = time.perf_counter()
 
@@ -819,11 +861,11 @@ class Fringes:
 
         if frames is not None:  # lazy encoding
             try:  # ensure frames is iterable
-                len(frames)
-            except:
+                iter(frames)
+            except TypeError:
                 frames = [frames]
 
-            frames = np.array(frames).ravel()
+            frames = np.array(frames, int).ravel()
 
             frames = frames % np.sum(self._N)
 
@@ -839,6 +881,9 @@ class Fringes:
                 frames = np.array([np.arange(i, i + EN0 + 1, EN0) for i in frames]).ravel()
         else:
             frames = None
+
+        if dtype is not None:
+            self.dtype = dtype
 
         # modulate
         I = self._modulate(frames, rint)
@@ -859,14 +904,59 @@ class Fringes:
 
         return self._simulate(I, self.PSF, self.gain, 0, self.dark) if simulate else I
 
-    def decode(self, I: np.ndarray, verbose: bool = False, denoise: bool = False, despike: bool = False) -> namedtuple:
-        """Decode fringe patterns.
-        If either the argument `verbose` or the attribute with the same name is `True`,
-        additional infomation is computed and retuned: phase maps, residuals, fringe orders, visibility and beta.
-        If the argument `despike` is `True`, single pixel outliers in the unwrapped phase map
-        are replaced by their local neighborhood using a median filter.
-        If the argument `denoise` is `True`, the unwrapped phase map is smoothened by a bilateral filter
-        which is edge-preserving."""
+    def decode(self, I: np.ndarray, verbose: bool = False, despike: bool = False, denoise: bool = False) -> namedtuple:
+        """Decode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Phase shifting sequence to be decoded.
+
+            .. note:: It must have been encoded with the same parameters of the Fringes instance as the encoded one.
+
+        verbose : bool, optional
+            If this or the argument 'verbose' of the Fringes instance is set to True,
+            additional infomation is computed and retuned.
+            This includes: phase maps, residuals, fringe orders, visibility and relative exposure.
+
+        despike: bool, optional
+            If this is set to true, single pixel outliers in the unwrapped phase map are replaced
+            by their local neighborhood using a median filter.
+
+        denoise: bool, optional
+            If this is set to True, the unwrapped phase map is smoothened
+            by a bilateral filter which is edge-preserving.
+
+        Returns
+        ----------
+        brightness : np.ndarray
+            Local background signal.
+
+        modulation : np.ndarray
+            Local amplitude of the cosine signal.
+
+        registration : np.ndarray
+            Decoded coordinates.
+
+            .. note:: The registration is a mapping in the same pixel grid as the camera sensor
+              and contains the information where each camera pixel, i.e. each camera sightray,
+              was looking at during the fringe pattern acquisition.
+
+        phase : np.ndarray, optional
+            Local phase.
+
+        orders : np.ndarray, optional
+            Fringe orders.
+
+        residuals : np.ndarray, optional
+            Residuals from the optimization-based unwrapping process.
+
+        visibility : np.ndarray, optional
+            Local visibility (fringe contrast).
+
+        exposure : np.ndarray, optional
+            Local exposure (relative average intensity).
+        """
 
         t0 = time.perf_counter()
 
@@ -984,10 +1074,10 @@ class Fringes:
 
         # create named tuple to return
         if self.verbose or verbose:
-            dec = namedtuple("decoding", "brightness modulation phase registration residuals orders visibility exposure")(bri, mod, phi,
-                                                                                                      reg, res, fid, V, beta)
+            dec = namedtuple("decoded", "brightness modulation registration phase orders residuals visibility exposure")(bri, mod, reg,
+                                                                                                      phi, fid, res, V, beta)
         else:
-            dec = namedtuple("decoding", "brightness modulation registration")(bri, mod, reg)
+            dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
@@ -1261,19 +1351,22 @@ class Fringes:
     def _simulate(
             self,
             I: np.ndarray,
-            ratio: float = 1,
+            magnification: float = 1,
             PSF: float = 3,
             system_gain: float = 0.038,
             dark_current: float = 3.64 / 0.038,  # [electrons]  # some cameras feature a dark current compensation
             dark_noise: float = 16.7,  # [electrons]
             seed: int = 268664434431581513926327163960690138719  # secrets.randbits(128)
             ) -> np.ndarray:
+        """Simulate the acquisition, i.e. the transmission channel.
+         This includes the modulation transfer function (computed from the imaging system's point spread function)
+         and intensity noise added by the camera."""
 
         I.shape = T, Y, X, C = vshape(I).shape
         I = I.astype(float, copy=False)
 
-        # pixel ratio
-        I = sp.ndimage.uniform_filter(I, size=ratio, mode="reflect", axes=(1, 2))
+        # magnification
+        I = sp.ndimage.uniform_filter(I, size=magnification, mode="reflect", axes=(1, 2))
 
         # PSF (e.g. defocus)
         I = sp.ndimage.gaussian_filter(I, sigma=PSF, order=0, mode="reflect", axes=(1, 2))
@@ -1359,7 +1452,28 @@ class Fringes:
 
     def MTF(self, v: float | np.ndarray) -> np.ndarray:
         """Modulation Transfer Function.
-        Returns normalized modulation values (which are interpolated) at spatial frequencies 'v'."""
+
+        Returns normalized modulation at spatial frequencies 'v'.
+
+        Parameters
+        ----------
+        v: np.ndarray
+            Spatial frequencies at which to determine the normalized modulation.
+
+        Returns
+        ----------
+        B : np.ndarray
+            Normalized modulation, in the same shape as 'v'.
+
+        Notes
+        ----------
+        - If the instance attribute 'Bv' of the Fringes instance is not None,
+        the MTF is interpolated from previous measurements and extrapolated at points outside the data range.
+        - Else, if the attribute 'PSF' of the Fringes instance is larger than zero,
+        the MTF is computed as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).
+        - Else, it returns ones.
+        """
+
         v_ = v.ravel()
 
         if self.Bv is not None:  # interpolate from measurement
@@ -1371,6 +1485,7 @@ class Fringes:
             B = B[idx]
         elif self.PSF > 0:  # determine from PSF
             B = np.exp(-2 * (np.pi * self.PSF * v_) ** 2)
+            # todo: magnification
         else:
             B = np.ones(v_.shape)
             # B = 1 - v_ / self.vmax  # approximation of [Bothe2008]
@@ -1387,21 +1502,25 @@ class Fringes:
     def Bv(self, B: np.ndarray):
         _B = np.array(np.maximum(0, B), float)
 
-        B.shape = T, Y, X, C = vshape(B).shape
+        _B.shape = T, Y, X, C = vshape(_B).shape
 
         assert T == self.D * self.K
 
+        _B = _B.reshape(self.D, self.K, self.Y, self.X, self.C)
+
         # filter
-        B = np.median(B, axis=-1)  # filter along color axis
-        # B = np.median(B, axis=(1, 2))  # filter along spatial axes
-        B = np.quantile(B, 0.9, axis=(1, 2))  # filter along spatial axes
+        _B = np.nanmedian(_B, axis=-1)  # filter along color axis
+        # _B = np.nanmedian(_B, axis=(2, 3))  # filter along spatial axes
+        _B = np.nanquantile(_B, 0.9, axis=(2, 3))  # filter along spatial axes
 
         #  normalize (only relative weights are important)
-        Bmax = np.iinfo(B.dtype).max if B.dtype.kind in "ui" else 1
-        B /= Bmax
-        B[np.isnan(B)] = 0
+        Bmax = np.iinfo(_B.dtype).max if _B.dtype.kind in "ui" else 1
+        _B /= Bmax
+        _B[np.isnan(_B)] = 0
 
-        if not np.array_equal(self._Bv, _B):
+        _Bv = np.vstack(_B, self._v)
+
+        if not np.array_equal(self._Bv, _Bv):
             self._Bv = _B
             self.logger.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
 
@@ -1420,7 +1539,7 @@ class Fringes:
     def grid(self, grid: str):
         _grid = str(grid)
 
-        if (self.SDM or self.SSB) and self.grid not in self._grids[:2]:
+        if (self.SDM or self.FTM) and self.grid not in self._grids[:2]:
             self.logger.error(f"Couldn't set 'grid': grid not in {self._grids[:2]}'.")
             return
 
@@ -1548,7 +1667,7 @@ class Fringes:
 
         _T = int(min(max(1, T), self._Tmax))
 
-        if _T == 1:  # WDM + SDM todo: SSB?
+        if _T == 1:  # WDM + SDM todo: FTM?
             if self.grid not in self._grids[:2]:
                 self.logger.error(f"Couldn't set 'T = 1': grid not in {self._grids[:2]}'.")
                 return
@@ -2089,7 +2208,8 @@ class Fringes:
 
     @property
     def K(self) -> int:
-        """Number of sets."""
+        """Number of sets,
+        i.e. umber of fringe patterns with different spatial frequencies."""
         return self._K
 
     @K.setter
@@ -2155,7 +2275,7 @@ class Fringes:
         _N = self._trim(_N)
 
         if np.all(_N == 1) and _N.shape[1] == 1:  # any
-            pass  # SSB
+            pass  # FTM
         elif np.any(_N <= 2):
             for d in range(self.D):
                 if not any(_N[d] >= 3):
@@ -2212,7 +2332,9 @@ class Fringes:
 
                 C = sp.special.comb(n, K, exact=True, repetition=True)  # number of unique combinations
 
-                lcombos = np.fromiter(it.combinations_with_replacement(range(lmin, lmax + 1), K), np.dtype((int, K)), C)
+                B = int(np.ceil(np.log2(lmax - 1) / 8)) * 8  # number of bits required to store integers up to lmax
+                lcombos = np.fromiter(it.combinations_with_replacement(range(lmin, lmax + 1), K),
+                                      np.dtype((f"uint{B}", K)), C)
                 lcombos = filter(lcombos, K, self.L, lmin)
 
                 idx0 = np.argmax(np.sum(1 / lcombos ** 2, axis=1))
@@ -2527,16 +2649,18 @@ class Fringes:
             self.logger.debug(f"{self._verbose = }")
 
     @property
-    def SSB(self) -> bool:
-        """Flag indicating wheather single sideband demodulation is deployed."""
-        return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]  # todo: allow H > 1 and use decolorizing, then for each color SSB
+    def FTM(self) -> bool:
+        """Flag indicating wheather the Fourier-transform method deployed."""
+        # todo: allow H > 1 and use decolorizing, then conduct FTM for each color
+        return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]
 
     @property
     def PU(self) -> str:
         """Phase unwrapping method."""
 
-        if self.SSB:
-            PU = "SSB"  # single sideband demodulation
+        if self.FTM:
+            # todo: v >> 1, i.e. l ~ 8
+            PU = "FTM"  # Fourier-transform method
         elif self.K == np.all(self.v <= 1):
             PU = "none"
         elif self._isambiguous:
@@ -2758,14 +2882,14 @@ class Fringes:
             self.logger.debug(f"{self._gain = }")
 
     @property
-    def ratio(self) -> float:
-        """Ratio of camera pixels to screen pixels.
-        Thias many camera pixels look at one screen pixel."""
+    def magnification(self) -> float:
+        """Magnification, i.e. ratio of camera pixels to screen pixels.
+        This many camera pixels look at one screen pixel."""
         return self._ratio
 
-    @ratio.setter
-    def ratio(self, ratio):
-        _ratio = max(0, ratio)
+    @magnification.setter
+    def magnification(self, magnification):
+        _ratio = max(0, magnification)
 
         if self._ratio != _ratio:
             self._ratio = _ratio

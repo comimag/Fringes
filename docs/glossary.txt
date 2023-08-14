@@ -56,7 +56,7 @@ CoM: center of mass
 FPP: fringe projection profilometry
 FTP: Fourier-transform proflometry
 BNFTP: background normalized Fourier-transform proflometry
-SSB: single-sideband demodulation
+FTM: single-sideband demodulation
 FTF: frequency transfer function
 DFP: digital fringe projection
 CRA: chief ray angle
