@@ -1,4 +1,7 @@
 # Fringes
+Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms.
+
+<!---
 Author: Christian Kludt
 
 <img src="docs/shift.gif" width="256"/>
@@ -7,10 +10,16 @@ Author: Christian Kludt
 This package provides the handy `Fringes` class which handles all the required parameters
 for configuring fringe pattern sequences
 and provides methods for fringe analysis.
+--->
+
+![Coding Scheme](docs/coding-scheme.gif?raw=True)\
+Figure 1: Phase Shifting Coding Scheme.
+
 <!---
 link to  paper, please cite
 --->
 
+<!---
 ### Features
 
 - Generalized Temporal Phase Unwrappting (GTPU)
@@ -103,19 +112,21 @@ Figure 1: Phase Shifting Coding Scheme.
       - #### Fourier-transform method (FTM)
         In some cases, the phase signal introduced by the object's distortion of the fringe pattern
         can be extracted with a purely spatial analysis by virtue of the Fourier-transform method [[7]](#7), [[8]](#8):
-        The recorded phase consists of a carrier with the spatial frequency `v` and the signal:\
-        <code>&phi; = &phi;<sub>c</sub> + &phi;<sub>s</sub> = 2&pi;vx + &straightphi;<sub>0</sub> + &phi;<sub>s</sub></code>.
+        The recorded phase consists of a carrier with the spatial frequency `v'` and the signal
+        (please note that `v'` denotes the spatial frequency in the recorded (camera) frame,
+        therefore `v` and `v'` are related by the imaging of the optical system but not identical):
+        <code>&phi; = &phi;<sub>c</sub> + &phi;<sub>s</sub> = 2&pi;v'x + &straightphi;<sub>0</sub> + &phi;<sub>s</sub></code>.
         If the offset `A`, the amplitude `B` anf the signal phase <code>&phi;<sub>s</sub></code> vary slowly
-        compared with the variation introduced by the spatial-carrier frequency `v`,
-        i.e. the surface is rather smooth and has no sharp edges, and the spatial carrier frequency `v` is high enough,
+        compared with the variation introduced by the spatial-carrier frequency `v'`,
+        i.e. the surface is rather smooth and has no sharp edges, and the spatial carrier frequency `v'` is high enough,
         i.e. `v >> 1`, their spetra can be separated and therefore filtered in the frequency space.
         For this purpose, the recorded fringe pattern is Fourier transformed
         by the use of the two-dimensional fast-Fourier-transform (2DFFT) algorithm - hence the name - 
         and processed in its spatial frequency domain.
-        Here, the Fourier spectra are separated by the carrier frequency `v`.
+        Here, the Fourier spectra are separated by the carrier frequency `v'`, cf. Figure 3.
         We filter out the background variation `A`,
-        make use of either of the two spectra on the carrier,
-        and translate it by `v` on the frequency axis toward the origin.
+        select either of the two spectra on the carrier,
+        and translate it by `v'` on the frequency axis toward the origin.
         Again using the 2DFFT algorithm, we compute the inverse Fourier-transform.
         Now we have the signal phase <code>&phi;<sub>s</sub></code> in the imaginary part
         completely separated from the unwanted amplitude variation `B` in the real part.
@@ -124,6 +135,11 @@ Figure 1: Phase Shifting Coding Scheme.
         if the signal-to-noise ratio is higher than 10
         and the gradients of the signal phase <code>&phi;<sub>s</sub></code> are less than <code>&pi;</code> per pixel.
         Again, this only yields a relative phase map, therefore absolute positions are unknown.
+        
+        <img src="docs/FTM.png" width="320"/>\
+        Figure 3: From [[7]](#7). In this image, the spatial frequency is denotes as f. (A) Separated Fourier spectra;
+        (B) single spectrum selected and translated to the origin. 
+--->
 
 <!---
 In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
@@ -161,6 +177,7 @@ The visibility `V` of the fringes is influenced by:
 (the camera pixel size projected onto the light source acts as a low pass filter, reducing the modulation of the signal).
 --->
 
+<!---
 ## Contents
 - [Installation](#installation)
 - [Usage](#usage)
@@ -170,6 +187,7 @@ The visibility `V` of the fringes is influenced by:
 - [License](#license)
 - [Project Status](#project-status)
 - [References](#references)
+--->
 
 ## Installation
 You can install `fringes` directly from [PyPi](https://pypi.org/) via `pip`:
@@ -185,7 +203,6 @@ You instantiate, parameterize and deploy the `Fringes` class:
 import fringes as frng      # import module
 
 f = frng.Fringes()          # instantiate class
-f.logger.setLevel("DEBUG")  # set logging level
 
 f.glossary                  # get glossary
 f.X = 1920                  # set width of the fringe patterns
@@ -196,27 +213,40 @@ f.v = [9, 10]               # set spatial frequencies
 f.T                         # get number of frames
                             
 I = f.encode()              # encode fringe patterns
-A, B, xi = f.decode(I)      # decode fringe patterns
+A, B, x = f.decode(I)      # decode fringe patterns
 ```
 
+<!---
+f.logger.setLevel("DEBUG")  # set logging level
 You can change the [logging level](https://docs.python.org/3/library/logging.html#levels) of a `Fringes` instance.
 For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
 and how long functions take to execute.
+--->
 
 All parameters are accesible by the respective attributes of the `Fringes` class
 (a glossary of them is obtained by the class attribute `glossary`).
 
+They are implemented as class properties (managed attributes).
+Note that some attributes have subdependencies, hence dependent attributes might change as well.
+Circular dependencies are resolved automatically.
+
+<!---
 They are implemented as class properties (managed attributes), which are parsed when setting,
 so usually several input types are accepted
 (e.g. `bool`, `int`, `float` for scalars
 and additionally `list`, `tuple`, `ndarray` for arrays).
-Note that some attributes have subdependencies (cf. Figure 3), hence dependent attributes might change as well.
+Note that some attributes have subdependencies (cf. Figure 3) , hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.
+--->
 
 For creating the fringe pattern sequence `I`, use the method `encode()`.
 It will return a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
 in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
+For analyzing (recorded) fringe patterns, use the method `decode()`.
+It will return the Numpy arrays brightness `A`, modulation `B` and the coordinates `x`.
+
+<!---
 For analyzing (recorded) fringe patterns, use the method `decode()`.
 It will return a [namedtuple](https://docs.python.org/3/library/collections.html#collections.namedtuple), 
 containing the Numpy arrays brightness `A`, modulation `B` and the coordinates `ξ`,
@@ -243,10 +273,12 @@ If a set attribute is 0D i.e. a scalar, then all values are simply replaced by t
 
 `l` and `v` are related by `l = L / v`.
 When `L` changes, `v` is kept constant and only `l` is changed.
+--->
 
 ## Graphical User Interface
 Do you need a GUI? `Fringes` has a sister project that is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
 
+<!---
 ## __Quality Metrics__
 `UMR` denotes the unambiguous measurement range.
 The coding is only unique within the interval `[0, UMR)`; after that it repeats itself.
@@ -300,7 +332,6 @@ If two or more sets `K` are used and their wavelengths `l` resp. number of perio
 the unambiguous measurement range can be increased many times.
 As a consequence, one can use much smaller wavelenghts `l` (larger number of periods `v`).
 
-
 However, it must be assured that the unambiguous measurment range is always equal or larger than both,
 the width `X` and the height `Y`.
 Else, [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) would yield wrong results and thus instead
@@ -337,6 +368,7 @@ if the recorded modulation `B` is known (or can be estimated) for each certain s
       `PSF` is given as the standard deviation of the Point Spread Function.
    2. Finlly, to get the modulation `B` at certain spatial frequencies `v`, simply call `MTF(v)`. 
       This method computes the modulation from the specified attributes `magnifiction` and `PSF` directly.
+--->
 
 ## Troubleshooting
 <!---
@@ -356,7 +388,7 @@ if the recorded modulation `B` is known (or can be estimated) for each certain s
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster, 
   approaching the speeds of code written in C.
 
-
+<!---
 - __My decoded coordinates show lots of noise__
   - Make sure the exposure of your camera is adjusted so that the fringe patterns show up with maximum contrast.
     Try to avoid under- and overexposure during acquisition.
@@ -380,6 +412,7 @@ if the recorded modulation `B` is known (or can be estimated) for each certain s
     - You can use the static method `gamma_auto_correct` to
       automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
     - You might also use more shifts `N` to compensate for the dominant harmonics of the gamma-nonlinearities.
+--->
 
 ## License
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License

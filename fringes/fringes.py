@@ -120,7 +120,7 @@ class Fringes:
 
         # logger
         self.logger = lg.getLogger(self.__class__.__name__)  # todo: give each logger its own instance name, via id() ?
-        self.logger.setLevel("INFO")
+        self.logger.setLevel("WARNING")
         if not self.logger.hasHandlers():
             formatter = lg.Formatter("%(asctime)s %(levelname)-8s %(name)7s.%(funcName)-11s: %(message)s")
             handler = lg.StreamHandler()
