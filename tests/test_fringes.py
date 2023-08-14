@@ -505,6 +505,8 @@ def test_simulation():
 
 
 if __name__ == "__main__":
+    f = Fringes()
+
     T = 10
     I = np.empty(T, object)
     I[0] = np.ones(1)

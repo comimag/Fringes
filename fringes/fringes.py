@@ -1500,6 +1500,11 @@ class Fringes:
 
     @Bv.setter
     def Bv(self, B: np.ndarray):
+        if B is None:
+            self._Bv = None
+            self.logger.debug(f"self.Bv = {self._Bv}")
+            return
+
         _B = np.array(np.maximum(0, B), float)
 
         _B.shape = T, Y, X, C = vshape(_B).shape
@@ -2889,11 +2894,11 @@ class Fringes:
 
     @magnification.setter
     def magnification(self, magnification):
-        _ratio = max(0, magnification)
+        _magnification = max(0, magnification)
 
-        if self._ratio != _ratio:
-            self._ratio = _ratio
-            self.logger.debug(f"{self._ratio = }")
+        if self._magnification != _magnification:
+            self._magnification = _magnification
+            self.logger.debug(f"{self._magnification = }")
 
     @property
     def PSF(self) -> float:
@@ -2929,7 +2934,7 @@ class Fringes:
         It is based on the phase noise model from [Surrel 1997]
         and propagated through the unwrapping process and the phase fusion."""
 
-        quant = 0 if self.dsrk > 0 else self.quant
+        quant = 0 if self.dark > 0 else self.quant
         ui = np.sqrt(self.gain ** 2 * self.dark ** 2 + quant ** 2 + self.gain ** 2 * self.shot ** 2)  # intensity noise
         B = self.B * self.MTF(self._v)
         SNR = B / ui

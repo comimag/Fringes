@@ -13,7 +13,7 @@ and provides methods for fringe analysis.
 --->
 
 ![Coding Scheme](docs/coding-scheme.gif?raw=True)\
-Figure 1: Phase Shifting Coding Scheme.
+Figure 1: Phase Shift Coding Scheme.
 
 <!---
 link to  paper, please cite
@@ -240,11 +240,11 @@ Circular dependencies are resolved automatically.
 --->
 
 For creating the fringe pattern sequence `I`, use the method `encode()`.
-It will return a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
+It returns a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
 in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
 For analyzing (recorded) fringe patterns, use the method `decode()`.
-It will return the Numpy arrays brightness `A`, modulation `B` and the coordinates `x`.
+It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `x`.
 
 <!---
 For analyzing (recorded) fringe patterns, use the method `decode()`.
@@ -493,7 +493,7 @@ BIAS Bremen,
 <!---
 <a id="8">[8]</a>
 [Park,
-"A two dimensional phase-shifting method for deflectometry",
+"A twodimensional phase-shifting method for deflectometry",
 International Symposium on Optomechatronic Technologies,
 2008.](https://doi.org/10.1117/12.816472)
 
