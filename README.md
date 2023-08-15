@@ -223,9 +223,8 @@ For example, changing it to `'DEBUG'` gives you verbose feedback on which parame
 and how long functions take to execute.
 --->
 
-All parameters are accesible by the respective attributes of the `Fringes` class
+All parameters are accesible by the respective attributes of the `Fringes` instance
 (a glossary of them is obtained by the class attribute `glossary`).
-
 They are implemented as class properties (managed attributes).
 Note that some attributes have subdependencies, hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.
@@ -239,11 +238,11 @@ Note that some attributes have subdependencies (cf. Figure 3) , hence dependent 
 Circular dependencies are resolved automatically.
 --->
 
-For creating the fringe pattern sequence `I`, use the method `encode()`.
+For creating the fringe pattern sequence `I`, use the method `encode()`.\
 It returns a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
 in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
-For analyzing (recorded) fringe patterns, use the method `decode()`.
+For analyzing (recorded) fringe patterns, use the method `decode()`.\
 It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `x`.
 
 <!---

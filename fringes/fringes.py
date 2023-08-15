@@ -174,10 +174,32 @@ class Fringes:
         return f"{self.params}"
 
     def load(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> dict:
-        """Load a parameter set from a file.
-        Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
-        If `fname` is not provided, the file `.fringes.yaml` within the user home directory is tried to load.
-        The parameters are only loaded if the config file provides the section `fringes`.
+        """Load parameters from a config file to the 'Fringes' instance.
+
+        .. warning:: The parameters are only loaded if the config file provides the section `fringes`.
+
+        Parameters
+        ----------
+        fname : str, optional
+            File name of the file to load.
+            Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
+            If `'fname'` is not provided, the file `.fringes.yaml` within the user home directory is loaded.
+
+        Returns
+        ----------
+        params : dict
+            The loaded parameters as a dictionary.
+            'params' may be empty.
+
+        Examples
+        ----------
+        >>> import os
+        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+
+        >>> f.load(fname)
         """
 
         if not os.path.isfile(fname):
@@ -212,10 +234,27 @@ class Fringes:
             return {}
 
     def save(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> None:
-        """Save the parameters to a file.
-        Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
-        If `fname` is not provided, the parameters are saved to the file `.fringes.yaml` within the user home directory.
-        Within the file, the parameters are written to the section `fringes`."""
+        """Save the parameters of the 'Fringes' instance to a config file.
+
+        Parameters
+        ----------
+        fname : str, optional
+            File name of the file to save.
+            Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
+            If `fname` is not provided, the parameters are saved to
+            the file `.fringes.yaml` within the user home directory.
+            Within the file, the parameters are written to the section `fringes`.
+
+        Examples
+        ----------
+        >>> import os
+        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+
+        >>> f.save(fname)
+        """
 
         if not os.path.isdir(os.path.dirname(fname)):
             self.logger.warning(f"File directory does not exist.")
@@ -239,31 +278,48 @@ class Fringes:
         self.logger.debug(f"Saved parameters to {fname}.")  # todo: info?
 
     def reset(self) -> None:
-        """Reset parameters to defaults."""
+        """Reset parameters of the 'Fringes' instance to default values."""
 
         self.params = self.defaults
-
         self.logger.info("Reset parameters to defaults.")
 
-    def optimize(self, T: int = 24, umax: float = None) -> None:
-        """Optimize the parameters based on:
-         T: Given number of frames.
-         umax (optional): maximum uncertainty
-         lmin: Minimum resolvable wavelength.
-         L: Length of fringe patterns."""
+    def optimize(self, T: int = None, umax: float = None) -> None:
+        """Optimize the parameters of the 'Fringes' instance.
 
-        self.K = 2
-        self.l = "optimal"
-        self.h = "w"
+         Parameters
+         ----------
+         T : int, optional
+            Number of frames.
+            If 'T' is not provided, the number of frames from the 'Fringes' instance is used.
+            Then, the 'Fringes' instance's number of shifts 'N' is distributed optimally over the
 
-        if umax is not None:  # optimize T: umax -> N
+         umax : float, optional
+            Maximum allowable uncertainty.
+            Must be greater than zero.
+
+        Notes
+        ----------
+        If 'umax' is specified, the parameters are determined
+        that allow a maximal uncertainty of 'umax'
+        with a minimum number of frames.
+        """
+
+        K = np.log(self.L) / np.log(self.lopt)  # lopt ** K = L
+        K = np.ceil(max(2, K))
+        self.K = K
+        self.v = "optimal"
+
+        if umax is not None:  # umax -> T
             self.N = int(np.median(self.N))  # make N const.
             a = self.u.max() / umax
             N = self.N * a ** 2
             self.N = np.maximum(3, np.ceil(N))
             u = self.u
-        else:  # distribute frames optimally (evenly) on shifts
-            self.T = T
+        else:  # T -> u
+            if T is None:
+                T = self.T
+
+            self.T = T  # distribute frames optimally (evenly) on shifts
 
         self.logger.info("Optimized parameters.")
 
@@ -290,19 +346,48 @@ class Fringes:
         return J
 
     def deinterlace(self, I: np.ndarray) -> np.ndarray:
-        """Deinterlace fringe patterns acquired with a line scan camera
+        """Deinterlace fringe patterns.
+
+        The is for fringe patterns
+        which were acquired with a line scan camera
         while each frame has been displayed and captured
-        while the object has been moved by one pixel."""
+        while the object was moving by one pixel.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Fringe pattern sequence.
+            'I' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
+            before processing.
+
+        Returns
+        ----------
+        I : np.ndarray
+            Deinterlaced fringe pattern sequence.
+
+        Raises
+        ----------
+        AssertionError
+            If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
+
+        Examples
+        ----------
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+        >>> I = f.deinterlace(I)
+        """
 
         t0 = time.perf_counter()
 
         T, Y, X, C = vshape(I).shape
         assert T * Y % self.T == 0, "Number of frames of parameters and data don't match."
+
         # I = I.reshape((T * Y, X, C))  # concatenate
+        I = I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
-        return I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
+        return I
 
     def coordinates(self) -> np.ndarray:
         """Generate the coordinate matrices of the coordinate system defined in `grid`."""
@@ -808,7 +893,7 @@ class Fringes:
                frames: int | tuple = None,
                dtype: str | np.dtype = None,
                rint: bool = True,
-               simulate: bool = True
+               simulate: bool = False
                ) -> np.ndarray:
         """Encode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).
 
@@ -837,10 +922,11 @@ class Fringes:
             and intensity noise added by the camera.
             The required parameters for this are the instance's attributes
             'magnification', 'PSF', 'system_gain', 'dark_current' and 'dark_noise'.
+            Default. False.
         Returns
         ----------
         I : np.ndarray
-
+            Fringe pattern sequence.
 
         Notes
         ----------
@@ -850,6 +936,31 @@ class Fringes:
         Alternatively, to receive arbitrary frames,
         index the Fringes instance directly,
         either with an integer, a tuple or a slice.
+
+        Examples
+        ----------
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+
+        Encode the complete fringe pattern sequence.
+        >>> I = f.encode()
+
+        Encode the first frame of the fringe pattern sequence.
+        >>> I = f.encode(frames=0)
+        >>> I = f[0]
+        >>> I = next(iter(f))
+
+        Encode the last frame of the fringe pattern sequence.
+        >>> I = f.encode(frames=-1)
+        >>> I = f[-1]
+
+        Encode the first two frames of the fringe pattern sequence.
+        >>> I = f.encode(frames=(0, 1))
+        >>> I = f[0, 1]
+        >>> I = f[:2]
+
+        Create a generator to receive the frames iteratively, i.e. in a lazy manner.
+        >>> I = (frame for frame in f)
         """
 
         t0 = time.perf_counter()
@@ -910,7 +1021,9 @@ class Fringes:
         Parameters
         ----------
         I : np.ndarray
-            Phase shifting sequence to be decoded.
+            Fringe pattern sequence.
+            'I' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
+            before processing.
 
             .. note:: It must have been encoded with the same parameters of the Fringes instance as the encoded one.
 
@@ -956,6 +1069,21 @@ class Fringes:
 
         exposure : np.ndarray, optional
             Local exposure (relative average intensity).
+
+        Raises
+        ----------
+        AssertionError
+            If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
+
+        Examples
+        ----------
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+        >>> I = f.encode()
+
+        >>> A, B, x = f.decode(I)
+
+        >>> A, B, x, p, k, e, V, H = f.decode(I, verbose=True)
         """
 
         t0 = time.perf_counter()
@@ -965,12 +1093,13 @@ class Fringes:
         I = I.reshape((T, Y, X, C))
 
         # assertions
-        if T != self.T:
-            self.logger.error("Number of frames of parameters and data don't match.")
-            return
-
+        assert T == self.T, "Number of frames of parameters and data don't match."
         if self.FDM:
             assert len(np.unique(self.N)) == 1, "Shifts aren't equal."
+
+        # subtract dark signal
+        if self.y0 > 0:
+            I[I >= self.y0] -= self.y0
 
         # decolorize i.e. fuse hues/colors
         if self.H > 1 or not self._ismono:  # for gray fringes, color fusion is not performed, but extended averaging is
@@ -1164,9 +1293,29 @@ class Fringes:
     @staticmethod
     def unwrap(phi: np.ndarray, mask: np.ndarray = None, func: str = "ski") -> np.array:  # todo: use B for quality guidance
         """Unwrap phase maps spacially.
-        Depending on the flag `func`, this is either done by
-        https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html or
-        https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html"""
+
+        Parameters
+        ----------
+        phi : np.ndarray
+            Phase maps to unwrap spatially, stacked along the first dimension.
+            'phi' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
+            before processing.
+            The frames (along first dimension) as well the color channels (along last dimension)
+            are unwrapped separately.
+
+        mask : np.ndarray, optional
+            Mask image with dtype 'np.uint8' used when some pixels do not hold any phase information.
+
+        func : str, optional
+            Unwrapping function to use. The default is 'ski'.
+            - 'ski': https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html
+            - else: https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html
+
+        Returns
+        ----------
+        unwrapped : np.ndarray
+            Unwrapped phase maps.
+        """
 
         T, Y, X, C = vshape(phi).shape
         phi = phi.reshape((T, Y, X, C))
@@ -1200,28 +1349,75 @@ class Fringes:
     def remap(self,
               xi: np.ndarray,
               B: np.ndarray = None,
-              scale: float = 1,
-              normalize: bool = True,
+              dx: float = 1,
+              p: int = 2,
               fast: bool = True) -> np.ndarray:
-        if fast:
-            # return remap(xi, B, X=self.X, Y=self.Y)
-            return self.remap1(xi, B)
-        else:
-            return self.remap3(xi, B)
+        """Source activation heatmap.
 
-    def remap1(self,
-              xi: np.ndarray,
-              B: np.ndarray = None,
-              scale: float = 1,
-              normalize: bool = True) -> np.ndarray:
-        """Mapping decoded coordinates (having sub-pixel accuracy)
-        from camera grid to integer positions on th escreen grid
-        with weights from modulation.
+        The decoded coordinates (having sub-pixel accuracy)
+        are mapped from the camera grid
+        to integer positions on the screen grid
+        with weights from the modulation.
         This yields the source activation heatmap:
         a grid representing the screen (light source)
         with the pixel values being a relative measure
         of how much a screen (light source) pixel contributed
-        to the exposure of the camera sensor."""
+        to the exposure of the camera sensor.
+
+        The dimensions of the screen are taken from the 'Fringes' instance.
+
+        Parameters
+        ----------
+        xi : np.ndarray
+            Registration, i.e. the decoded screen coordinates as seen by the camera.
+            'xi' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
+            before processing.
+
+        B : np.ndarray, optional
+            Modulation. Used for weighting.
+            'B' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
+            before processing.
+            If 'B' is not given, equal weights are used.
+
+        dx : float, optional
+            Magnification. Size of one camera pixel, projected onto the screen, in units of screen pixels.
+            Default is one.
+
+        p : int, optional
+            Power parameter.
+            Default is two.
+
+        fast : bool
+            Flag for defining whether to use fast remapping or inverse distance weighted remapping,
+            which is more precise but also more time-consuming.
+            Default is True.
+
+        Returns
+        ----------
+        src : np.ndarray
+            Source activation heatmap.
+        
+        Examples
+        ----------
+        >>> import fringes as frng
+        >>> f = frng.Fringes()
+        >>> I = f.encode()
+
+        >>> A, B, x = f.decode(I)
+
+        >>> src = f.heatmap(x, B)
+        """
+
+        if fast:
+            # return remap(xi, B, X=self.X, Y=self.Y)
+            return self._remap1(xi, B)
+        else:
+            return self._remap3(xi, B)
+
+    def _remap1(self,
+              xi: np.ndarray,
+              B: np.ndarray = None,
+              scale: float = 1,) -> np.ndarray:
 
         t0 = time.perf_counter()
 
@@ -1256,30 +1452,20 @@ class Fringes:
         for c in range(C):
             src[idx[1].ravel(), idx[0].ravel(), c] += val[..., c].ravel()
 
-        if normalize:
-            mx = src.max()
-            if mx > 0:
-                src /= mx
+        mx = src.max()
+        if mx > 0:
+            src /= mx
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return src
 
     # todo: weight with uncertainy?
-    def remap3(self,
+    def _remap3(self,
                xi: np.ndarray,
                B: np.ndarray = np.ones((1)),
                dx: float = 0.5,
-               p: int = 2,
-               normalize: bool = True) -> np.ndarray:
-        """Mapping decoded coordinates (having sub-pixel accuracy)
-        from camera grid to (integer) positions on pattern/screen grid
-        with weights from modulation.
-        This yields the source activation heatmap:
-        a grid representing the screen (light source)
-        with the pixel values being a relative measure
-        of how much a screen (light source) pixel contributed
-        to the exposure of the camera sensor."""
+               p: int = 2,) -> np.ndarray:
 
         # inverse distance weighting using modified Shepard's method: https://en.wikipedia.org/wiki/Inverse_distance_weighting
 
@@ -1338,10 +1524,9 @@ class Fringes:
                     else:
                         src[ys, xs, c] = 0
 
-        if normalize:
-            mx = src.max()
-            if mx > 0:
-                src /= mx
+        mx = src.max()
+        if mx > 0:
+            src /= mx
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
@@ -1451,28 +1636,31 @@ class Fringes:
         return a
 
     def MTF(self, v: float | np.ndarray) -> np.ndarray:
-        """Modulation Transfer Function.
-
-        Returns normalized modulation at spatial frequencies 'v'.
-
-        Parameters
-        ----------
-        v: np.ndarray
-            Spatial frequencies at which to determine the normalized modulation.
-
-        Returns
-        ----------
-        B : np.ndarray
-            Normalized modulation, in the same shape as 'v'.
-
-        Notes
-        ----------
-        - If the instance attribute 'Bv' of the Fringes instance is not None,
-        the MTF is interpolated from previous measurements and extrapolated at points outside the data range.
-        - Else, if the attribute 'PSF' of the Fringes instance is larger than zero,
-        the MTF is computed as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).
-        - Else, it returns ones.
-        """
+        """Modulation Transfer Function."""
+        # """Modulation Transfer Function.
+        #
+        # Returns normalized modulation at spatial frequencies 'v'.
+        #
+        # Parameters
+        # ----------
+        # v: np.ndarray
+        #     Spatial frequencies at which to determine the normalized modulation.
+        #
+        # Returns
+        # ----------
+        # B : np.ndarray
+        #     Normalized modulation, in the same shape as 'v'.
+        #
+        # Notes
+        # ----------
+        # - If the attribute 'Bv' of the Fringes instance is not None,
+        # the MTF is interpolated from previous measurements.
+        # - Else, if the attribute 'PSF' of the Fringes instance is larger than zero,
+        # the MTF is computed from the optical transfer function of the optical system,
+        # i.e. as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).
+        # - Else, it returns ones.
+        # """
+        # todo: ...and extrapolated at points outside the data range?
 
         v_ = v.ravel()
 
@@ -1621,7 +1809,7 @@ class Fringes:
     @property
     def T(self) -> int:
         """Number of frames.
-        Depende on the parameters
+        Depends on the parameters
             - H: number of hues
             - D: number of directions
             - K: number of sets
@@ -1705,7 +1893,7 @@ class Fringes:
             # todo: N12 = Nmin == 3  # allow N to be in [1, 2] if K >= 2
             # todo: N12 = 1 in self.N or 2 in self.N
             Ngood = 4  # minimum number of phase shifts to obtain good results i.e. reliable results in practice
-            Kmax = 2  # 3  # todo: which is better: 2 or 3?
+            Kmax = self.K  # 2  # 3  # todo: which is better: 2 or 3?
             self.FDM = False
             self.SDM = False
             self.WDM = False
@@ -1999,8 +2187,10 @@ class Fringes:
         if self.H != _H:
             if self.WDM:
                 self.h = "w" * _H
+            elif _H == 1:
+                self.h = "w"
             elif _H == 2:
-                self.h = "rb"
+                self.h = "rb"  # todo
             else:
                 h = "rgb" * (_H // 3 + 1)
                 self.h = h[:_H]
@@ -2158,7 +2348,7 @@ class Fringes:
         Usually f equals 1 and is essentially only changed if frequency division multiplexing (FDM) is activated:
         Each set per direction receives an individual temporal frequency f, which is used in temporal demodulation to distinguish the individual sets.
         A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.
-        If one wants a static pattern, i.e. one that remains congruent when shifted, set 'static' to 'True'
+        If one wants a static pattern, i.e. one that remains congruent when shifted, set 'static' to True.
         """
         return self._FDM
 
@@ -2303,6 +2493,30 @@ class Fringes:
             self.logger.debug(f"{self.T = }")
 
     @property
+    def lmin(self) -> float:
+        """Minimum resolvable wavelength.
+        [lmin] = px."""
+        fmax = min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (
+                                                                                                          self.Nmin - 1) / 2  # don't use self.fmax, else circular loop
+        return min(self._lmin, self.L / fmax) if self.FDM and self.static else self._lmin
+
+    @lmin.setter
+    def lmin(self, lmin: float):
+        _lmin = float(max(self._lminmin, lmin))
+
+        if self._lmin != _lmin:
+            self._lmin = _lmin
+            self.logger.debug(f"{self._lmin = }")
+            self.logger.debug(f"{self.vmax = }")  # computed upon call
+            self.l = self.l  # l triggers v
+
+    @property
+    def lopt(self) -> float:
+        """Optimal wavelength for minimal decoding uncertainty.
+        [lopt] = px."""
+        return self.L / self.vopt
+
+    @property
     def l(self) -> np.ndarray:
         """Wavelengths of fringe periods.
         [l] = px.
@@ -2426,6 +2640,31 @@ class Fringes:
         return self.L / self._v
 
     @property
+    def vmax(self) -> float:
+        """Maximum resolvable spatial frequency."""
+        return self.L / self.lmin
+
+    @property
+    def vopt(self) -> float:
+        """Optimal spatial frequency for minimal decoding uncertainty."""
+
+        if self.Bv is not None:  # interpolate from measurement
+            v = np.arange(1, self.vmax + 1)
+            B = self.MTF(v)
+            idx = np.argmin(B < 0.5)  # approximation [Bothe2008]
+            if idx > 0:
+                idx -= 1  # index of last element where MTF >= 0.5
+            vopt = v[idx]
+        elif self.PSF > 0:  # determine from PSF
+            vopt_ = 1 / (2 * np.pi * self.PSF)
+            lopt = 1 / vopt_
+            vopt = self.L / lopt
+        else:
+            vopt = self.vmax / 2  # approximation [Bothe2008]
+
+        return vopt
+
+    @property
     def v(self) -> np.ndarray:
         """Spatial frequencies,
         i.e. number of periods/fringes across maximum coding length."""
@@ -2439,14 +2678,13 @@ class Fringes:
     def v(self, v: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(v, str):
             if v == "optimal":
-                if np.sqrt(self.L) < self.lmin:
-                    self.l = "optimal"
-                    return
-
-                vmax = int(max(1, self.vmax))
-                vmax = int(max(1 if self.K == 1 else 2, self.vmax))  # todo: necessary?
+                # |{v}| = 2
+                vmax = int(max(1 if self.K == 1 else 2, self.vopt))
                 v = np.array([vmax] * (self.K - 1) + [vmax - 1])  # two consecutive numbers are always coprime
-                v = vmax - np.arange(self.K)
+
+                # # # |{v}| = K
+                # vmax = int(max(self.K, self.vopt))
+                # v = vmax - np.arange(self.K)
             elif v == "exponential":
                 # K = int(np.ceil(np.log2(self.vmax))) + 1  # + 1: 2 ** 0 = 1
                 v = np.concatenate(([0], np.geomspace(1, self.vmax, self.K - 1)))
@@ -2555,54 +2793,6 @@ class Fringes:
     def _isambiguous(self) -> bool:
         """Unambiguous measument range is larger than the screen length."""
         return np.any(self.UMR < self.R * self.alpha)
-
-    @property
-    def lmin(self) -> float:
-        """Minimum resolvable wavelength.
-        [lmin] = px."""
-        fmax = min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self.Nmin - 1) / 2  # don't use self.fmax, else circular loop
-        return min(self._lmin, self.L / fmax) if self.FDM and self.static else self._lmin
-
-    @lmin.setter
-    def lmin(self, lmin: float):
-        _lmin = float(max(self._lminmin, lmin))
-
-        if self._lmin != _lmin:
-            self._lmin = _lmin
-            self.logger.debug(f"{self._lmin = }")
-            self.logger.debug(f"{self.vmax = }")  # computed upon call
-            self.l = self.l  # l triggers v
-
-    @property
-    def vmax(self) -> float:
-        """Maximum resolvable spatial frequency."""
-        return self.L / self.lmin
-
-    @property
-    def vopt(self) -> float:
-        """Optimal spatial frequency for minimal decoding uncertainty."""
-
-        if self.Bv is not None:  # interpolate from measurement
-            v = np.arange(1, self.vmax + 1)
-            B = self.MTF(v)
-            idx = np.argmin(B < 0.5)  # approximation [Bothe2008]
-            if idx > 0:
-                idx -= 1  # index of last element where MTF >= 0.5
-            vopt = v[idx]
-        elif self.PSF > 0:  # determine from PSF
-            vopt_ = 1 / (2 * np.pi * self.PSF)
-            lopt = 1 / vopt_
-            vopt = self.L / lopt
-        else:
-            vopt = self.vmax / 2  # approximation [Bothe2008]
-
-        return vopt
-
-    @property
-    def lopt(self) -> float:
-        """Optimal wavelength for minimal decoding uncertainty.
-        [lopt] = px."""
-        return self.L / self.vopt
 
     @property
     def mode(self) -> str:
@@ -2890,11 +3080,11 @@ class Fringes:
     def magnification(self) -> float:
         """Magnification, i.e. ratio of camera pixels to screen pixels.
         This many camera pixels look at one screen pixel."""
-        return self._ratio
+        return self._magnification
 
     @magnification.setter
     def magnification(self, magnification):
-        _magnification = max(0, magnification)
+        _magnification = float(max(0, magnification))
 
         if self._magnification != _magnification:
             self._magnification = _magnification

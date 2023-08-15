@@ -506,6 +506,16 @@ def test_simulation():
 
 if __name__ == "__main__":
     f = Fringes()
+    Ii = I for I in f
+    Igen = (frame for frame in f)
+    I0 = next(Igen)
+    fiter = iter(f)
+    I00 =
+    I = next(fiter)
+    II = np.array([I])
+
+    f.optimize()
+    I = f.encode()
 
     T = 10
     I = np.empty(T, object)
