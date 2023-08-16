@@ -24,7 +24,7 @@ from .decoder3 import decode  # todo: fast_decode i.e. fast_unwrap
 
 
 class Fringes:
-    """Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."""
+    """Easy to use class for generating and analyzing fringe patterns with phase shifting algorithms."""
 
     # value limits
     _Hmax = 101  # this is arbitrary
@@ -47,7 +47,7 @@ class Fringes:
 
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
-    _modes = ("fast", "precise", "robust")
+    _modes = ("fast", "precise")
     _dtypes = (
         "bool",
         "uint8",
@@ -230,6 +230,8 @@ class Fringes:
     def save(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> None:
         """Save the parameters of the 'Fringes' instance to a config file.
 
+        Within the file, the parameters are written to the section `fringes`
+
         Parameters
         ----------
         fname : str, optional
@@ -237,7 +239,6 @@ class Fringes:
             Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
             If `fname` is not provided, the parameters are saved to
             the file `.fringes.yaml` within the user home directory.
-            Within the file, the parameters are written to the section `fringes`.
 
         Examples
         ----------
@@ -942,6 +943,7 @@ class Fringes:
             The required parameters for this are the instance's attributes
             'magnification', 'PSF', 'system_gain', 'dark_current' and 'dark_noise'.
             Default. False.
+
         Returns
         ----------
         I : np.ndarray
@@ -951,7 +953,6 @@ class Fringes:
         ----------
         To receive the frames iteratively (i.e. in a lazy manner),
         simply iterate over the Fringes instance.
-
         Alternatively, to receive arbitrary frames,
         index the Fringes instance directly,
         either with an integer, a tuple or a slice.
@@ -962,23 +963,28 @@ class Fringes:
         >>> f = frng.Fringes()
 
         Encode the complete fringe pattern sequence.
+
         >>> I = f.encode()
 
         Encode the first frame of the fringe pattern sequence.
+
         >>> I = f.encode(frames=0)
         >>> I = f[0]
         >>> I = next(iter(f))
 
         Encode the last frame of the fringe pattern sequence.
+
         >>> I = f.encode(frames=-1)
         >>> I = f[-1]
 
         Encode the first two frames of the fringe pattern sequence.
+
         >>> I = f.encode(frames=(0, 1))
         >>> I = f[0, 1]
         >>> I = f[:2]
 
         Create a generator to receive the frames iteratively, i.e. in a lazy manner.
+
         >>> I = (frame for frame in f)
         """
 
@@ -1067,7 +1073,7 @@ class Fringes:
             by a bilateral filter which is edge-preserving.
 
         Returns
-        ----------
+        -------
         brightness : np.ndarray
             Local background signal.
 
@@ -1344,7 +1350,9 @@ class Fringes:
 
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
+
             - 'ski': https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html
+
             - else: https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html
 
         Returns
@@ -1753,6 +1761,7 @@ class Fringes:
     @property
     def Bv(self) -> np.ndarray:
         """Modulation at spatial frequencies 'v'.
+
         The modulation values are determined from a measurement."""
         return self._Bv
 
@@ -1789,11 +1798,12 @@ class Fringes:
 
     @property
     def grid(self) -> str:
-        """Coordinate system of fringe patterns.
-        The following values can be set:
-        'image':     The top left corner pixel of the grid is the origin and positive directions are right- resp. downwards.
-        'Cartesian': The center of grid is the origin and positive directions are right- resp. upwards.
-        'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.
+        """Coordinate system of the fringe patterns.
+
+        The following values can be set:\n
+        'image':     The top left corner pixel of the grid is the origin and positive directions are right- resp. downwards.\n
+        'Cartesian': The center of grid is the origin and positive directions are right- resp. upwards.\n
+        'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.\n
         'log-polar': The center of grid is the origin and positive directions are clockwise resp. outwards.
         """
         return self._grid
@@ -1878,16 +1888,7 @@ class Fringes:
 
     @property
     def T(self) -> int:
-        """Number of frames.
-        Depends on the parameters
-            - H: number of hues
-            - D: number of directions
-            - K: number of sets
-            - N: number of shifts
-         and the multiplexing methods
-            - SDM
-            - WDM
-            - FDM"""
+        """Number of frames."""
 
         T = self.H * np.sum(self._N)
 
@@ -2072,10 +2073,7 @@ class Fringes:
 
     @property
     def C(self) -> int:
-        """Number of color channels.
-        Depends on coloring (hues h) and multiplexing.
-        For example, if all hues are monochromatic,
-        i.e. the RGB values are identical for each hue, `C` equals 1, else 3."""
+        """Number of color channels."""
         return 3 if self.WDM or not self._ismono else 1
 
     @property
@@ -2119,11 +2117,13 @@ class Fringes:
     @property
     def UMR(self) -> np.ndarray:
         """Unambiguous measurement range.
+
         The coding is only unique within the interval [0, UMR); after that it repeats itself.
-        The UMR is derived from l and v:
-        - If l ∈ ℕ, UMR = lcm(li) with lcm being the least common multiple.
-        - Else, if v ∈ ℕ, UMR = L/ gcd(vi) with gcd being the greatest common divisor.
-        - Else, if l ∧ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.
+
+        The UMR is derived from l and v:\n
+        - If l ∈ ℕ, UMR = lcm(li) with lcm being the least common multiple.\n
+        - Else, if v ∈ ℕ, UMR = L/ gcd(vi) with gcd being the greatest common divisor.\n
+        - Else, if l ∧ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.\n
         - Else, if l ∧ v ∈ ℝ \ ℚ, l and v are approximated by rational numbers with a fixed length of decimal digits.
         """
 
@@ -2208,9 +2208,7 @@ class Fringes:
 
     @property
     def eta(self) -> float:
-        """Coding efficiency.
-        It makes no sense to choose UMR much larger than L,
-        because then a significant part of the coding range is not used."""
+        """Coding efficiency."""
         eta = self.R / self.UMR
         eta[self.UMR < self.R] = 0
         return eta
@@ -2269,16 +2267,19 @@ class Fringes:
     @property
     def h(self) -> np.ndarray:
         """Hues i.e. colors of fringe patterns.
-        Possible values is any sequence of RGB color triples within the interval [0, 255].
+
+        Possible values are any sequence of RGB color triples within the interval [0, 255].
         However, black (0, 0, 0) is not allowed.
-        The hue values can also be set by assigning any combination of the following characters as a string:
-        - 'r': red
-        - 'g': green
-        - 'b': blue
-        - 'c': cyan
-        - 'm': magenta
-        - 'y': yellow
-        - 'w': white
+
+        The hue values can also be set by assigning any combination of the following characters as a string:\n
+        - 'r': red \n
+        - 'g': green\n
+        - 'b': blue\n
+        - 'c': cyan\n
+        - 'm': magenta\n
+        - 'y': yellow\n
+        - 'w': white\n
+
         Before decoding, repeating hues will be fused by averaging."""
         return self._h
 
@@ -2347,6 +2348,7 @@ class Fringes:
     @property
     def SDM(self) -> bool:
         """Spatial division multiplexing.
+
         The directions D are multiplexed, resulting in a crossed fringe pattern.
         The amplitude B is halved.
         It can only be activated if we have two directions, i.e. D ≡ 2.
@@ -2383,6 +2385,7 @@ class Fringes:
     @property
     def WDM(self) -> bool:
         """Wavelength division multiplexing.
+
         The shifts are multiplexed into the color channel, resulting in an RGB fringe pattern.
         It can only be activated if all shifts equal 3, i.e. N ≡ 3.
         The number of frames T is reduced by the factor 3."""
@@ -2413,13 +2416,14 @@ class Fringes:
     @property
     def FDM(self) -> bool:
         """Frequency division multiplexing.
-        The directions 'D' and the sets 'K' are multiplexed, resulting in a crossed fringe pattern if D ≡ 2.
+
+        The directions D and the sets K are multiplexed, resulting in a crossed fringe pattern if D ≡ 2.
         It can only be activated if D ∨ K > 1 i.e. D * K > 1.
         The amplitude B as well as the number of shifts is reduced by the factor D * K.
         Usually f equals 1 and is essentially only changed if frequency division multiplexing (FDM) is activated:
         Each set per direction receives an individual temporal frequency f, which is used in temporal demodulation to distinguish the individual sets.
         A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.
-        If one wants a static pattern, i.e. one that remains congruent when shifted, set 'static' to True.
+        If one wants a static pattern, i.e. one that remains congruent when shifted, set static to True.
         """
         return self._FDM
 
@@ -2459,7 +2463,7 @@ class Fringes:
 
     @property
     def static(self) -> bool:
-        """Flag for creating static fringes, i.e. they remain congruent when shifted."""
+        """Flag for creating static fringes (so they remain congruent when shifted)."""
         return self._static
 
     @static.setter
@@ -2474,8 +2478,7 @@ class Fringes:
 
     @property
     def K(self) -> int:
-        """Number of sets,
-        i.e. umber of fringe patterns with different spatial frequencies."""
+        """Number of sets (number of fringe patterns with different spatial frequencies)."""
         return self._K
 
     @K.setter
@@ -2518,8 +2521,9 @@ class Fringes:
     @property
     def Nmin(self) -> int:
         """Minimum number of shifts to (uniformly) sample temporal frequencies.
+
         Per direction at least one set with N ≥ 3 is necessary
-        to solve for the three unknowns brightness A, modulation B and coordinate ξ."""
+        to solve for the three unknowns brightness A, modulation B and coordinate xi."""
         if self.FDM:
             Nmin = int(np.ceil(2 * self.f.max() + 1))  # sampling theorem
             # todo: 2 * D * K + 1 -> fractional periods if static
@@ -2597,6 +2601,7 @@ class Fringes:
     def l(self) -> np.ndarray:
         """Wavelengths of fringe periods.
         [l] = px.
+
         When L changes, v is kept constant and only l is changed."""
         return self.L / self.v
 
@@ -2645,8 +2650,8 @@ class Fringes:
                 )
                 lcombos = filter(lcombos, K, self.L, lmin)
 
-                idx0 = np.argmax(np.sum(1 / lcombos**2, axis=1))
-                l0 = lcombos[idx0]
+                # idx0 = np.argmax(np.sum(1 / lcombos**2, axis=1))
+                # l0 = lcombos[idx0]
 
                 v = self.L / lcombos
                 B = self.MTF(v)  # B0 i.e. self.B is constant, can be put before weighted sum, hence
@@ -2761,8 +2766,7 @@ class Fringes:
 
     @property
     def v(self) -> np.ndarray:
-        """Spatial frequencies,
-        i.e. number of periods/fringes across maximum coding length."""
+        """Spatial frequencies (number of periods/fringes across maximum coding length)."""
         if self.D == 1 or len(np.unique(self._v, axis=0)) == 1:  # sets in directions are identical
             v = self._v[0]  # 1D
         else:
@@ -2827,13 +2831,12 @@ class Fringes:
 
     @property
     def fmax(self):
-        """Maximum temporal frequency,
-        i.e. maximum number of periods to shift over."""
+        """Maximum temporal frequency (maximum number of periods to shift over)."""
         return min((self.Nmin - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmin - 1) / 2
 
     @property
     def f(self) -> np.ndarray:
-        """Temporal frequency, i.e. number of periods to shift over."""
+        """Temporal frequency (number of periods to shift over)."""
         if self.D == 1 or len(np.unique(self._f, axis=0)) == 1:  # sets in directions are identical
             f = self._f[0]  # 1D
         else:
@@ -2875,6 +2878,7 @@ class Fringes:
     @property
     def o(self) -> float:
         """Phase offset within interval (-2pi, +2pi).
+
         It can be used to e.g. let the fringe patterns start (at the origin) with a gray value of zero.
         """
         return self._o
@@ -2889,20 +2893,22 @@ class Fringes:
 
     @property
     def _ismono(self) -> bool:
-        """All hues are monochromatic, i.e. RGB values are identical for each hue."""
+        """True if all hues are monochromatic, i.e. RGB values are identical for each hue."""
         return all(len(set(h)) == 1 for h in self.h)
 
     @property
     def _isambiguous(self) -> bool:
-        """Unambiguous measument range is larger than the screen length."""
+        """True if unambiguous measument range is larger than the screen length."""
         return np.any(self.UMR < self.R * self.alpha)
 
     @property
     def mode(self) -> str:
         """Mode for encoding and decoding.
-        The following values can be set:
-        - 'fast'
-        - 'precise'"""
+
+        The following values can be set:\n
+        - 'fast'\n
+        - 'precise'
+        """
         return self._mode
 
     @mode.setter
@@ -2929,11 +2935,11 @@ class Fringes:
 
     @property
     def verbose(self) -> bool:
-        """Flag for additionally returning intermediate results:
-        - phase map
-        - residuals
-        - fringe orders
-        - visibility
+        """Flag for additionally returning intermediate and verbose results:\n
+        - phase map\n
+        - residuals\n
+        - fringe orders\n
+        - visibility\n
         - exposure
         """
         return self._verbose
@@ -2948,7 +2954,7 @@ class Fringes:
 
     @property
     def FTM(self) -> bool:
-        """Flag indicating wheather the Fourier-transform method deployed."""
+        """True if the Fourier-transform method deployed."""
         # todo: allow H > 1 and use decolorizing, then conduct FTM for each color
         return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]
 
@@ -2983,19 +2989,18 @@ class Fringes:
 
     @property
     def shape(self) -> tuple:
-        """Shape of fringe pattern sequence in video shape,
-        i.e. (frames, height, with, color channels)."""
+        """Shape of fringe pattern sequence in video shape (frames, height, with, color channels)."""
         return self.T, self.Y, self.X, self.C
 
     @property
     def size(self) -> np.uint64:
-        """Number of pixels of fringe pattern sequence,
-        i.e. frames * height * width * color channels."""
+        """Number of pixels of fringe pattern sequence (frames * height * width * color channels)."""
         return float(np.prod(self.shape, dtype=np.uint64))  # using uint64 prevents integer overflow
 
     @property
     def nbytes(self) -> int:
         """Total bytes consumed by fringe pattern sequence.
+
         Does not include memory consumed by non-element attributes of the array object.
         """
         return self.size * self.dtype.itemsize
@@ -3003,12 +3008,13 @@ class Fringes:
     @property
     def dtype(self) -> np.dtype:
         """Data type.
-        The following values can be set:
-        - 'bool'
-        - 'uint8'
-        - 'uint16'
-        - 'float32'
-        - 'float64'
+
+        The following values can be set:\n
+        - 'bool'\n
+        - 'uint8'\n
+        - 'uint16'\n
+        - 'float32'\n
+        - 'float64'\n
         """
         return np.dtype(self._dtype)  # this is a hotfix for setting _dtype directly as a str in init
 
@@ -3071,6 +3077,7 @@ class Fringes:
 
     @property
     def betamax(self):
+        """Maximum relative bias (exposure)."""
         return 1 / (1 + self.V)
 
     @property
@@ -3141,12 +3148,14 @@ class Fringes:
 
     @property
     def quant(self) -> float:
-        """Quantization noise (standard deviation). [quant] = DN."""
+        """Quantization noise (standard deviation).
+        [quant] = DN."""
         return float(self.q / np.sqrt(12))  # convert Numpy float64 to Python float
 
     @property
     def dark(self) -> float:
-        """Dark noise of digital camera (standard deviation). [dark] = electrons."""
+        """Dark noise of digital camera (standard deviation).
+        [dark] = electrons."""
         return self._dark
 
     @dark.setter
@@ -3163,12 +3172,14 @@ class Fringes:
 
     @property
     def shot(self) -> float:
-        """Shot noise of digital camera (standard deviation). [shot] = DN."""
+        """Shot noise of digital camera (standard deviation).
+        [shot] = DN."""
         return np.sqrt((self.A - self.y0) / self.gain) if self.gain != 0 else 0  # average intensity is bias
 
     @property
     def gain(self) -> float:
-        """Overall system gain of digital camera. [gain] = DN / electrons."""
+        """Overall system gain of digital camera.
+        [gain] = DN / electrons."""
         return self._gain
 
     @gain.setter
@@ -3182,6 +3193,7 @@ class Fringes:
     @property
     def magnification(self) -> float:
         """Magnification, i.e. ratio of camera pixels to screen pixels.
+
         This many camera pixels look at one screen pixel."""
         return self._magnification
 
@@ -3224,6 +3236,7 @@ class Fringes:
     def u(self) -> np.ndarray:
         """Uncertainty of measurement (standard deviation).
         [u] = px.
+
         It is based on the phase noise model from [Surrel 1997]
         and propagated through the unwrapping process and the phase fusion."""
 
@@ -3241,18 +3254,21 @@ class Fringes:
     @property
     def SNR(self):
         """Signal-to-noise ratio of the phase shift coding.
+
         It is a masure of how many points can be distinguished within the screen length [0, R)
         """
         return self.R / self.u
 
     @property
     def SNRdB(self):
-        """Signal-to-noise ratio. [SNRdB] = dB."""
+        """Signal-to-noise ratio.
+        [SNRdB] = dB."""
         return 20 * np.log10(self.SNR)
 
     @property
     def DR(self) -> float:
         """Dynamic range of the phase shift coding.
+
         It is a measure of how many points can be distinguished within the unambiguousmeasurement range [0, UMR).
         """
         return self.UMR / self.u
@@ -3264,8 +3280,12 @@ class Fringes:
 
     @property
     def params(self) -> dict:
-        """Base parameters required for en- & decoding fringe patterns."""
-        # All property objects which have a setter method i.e. are (usually) not derived from others.
+        """Base parameters required for en- & decoding fringe patterns.
+
+        This contains all property objects of the class which have a setter method,
+        i.e. are (usually) not derived from others.
+        """
+
         params = {}
         for p in sorted(dir(self)):  # sorted() ensures setting params in the right order in the setter method
             if p != "params":
@@ -3313,21 +3333,21 @@ class Fringes:
         "_t",
     )
 
-    # generate glossary
+    # glossary
     glossary = {}
     for __k, __v in sorted(vars().items()):
         if not __k.startswith("_"):
             if isinstance(__v, property) and __v.__doc__ is not None:
                 glossary[__k] = __v.__doc__
 
-    # generate class docstring
-    __doc__ += "\n\nParameters:\n"
-    for __k, __v in sorted(vars().items()):
-        if not __k.startswith("_"):
-            if isinstance(__v, property) and __v.__doc__ is not None:
-                __doc__ += f"    {__k}: {__v.__doc__}\n"
+    # # class docstring
+    # __doc__ += "\n\nParameters:\n"
+    # for __k, __v in sorted(vars().items()):
+    #     if not __k.startswith("_"):
+    #         if isinstance(__v, property) and __v.__doc__ is not None:
+    #             __doc__ += f"    {__k}: {__v.__doc__}\n"
 
-    # generate docstring for __init__
+    # docstring for __init__
     __init__.__doc__ = "Parameter:\n"
     for __k, __v in sorted(vars().items()):
         if __k in defaults:

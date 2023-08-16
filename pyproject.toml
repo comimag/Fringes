@@ -2,7 +2,7 @@
 name = "Fringes"
 version = "0.2.0"
 description = "Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms."
-license = {file = "LICENSE.txt"}
+license = "CC BY-NC-S 4.0A"  # {file = "LICENSE.txt"}
 authors = ["Christian Kludt"]
 readme = "README.md"
 repository = "https://github.com/comimag/fringes"
@@ -29,7 +29,7 @@ matplotlib = "^3.7.1"
 pytest = "^7.4.0"
 
 [tool.poetry.group.doc.dependencies]
-sphinx = "^7.1.2"
+sphinx-rtd-theme = "^1.2.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,7 +1,9 @@
 # Fringes
-[![PyPI version](https://badge.fury.io/py/fringes.svg)](https://badge.fury.io/py/fringes)
+![PyPI](https://img.shields.io/pypi/v/fringes)
+![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![PyPI - License](https://img.shields.io/pypi/l/fringes)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)
 
 <!---
 ![GitHub](https://img.shields.io/github/license/comimag/fringes)
@@ -12,7 +14,7 @@ Easy to use tool for generating and analyzing fringe patterns with phase shiftin
 <!---
 Author: Christian Kludt
 
-<img src="docs/shift.gif" width="256"/>
+<img src="docs/readme/shift.gif" width="256"/>
 
 ## Description
 This package provides the handy `Fringes` class which handles all the required parameters
@@ -20,7 +22,7 @@ for configuring fringe pattern sequences
 and provides methods for fringe analysis.
 --->
 
-![Coding Scheme](docs/coding-scheme.gif?raw=True)\
+![Coding Scheme](docs/readme/coding-scheme.gif?raw=True)\
 Figure 1: Phase Shift Coding Scheme.
 
 <!---
@@ -44,7 +46,7 @@ require the ability to encode positional data.
 To do this, sinusoidal fringe patterns are used to encode the position on the screen (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.
 
-![Coding Scheme](docs/coding-scheme.gif?raw=True)\
+![Coding Scheme](docs/readme/coding-scheme.gif?raw=True)\
 Figure 1: Phase Shifting Coding Scheme.
 
 - #### Encoding
@@ -144,7 +146,7 @@ Figure 1: Phase Shifting Coding Scheme.
         and the gradients of the signal phase <code>&phi;<sub>s</sub></code> are less than <code>&pi;</code> per pixel.
         Again, this only yields a relative phase map, therefore absolute positions are unknown.
         
-        <img src="docs/FTM.png" width="320"/>\
+        <img src="docs/readme/FTM.png" width="320"/>\
         Figure 3: From [[7]](#7). In this image, the spatial frequency is denotes as f. (A) Separated Fourier spectra;
         (B) single spectrum selected and translated to the origin. 
 --->
@@ -166,7 +168,7 @@ else, the radiance of the light source would be higher than the maximal possible
 Therefore, the valid values are limited for <code>β &ge; 0.5 </code>.
 The optimal fringe contrast is achieved for `β = 0.5` and `V = 1`. 
 
-<img src="docs/codomain.png" width="480"/>\
+<img src="docs/readme/codomain.png" width="480"/>\
 Figure 2: Fringe pattern as a function of `β` and `V`.
 
 The advantage of this representation is the normalization of the descriptive parameters `β` and `V`
@@ -249,7 +251,7 @@ Note that some attributes have subdependencies (cf. Figure 3) , hence dependent 
 Circular dependencies are resolved automatically.
 --->
 
-For creating the fringe pattern sequence `I`, use the method `encode()`.\
+For generating the fringe pattern sequence `I`, use the method `encode()`.\
 It returns a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 
 in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
 
@@ -262,7 +264,7 @@ It will return a [namedtuple](https://docs.python.org/3/library/collections.html
 containing the Numpy arrays brightness `A`, modulation `B` and the coordinates `ξ`,
 all in videoshape.
 
-<img src="docs/interdependencies.svg" width="720"/>\
+<img src="docs/readme/interdependencies.svg" width="720"/>\
 Figure 3: Parameters and their Interdependencies.
 
 Each set (cf. frames in middle column in Figure 1)
