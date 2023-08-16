@@ -6,6 +6,7 @@ import logging as lg
 import numpy as np
 import numba as nb
 import scipy as sp
+
 # import sympy.ntheory.generate
 import skimage as ski
 import cv2
@@ -72,8 +73,12 @@ def curvature(reg: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo:
     assert T == 2, "More than 2 directions."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
-    curv = np.gradient(reg[0], axis=0) + np.gradient(reg[0], axis=1) + \
-           np.gradient(reg[1], axis=0) + np.gradient(reg[1], axis=1)
+    curv = (
+        np.gradient(reg[0], axis=0)
+        + np.gradient(reg[0], axis=1)
+        + np.gradient(reg[1], axis=0)
+        + np.gradient(reg[1], axis=1)
+    )
 
     if not calibrated:
         # curv -= np.mean(curv, axis=(0, 1))
@@ -88,9 +93,7 @@ def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
     """Local height map by iterative local integration via an inverse laplace filter.
     Think of it as a relief, where height is only relative to the local neighborhood."""
 
-    k = np.array([[0, 1, 0],
-                  [1, 0, 1],
-                  [0, 1, 0]], np.float32)
+    k = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], np.float32)
     # k *= iterations  # todo
 
     T, Y, X, C = vshape(curv).shape
@@ -158,13 +161,13 @@ def median(img: np.ndarray, k: int = 3) -> np.ndarray:  # todo: test
 
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 def remap(
-        reg: np.ndarray,
-        mod: np.ndarray = np.ones(1),
-        scale: float = 1,
-        Y: int = 0,
-        X: int = 0,
-        C: int = 0,
-        normalize: bool = True,
+    reg: np.ndarray,
+    mod: np.ndarray = np.ones(1),
+    scale: float = 1,
+    Y: int = 0,
+    X: int = 0,
+    C: int = 0,
+    normalize: bool = True,
 ) -> np.ndarray:
     """
     Mapping registration points (having sub-pixel accuracy) from camera grid
@@ -196,12 +199,12 @@ def remap(
         scale = 1
 
     if Y <= 0:
-        Y = max(1, int(np.nanmax(reg[1]) * scale + .5))
+        Y = max(1, int(np.nanmax(reg[1]) * scale + 0.5))
     else:
         Y = int(Y * scale + 0.5)
 
     if X <= 0:
-        X = max(1, int(np.nanmax(reg[0]) * scale + .5))
+        X = max(1, int(np.nanmax(reg[0]) * scale + 0.5))
     else:
         X = int(X * scale + 0.5)
 
@@ -221,10 +224,10 @@ def remap(
         for yc in nb.prange(Yc):
             for c in nb.prange(C):
                 if not np.isnan(reg[0, yc, xc, c]):
-                    xs = int(reg[0, yc, xc, c] * scale + .5)  # i.e. rint()
+                    xs = int(reg[0, yc, xc, c] * scale + 0.5)  # i.e. rint()
                     if xs < X:
                         if not np.isnan(reg[1, yc, xc, c]):
-                            ys = int(reg[1, yc, xc, c] * scale + .5)  # i.e. rint()
+                            ys = int(reg[1, yc, xc, c] * scale + 0.5)  # i.e. rint()
                             if ys < Y:
                                 for k in nb.prange(K):
                                     if mod.ndim > 1:
@@ -242,7 +245,7 @@ def remap(
     return src
 
 
-#@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+# @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 def filter(combos, K, L, lmin):
     kroot = L ** (1 / K)
     if lmin <= kroot:

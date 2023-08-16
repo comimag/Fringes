@@ -1,4 +1,12 @@
 # Fringes
+[![PyPI version](https://badge.fury.io/py/fringes.svg)](https://badge.fury.io/py/fringes)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+<!---
+![GitHub](https://img.shields.io/github/license/comimag/fringes)
+--->
+
 Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms.
 
 <!---
@@ -221,10 +229,13 @@ f.logger.setLevel("DEBUG")  # set logging level
 You can change the [logging level](https://docs.python.org/3/library/logging.html#levels) of a `Fringes` instance.
 For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
 and how long functions take to execute.
---->
 
 All parameters are accesible by the respective attributes of the `Fringes` instance
 (a glossary of them is obtained by the class attribute `glossary`).
+--->
+
+All parameters are accesible by the respective attributes of the `Fringes` instance
+(a glossary of them is obtained by the attribute `glossary`).
 They are implemented as class properties (managed attributes).
 Note that some attributes have subdependencies, hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.

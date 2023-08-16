@@ -506,32 +506,6 @@ def test_simulation():
 
 if __name__ == "__main__":
     f = Fringes()
-    Ii = I for I in f
-    Igen = (frame for frame in f)
-    I0 = next(Igen)
-    fiter = iter(f)
-    I00 =
-    I = next(fiter)
-    II = np.array([I])
-
-    f.optimize()
-    I = f.encode()
-
-    T = 10
-    I = np.empty(T, object)
-    I[0] = np.ones(1)
-    I[1] = np.ones(2)
-
-    f = Fringes()
-    Igen = (frame for frame in f)
-    I = np.array([f for f in Igen])
-
-    from fringes import vshape
-    I = vshape(I)
-
-    I = f[3::]
-    I = f[1, 2, 3]
-    I = f[0]
     #f.PSF = 3  # 0.001
     f.X = 1920
     f.Y = 1

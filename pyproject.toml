@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "Fringes"
 version = "0.2.0"
-description = "Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms.."
-license = "CC-BY-NC-SA-4.0"
+description = "Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms."
+license = {file = "LICENSE.txt"}
 authors = ["Christian Kludt"]
 readme = "README.md"
 repository = "https://github.com/comimag/fringes"
@@ -23,10 +23,17 @@ asdf = "^2.14.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
-pytest = "^7.2.1"
-sphinx = "^7.1.2"
 matplotlib = "^3.7.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.0"
+
+[tool.poetry.group.doc.dependencies]
+sphinx = "^7.1.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120

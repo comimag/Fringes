@@ -1,4 +1,5 @@
 import numpy as np
+
 # todo: import numba as nb
 
 
@@ -18,7 +19,7 @@ def cart(Y: int = 720, X: int = 720, a: float = 0):
 def pol(Y: int = 720, X: int = 720, a: float = 0):
     xx, yy = cart(Y, X)
     pp = np.arctan2(yy, xx) / (2 * np.pi)
-    rr = np.sqrt(xx ** 2 + yy ** 2) / min(X, Y)
+    rr = np.sqrt(xx**2 + yy**2) / min(X, Y)
     return rot(pp, rr, a)
 
 
