@@ -5,4 +5,3 @@ fringes
    :maxdepth: 4
 
    fringes
-   tests

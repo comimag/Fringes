@@ -6,12 +6,6 @@ PI2 = 2 * np.pi
 
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 def circ_dist(a, b, c) -> float:
-    """
-    Shortest circular distance from a to b.
-    param a: start point
-    param b: end point
-    param c: circumference (distance) after which wrapping occurs
-    """
     d = b - a
     dmax = c / 2
 
@@ -58,7 +52,6 @@ def decode(
     Vmin: float = 0.0,  # 10 / 255  # min fringe contrast i.e. min visibility (can accelerate unwrapping)
     verbose: bool = False,
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-    """Decoding."""
 
     # assertions
     assert I.ndim == 4, "Image sequence must be in video shape (T, Y, X, C)."
@@ -250,11 +243,11 @@ def decode(
                                 sum = xi
                                 ssd = xi**2  # sum of squared distances
 
-                                if N[d, k] == 1:
+                                if N[d, idx[d]] == 1:
                                     sum2 = sum + 0  # adding zero creates a copy
                                     ssd2 = ssd + 0  # adding zero creates a copy
 
-                                for k in Ki[d]:  # indices of v without idx
+                                for k in Ki[d]:  # indices of sets without idx
                                     j = int(
                                         xi / l[d, k] - pn[k] + 0.5
                                     )  # fringe order of k-th fringe set  # todo: also try neighboring fringe orders (if phase is close to them ~ phimax / 2)

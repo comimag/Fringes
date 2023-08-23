@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "Fringes"
 version = "0.2.0"
-description = "Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms."
+description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 license = "CC BY-NC-S 4.0A"  # {file = "LICENSE.txt"}
 authors = ["Christian Kludt"]
 readme = "README.md"
@@ -9,7 +9,7 @@ repository = "https://github.com/comimag/fringes"
 keywords = ["phase shifting", "phase unwarpping", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.12"
+python = "^3.9,<3.13"
 numpy = "^1.23.5"
 numba = "^0.57.1"
 scipy = "^1.10.0"
@@ -25,10 +25,11 @@ asdf = "^2.14.3"
 black = "^23.3.0"
 matplotlib = "^3.7.1"
 
-[tool.poetry.group.test.dependencies]
+[tool.poetry.group.tests.dependencies]
 pytest = "^7.4.0"
 
-[tool.poetry.group.doc.dependencies]
+[tool.poetry.group.docs.dependencies]
+sphinx = "6.2.1"
 sphinx-rtd-theme = "^1.2.2"
 
 [build-system]

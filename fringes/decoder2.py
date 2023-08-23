@@ -7,12 +7,6 @@ PI2 = 2 * np.pi
 # @nb.jit(nb.float64(nb.float64, nb.float64, nb.float64), cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 @nb.jit(nb.float64(nb.float64, nb.float64, nb.float64), cache=True, nopython=True, nogil=True, fastmath=True)
 def circ_dist(a, b, c) -> float:
-    """
-    Shortest circular distance from a to b.
-    param a: start point
-    param b: end point
-    param c: circumference (distance) after which wrapping occurs
-    """
     d = b - a
     dmax = c / 2
 
@@ -59,7 +53,6 @@ def decode(
     umin: float = 0.0,  # minium uncertainty (can accelerate unwrapping)
     verbose: bool = False,
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-    """Decoding."""
 
     # assertions
     assert I.ndim == 4, "Image sequence must be in video shape (T, Y, X, C)."

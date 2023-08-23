@@ -4,30 +4,6 @@ fringes package
 Submodules
 ----------
 
-fringes.decoder module
-----------------------
-
-.. automodule:: fringes.decoder
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-fringes.decoder2 module
------------------------
-
-.. automodule:: fringes.decoder2
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-fringes.decoder3 module
------------------------
-
-.. automodule:: fringes.decoder3
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 fringes.fringes module
 ----------------------
 

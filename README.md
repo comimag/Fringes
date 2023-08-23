@@ -1,6 +1,7 @@
 # Fringes
 ![PyPI](https://img.shields.io/pypi/v/fringes)
 ![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
+![Read the Docs](https://img.shields.io/readthedocs/fringes)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - License](https://img.shields.io/pypi/l/fringes)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)
@@ -22,7 +23,7 @@ for configuring fringe pattern sequences
 and provides methods for fringe analysis.
 --->
 
-![Coding Scheme](docs/readme/coding-scheme.gif?raw=True)\
+![Coding Scheme](https://raw.githubusercontent.com/comimag/fringes/develop/docs/readme/coding-scheme.gif)\
 Figure 1: Phase Shift Coding Scheme.
 
 <!---
@@ -74,9 +75,10 @@ Figure 1: Phase Shifting Coding Scheme.
 - #### Decoding
   - #### Temporal Demodulation
     <code>&straightphi;<sub>i</sub> &equiv; &phi;<sub>i</sub> mod 2&pi;</code>\
+    <code>&xi; &equiv; &lambda;<sub>i</sub>&straightphi;<sub>i</sub>/(2&pi;) mod &lambda;<sub>i</sub></code>\
     From these shifts, the phase maps <code>&straightphi;<sub>i</sub></code> are determined [[3]](#3).
     Due to the trigonometric functions used,
-    the global phase <code>&phi;<sub>i</sub> = 2&pi;v<sub>i</sub>x - &straightphi;<sub>i</sub></code>
+    the global phase <code>&phi;<sub>i</sub> = 2&pi;v<sub>i</sub>x - &straightphi;<sub>0</sub></code>
     is wrapped into the interval <code>[0, 2 &pi;]</code> with <code>v<sub>i</sub></code> periods.
     - #### Spatial Demodulation (Phase Unwrapping)
       To obtain the encoded coordinate <code>&xi;</code>, three tasks must be executed:
@@ -87,7 +89,7 @@ Figure 1: Phase Shifting Coding Scheme.
       2. Recover the common independent variables, i.e. the coordinates <code>&xi;<sub>i</sub></code>,
          by linearly rescaling the global phase map: 
          <code>&xi;<sub>i</sub> = L&phi;<sub>i</sub> / 2&pi;</code>,
-         with `L` being is the pattern length (in pixel).
+         with `L` being the pattern length (in pixel).
       3. Fuse the K coordinate maps by weighted averaging:
          <code>&xi; = &sum;<sub>i</sub>&xi;<sub>i</sub>w<sub>i</sub> / &sum;<sub>i</sub>w<sub>i</sub></code>.
          To obtain an optimal estimate, use inverse variance weighting,
@@ -210,20 +212,20 @@ pip install fringes
 You instantiate, parameterize and deploy the `Fringes` class:
 
 ```python
-import fringes as frng      # import module
+import fringes as frng  # import module
 
-f = frng.Fringes()          # instantiate class
+f = frng.Fringes()      # instantiate class
 
-f.glossary                  # get glossary
-f.X = 1920                  # set width of the fringe patterns
-f.Y = 1080                  # set height of the fringe patterns
-f.K = 2                     # set number of sets
-f.N = 4                     # set number of shifts
-f.v = [9, 10]               # set spatial frequencies
-f.T                         # get number of frames
+f.glossary              # get glossary
+f.X = 1920              # set width of the fringe patterns
+f.Y = 1080              # set height of the fringe patterns
+f.K = 2                 # set number of sets
+f.N = 4                 # set number of shifts
+f.v = [9, 10]           # set spatial frequencies
+f.T                     # get number of frames
                             
-I = f.encode()              # encode fringe patterns
-A, B, x = f.decode(I)      # decode fringe patterns
+I = f.encode()          # encode fringe patterns
+A, B, x = f.decode(I)   # decode fringe patterns
 ```
 
 <!---

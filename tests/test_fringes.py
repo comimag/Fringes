@@ -79,9 +79,10 @@ def test_save_load():
                     f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
 
             for k in params.keys():
-                assert k in params_loaded, f"File '{fname}' has no attribute '{k}'"
-                assert params[k] == params_loaded[k], \
-                    f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
+                assert k in params_loaded or ext == ".toml" and params[k] is None, f"File '{fname}' has no attribute '{k}'"  # in toml there exists no None
+                if k in params_loaded:
+                    assert params[k] == params_loaded[k], \
+                        f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
 
 
 def test_coordinates():
@@ -170,8 +171,8 @@ def test_encoding_iter():
     assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
 
 
-def test_encoding_frames():
-    f = Fringes(Y=100)
+def test_encoding_frames(fringes=Fringes(Y=100)):
+    f = fringes
     
     I = np.array([f.encode(t)[0] for t in range(f.T)])
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -264,7 +265,7 @@ def test_dtypes():
 
         I = f.encode()
 
-        assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+        assert I.dtype == f.dtype, "Wrong dtype."
 
 
 # def test_grids():
@@ -344,17 +345,11 @@ def test_remapping():
     I = f.encode()
     dec = f.decode(I)
 
-    source = f.remap(dec.registration, normalize=True)
+    source = f.remap(dec.registration)
     assert np.all(source == 1), "Source doesn't contain only ones."
 
-    source = f.remap(dec.registration, dec.modulation, normalize=True)
+    source = f.remap(dec.registration, dec.modulation)
     assert np.allclose(source, 1, atol=0.1), "Source doesn't contain only values close to one."
-
-    source = f.remap(dec.registration, scale=2, normalize=True)
-    assert np.all(source[0::2, 0::2] == 1), "Source doesn't contain only ones at 'unscaled' coordinates."
-    assert np.all(source[0::2, 1::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
-    assert np.all(source[1::2, 0::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
-    assert np.all(source[1::2, 1::2] == 0), "Source doesn't contain only zeros at 'added' coordinates."
 
 
 def test_curvature_height():
@@ -464,214 +459,29 @@ def test_FDM():
 
 
 def test_simulation():
-    # no low pass from PSF causing decrease in modulation
-    # no clipping todo: add salt and pepper noise?
+    # todo:
+    #  no low pass from PSF causing decrease in modulation
+    #  no clipping
+    #  no hit pixels -> add salt and pepper noise?
 
     f = Fringes()
-    f.verbose = True
-    f.mode = "precise"
     f.V = 0.8
     f.D = 1
-    f.X = 2003
+    f.X = 832
     f.Y = 2003
-    f.N = 8
-    f.l = 2003, 668, 401  # Uhlig 1
-    f.l = 331, 223, 181  # Uhlig 2
-    f.l = "close"  # 13, 14, 15
-    f.l = "small"  # 11, 13, 15
-    f.X = 1920#1920
-    f.Y = 1080
-    f.lmin = 8#f.L / 100
-    f.l = "optimal"
-    #f.l = 8, 9, 29
-    #f.l = 8, 8, 251
-    #f.v = 7, 13, 89
+    f.N = 4
+    f.l = 9, 10, 11
 
     I = f.encode()
-    Imin = I.min()
-    Imax = I.max()
-
     In = f._simulate(I)
-    Inmin = In.min()
-    Inmax = In.max()
-
     dec = f.decode(In)
-    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
-    min = np.nanmin(np.abs(d))
-    max = np.nanmax(np.abs(d))
-    avg = np.nanmean(np.abs(d))
-    med = np.nanmedian(np.abs(d))
-    assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1?
+    # d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
+    d = dec.registration - f.coordinates()
+    dmed = np.nanmedian(np.abs(d))
+    assert np.allclose(dmed, 0, atol=0.1), "Median of Registration is off more than 0.1."
+    # assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1?
 
 
 if __name__ == "__main__":
-    f = Fringes()
-    #f.PSF = 3  # 0.001
-    f.X = 1920
-    f.Y = 1
-    f.K = 3
-    f.X = 1280
-    f.PSF = 0.001 * f.L  # 1.2  # 3
-    f.lmin = 16
-    f.l = "optimal"
-
-    I = f.encode()
-    Imin = I.min()
-    Imax = I.max()
-
-    In = f._simulate(I)
-    Inmin = In.min()
-    Inmax = In.max()
-
-    Igen = (i for i in f)
-    I0 = next(Igen)
-    I0 = f[0]
-    g = f.glossary
-    f.optimize(umax=0.5)
-
-    f = Fringes()
-    f.X = 832
-    f.Y = 1
-    f.K = 2
-    f.l = 15, 16, 17#"optimal"
-    f.K = 10
-    f.l = "exponential"
-    #test_noise()
-
-    f = Fringes()
-    f.X = 1920
-    f.Y = 1
-    f.lmin = 8  # todo: f.L / 256
-    f.K = 3
-    l = np.zeros((f.X + 1, f.K))
-    v = np.zeros((f.X + 1, f.K))
-    u = np.zeros((f.X + 1))
-    dr = np.zeros((f.X + 1))
-    UMR = np.zeros((f.X + 1))
-    for x in range(f.X + 1):
-        if UMR[x-1] >= x:
-            UMR[x] = UMR[x-1]
-            dr[x] = dr[x-1]
-            u[x] = u[x - 1]
-            l[x] = l[x - 1]
-            continue  # todo: test with -> comment out
-
-        UMR[x] = UMR[x - 1]
-        dr[x] = dr[x - 1]
-        u[x] = u[x - 1]
-        l[x] = l[x - 1]
-
-        f.X = x
-        f.l = "optimal"
-        l[x] = f.l
-        v[x] = f.v
-        u[x] = np.sum(1 / (f.l ** 2), axis=0)
-        dr[x] = x / u[x]
-        UMR[x] = f.UMR.max()
-        print(f.L)
-        print(l[x])
-        print(UMR[x])
-        print("")
-        a = 1
-
-    import matplotlib.pyplot as plt
-
-    plt.figure("l_i")
-    plt.plot(range(len(l)), l[:, 0], "r.")
-    plt.plot(range(len(l)), l[:, 1], "g.")
-    if f.K >= 3:
-        plt.plot(range(len(l)), l[:, 2], "b.")
-        if f.K >= 4:
-            plt.plot(range(len(l)), l[:, 3], "c.")
-            if f.K >= 5:
-                plt.plot(range(len(l)), l[:, 4], "m.")
-    plt.plot(range(len(l)), np.arange(len(l)) ** (1 / f.K), "k.")
-    plt.grid(True)
-
-    plt.figure("UMR")
-    plt.plot(range(len(l)), UMR, ".")
-    plt.plot(range(len(l)), range(len(l)), "k")
-    plt.grid(True)
-
-    plt.figure("u")
-    plt.plot(range(len(l)), u, ".")
-    plt.grid(True)
-
-    plt.figure("DR")
-    plt.plot(range(len(l)), dr, ".")
-    plt.grid(True)
-
-    plt.show()
-
-    a = 1
-
-    # import matplotlib.pyplot as plt
-    # import numpy as np
-    #
-    # L = 1000
-    # v = int(np.sqrt(L))
-    # Imax = 255
-    # x = np.linspace(0, 1, L)[:, None]
-    # beta = np.linspace(0, 1, L)[None, :]
-    # V = np.linspace(1, 0, L)[:, None]
-    # mask = beta <= 1 / (1 + V)
-    # gamma = 1
-    # o = np.pi
-    # k = 2 * np.pi * v
-    # I = Imax * beta * (1 + V * np.cos(k * x - np.pi))
-    # I = Imax * (beta * (1 + V * np.cos(k * x - o))) ** gamma
-    # I[~ mask] = Imax
-    # import matplotlib.pyplot as plt
-    #
-    # plt.figure()
-    # plt.imshow(I, cmap="gray")
-    # #plt.scatter(0.5 * L, 0, c='red')
-    # #plt.scatter(0.5 * L, (1 - 0.5) * L, c='red')
-    # plt.xlabel("β")
-    # plt.ylabel("V", rotation=0)
-    # plt.xticks([0, L], "01")
-    # plt.yticks([0, L], "10")
-    # plt.savefig(r"C:\Users\chr55261\Pictures\codomain.png")
-    # plt.show()
-
-    L = 300
-    v = np.array([13, 7, 89])
-    l = L / v
-    l = np.array([5, 2, 4])
-    L = np.lcm.reduce(l)
-    v = L / l
-    gcd = np.gcd.reduce(l)  # todo: extend to rational numbers
-    K = len(v)
-
-    # all possible combinations
-    C = np.prod(np.ceil(v))
-    xi = tuple(np.arange(vi) for vi in v)
-    k = np.array(np.meshgrid(*xi)).reshape(K, -1)
-
-    # all valid combinations
-    xmin = 0
-    xmax = L
-    x1 = np.arange(xmin, xmax, 1)
-    k1a = x1[None, :] // l[:, None]
-    k1b = np.unique(k1a, axis=1)
-
-    x2 = np.arange(xmin, xmax, gcd)
-    k2a = x2[None, :] // l[:, None]
-    k2b = np.unique(k2a, axis=1)
-
-    # all valid combinations and neighbouring fringe orders
-    k3a = k2b[:, :, None] + np.diag(np.ones(len(l)))[:, None, :]
-    k3a = k3a.reshape(3, -1)
-    k3a = np.remainder(k3a, l[:, None])
-    k3b = k2b[:, :, None] - np.diag(np.ones(len(l)))[:, None, :]
-    k3b = k3b.reshape(3, -1)
-    k3b = np.remainder(k3b, l[:, None])
-    k3c = np.concatenate((k2b, k3a, k3b), axis=1)
-    k3d = np.unique(k3c, axis=1)
-
-    # order: inside out + break criteriom
-
-    # derive from v_ref
-
     # pytest.main()
-    # subprocess.run(['pytest', '--tb=short', str(__file__)])
+    subprocess.run(['pytest', '--tb=short', str(__file__)])

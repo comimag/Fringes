@@ -44,7 +44,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../modules.html">fringes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Fringes</a></li>
 </ul>
 
         </div>
@@ -90,11 +90,11 @@
 <span class="kn">from</span> <span class="nn">si_prefix</span> <span class="kn">import</span> <span class="n">si_format</span> <span class="k">as</span> <span class="n">si</span>
 
 
-<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="n">vshape</span><span class="p">,</span> <span class="n">bilateral</span><span class="p">,</span> <span class="n">median</span><span class="p">,</span> <span class="n">remap</span><span class="p">,</span> <span class="nb">filter</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="n">vshape</span><span class="p">,</span> <span class="n">bilateral</span><span class="p">,</span> <span class="n">median</span><span class="p">,</span> <span class="n">remap</span><span class="p">,</span> <span class="nb">filter</span><span class="p">,</span> <span class="n">circular_distance</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">grid</span>
 
 <span class="c1"># from .decoder import decode  # todo: fast_decode i.e. fast_unwrap</span>
-<span class="kn">from</span> <span class="nn">.decoder3</span> <span class="kn">import</span> <span class="n">decode</span>  <span class="c1"># todo: fast_decode i.e. fast_unwrap</span>
+<span class="kn">from</span> <span class="nn">.decoder4</span> <span class="kn">import</span> <span class="n">decode</span>  <span class="c1"># todo: fast_decode i.e. fast_unwrap</span>
 
 
 <div class="viewcode-block" id="Fringes"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes">[docs]</a><span class="k">class</span> <span class="nc">Fringes</span><span class="p">:</span>
@@ -241,7 +241,7 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="si">}</span><span class="s2">&quot;</span>
 
-<div class="viewcode-block" id="Fringes.load"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.fringes.yaml&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<div class="viewcode-block" id="Fringes.load"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load parameters from a config file to the &#39;Fringes&#39; instance.</span>
 
 <span class="sd">        .. warning:: The parameters are only loaded if the config file provides the section `fringes`.</span>
@@ -254,21 +254,24 @@
 <span class="sd">            If `&#39;fname&#39;` is not provided, the file `.fringes.yaml` within the user home directory is loaded.</span>
 
 <span class="sd">        Returns</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -------</span>
 <span class="sd">        params : dict</span>
 <span class="sd">            The loaded parameters as a dictionary.</span>
 <span class="sd">            &#39;params&#39; may be empty.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import os</span>
-<span class="sd">        &gt;&gt;&gt; fname = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;.fringes.yaml&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; fname = os.path.join(os.path.expanduser(&#39;~&#39;), &#39;.fringes.yaml&#39;)</span>
 
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 
 <span class="sd">        &gt;&gt;&gt; f.load(fname)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.fringes.yaml&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39; does not exist.&quot;</span><span class="p">)</span>
@@ -301,7 +304,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No &#39;fringes&#39; section in file &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{}</span></div>
 
-<div class="viewcode-block" id="Fringes.save"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.fringes.yaml&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Fringes.save"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the parameters of the &#39;Fringes&#39; instance to a config file.</span>
 
 <span class="sd">        Within the file, the parameters are written to the section `fringes`</span>
@@ -315,15 +318,18 @@
 <span class="sd">            the file `.fringes.yaml` within the user home directory.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import os</span>
-<span class="sd">        &gt;&gt;&gt; fname = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;.fringes.yaml&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; fname = os.path.join(os.path.expanduser(&#39;~&#39;), &#39;.fringes.yaml&#39;)</span>
 
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 
 <span class="sd">        &gt;&gt;&gt; f.save(fname)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.fringes.yaml&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">fname</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File directory does not exist.&quot;</span><span class="p">)</span>
@@ -367,7 +373,7 @@
 <span class="sd">            Must be greater than zero.</span>
 
 <span class="sd">        Notes</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -----</span>
 <span class="sd">        If &#39;umax&#39; is specified, the parameters are determined</span>
 <span class="sd">        that allow a maximal uncertainty of &#39;umax&#39;</span>
 <span class="sd">        with a minimum number of frames.</span>
@@ -402,7 +408,7 @@
         <span class="n">J</span> <span class="o">=</span> <span class="n">I</span> <span class="o">/</span> <span class="n">Imax</span>
 
         <span class="c1"># estimate gamma correction factor</span>
-        <span class="n">med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>  <span class="c1"># median is a robust estimator for the mean</span>
+        <span class="n">med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>  <span class="c1"># Median is a robust estimator for the mean.</span>
         <span class="n">gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">med</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
         <span class="n">inv_gamma</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">gamma</span>
 
@@ -426,21 +432,22 @@
 <span class="sd">        ----------</span>
 <span class="sd">        I : np.ndarray</span>
 <span class="sd">            Fringe pattern sequence.</span>
-<span class="sd">            &#39;I&#39; is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;)</span>
-<span class="sd">            before processing.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
+
+<span class="sd">            .. math:: I = cos(\\phi)</span>
 
 <span class="sd">        Returns</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -------</span>
 <span class="sd">        I : np.ndarray</span>
 <span class="sd">            Deinterlaced fringe pattern sequence.</span>
 
 <span class="sd">        Raises</span>
-<span class="sd">        ----------</span>
+<span class="sd">        ------</span>
 <span class="sd">        AssertionError</span>
 <span class="sd">            If the number of frames of &#39;I&#39; and the attribute &#39;T&#39; of the &#39;Fringes&#39; instance don&#39;t match.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 <span class="sd">        &gt;&gt;&gt; I = f.deinterlace(I)</span>
@@ -481,8 +488,58 @@
 
         <span class="k">return</span> <span class="n">xi</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span></div>
 
-    <span class="k">def</span> <span class="nf">_modulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frames</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Encode base fringe patterns by spatio-temporal modulation.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate fringe orders.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        k : np.ndarray</span>
+<span class="sd">            Fringe orders of the encoded fringe pattern sequence,</span>
+<span class="sd">            in shape (D, K, Y, X), where</span>
+<span class="sd">            D is number of dimensions, K is number of sets i.e. number of spatial frequencies, Y is height, X is width.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;precise&quot;</span><span class="p">:</span>  <span class="c1"># todo: decide for each pixel individually i.e. multiply with B later on</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_N</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">**</span><span class="mi">2</span>
+            <span class="p">)</span>  <span class="c1"># weights of phase measurements are their inverse variances (must be multiplied with m later on)</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
+            <span class="p">]</span>  <span class="c1"># the set with most precise phases</span>
+        <span class="c1"># elif mode == &quot;robust&quot;:  # todo: &quot;exhaustive&quot;?</span>
+        <span class="c1">#     NotImplemented  # todo: try neighboring fringe orders / all permutations = exhaustive search?</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># fast (fallback)</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">)</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
+            <span class="p">]</span>  <span class="c1"># the set with the least number of periods</span>
+
+        <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span> <span class="o">//</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">idx</span><span class="p">[</span><span class="n">d</span><span class="p">]]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">)])[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_modulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Encode base fringe patterns by spatio-temporal modulation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frames : None or int or tuple of ints, optional</span>
+<span class="sd">            Indices of the frame or frames to be encoded.</span>
+<span class="sd">            The default, frames=None, will encode all frames at once.</span>
+<span class="sd">            If frames is negative, it counts from the last to the first frame.</span>
+<span class="sd">            If frames contains numbers whose magnitude is larger than the total number of frames</span>
+<span class="sd">            (as specified by the attribute &#39;T&#39; of the Fringes instance), it is wrapped around.</span>
+<span class="sd">            If frames is a tuple of ints, only the frames specified in the tuple are encoded.</span>
+<span class="sd">        rint : bool, optional</span>
+<span class="sd">            If this is set to True (the default)</span>
+<span class="sd">            and the used dtype (attribute &#39;dtype&#39; of the Fringes instance) is of type interger,</span>
+<span class="sd">            the encoded patterns will be rounded to the nearest integer.</span>
+<span class="sd">            If this is set False and the used dtype is of type interger,</span>
+<span class="sd">            the fractional part of the encoded patterns will be discarded.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Base fringe patterns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># dd = [d for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]</span>
         <span class="c1"># kk = [k for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]</span>
@@ -511,7 +568,7 @@
         <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
             <span class="n">T</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span><span class="n">frames</span><span class="p">]</span>
-        <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">!=</span> <span class="s2">&quot;image&quot;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">xi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
@@ -571,8 +628,51 @@
 
         <span class="k">return</span> <span class="n">I</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_demodulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decode base fringe patterns by spatio-temporal demodulation.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_demodulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ski&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decode base fringe patterns by spatio-temporal demodulation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Fringe pattern sequence.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
+
+<span class="sd">        verbose : bool, optional</span>
+<span class="sd">            If this or the argument &#39;verbose&#39; of the Fringes instance is set to True,</span>
+<span class="sd">            additional infomation is computed and retuned.</span>
+<span class="sd">            This includes: phase maps, residuals, fringe orders, visibility and relative exposure.</span>
+
+<span class="sd">        func : str, optional</span>
+<span class="sd">            Unwrapping function to use. The default is &#39;ski&#39;.</span>
+
+<span class="sd">            - &#39;ski&#39;: `Scikit-image &lt;https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html&gt;`_</span>
+
+<span class="sd">            - else: `OpenCV https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html&gt;`_</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        brightness : np.ndarray</span>
+<span class="sd">            Local background signal.</span>
+
+<span class="sd">        modulation : np.ndarray</span>
+<span class="sd">            Local amplitude of the cosine signal.</span>
+
+<span class="sd">        registration : np.ndarray</span>
+<span class="sd">            Decoded coordinates.</span>
+
+<span class="sd">            .. note:: The registration is a mapping in the same pixel grid as the camera sensor</span>
+<span class="sd">              and contains the information where each camera pixel, i.e. each camera sightray,</span>
+<span class="sd">              was looking at during the fringe pattern acquisition.</span>
+
+<span class="sd">        phase : np.ndarray, optional</span>
+<span class="sd">            Local phase.</span>
+
+<span class="sd">        orders : np.ndarray, optional</span>
+<span class="sd">            Fringe orders.</span>
+
+<span class="sd">        residuals : np.ndarray, optional</span>
+<span class="sd">            Residuals from the optimization-based unwrapping process.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -716,23 +816,142 @@
                         <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">I_FFT</span><span class="p">))</span>  <span class="c1"># J</span>
                         <span class="c1"># todo: I - J</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">I</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">:</span>
-                <span class="n">I</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># numba does not support float16</span>
-
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;fast&quot;</span><span class="p">:</span>
                 <span class="n">SQNR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">quant</span>
-                <span class="n">r</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># todo: 0.5 or self.u</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># todo: 0.5 or self.u</span>
                 <span class="c1"># todo: r[d] for d in range(self.D)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">r</span> <span class="o">=</span> <span class="mf">0.0</span>
             <span class="n">r</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># todo</span>
 
-            <span class="c1"># &quot;&quot;&quot;Weights for inverse variance weighting.&quot;&quot;&quot;</span>
-            <span class="c1"># var = 1 / self._N / self.M / np.sqrt(</span>
-            <span class="c1">#     self._v)  # / B has to be done in decoder as it depends on captured scene</span>
-            <span class="c1"># w = 1 / var</span>
+            <span class="c1"># # time/frame indices for when decoding shifts of each set</span>
+            <span class="c1"># Nacc = np.cumsum(self._N.ravel()).reshape(self.D, self.K)</span>
+            <span class="c1"># N0 = np.array([[0], [Nacc[0, -1]]])[: self.D]</span>
+            <span class="c1"># ti = np.concatenate((N0, Nacc), axis=1).astype(np.int_)  # indices for traversing t</span>
+            <span class="c1">#</span>
+            <span class="c1"># dt = np.float32</span>
+            <span class="c1"># A = np.empty((self.D, Y, X, C), dt)</span>
+            <span class="c1"># B = np.empty((self.D, self.K, Y, X, C), dt)</span>
+            <span class="c1"># x = np.empty((self.D, Y, X, C), dt)</span>
+            <span class="c1"># p = np.empty((self.D, self.K, Y, X, C), dt)</span>
+            <span class="c1"># if self.verbose or verbose:</span>
+            <span class="c1">#     r = np.empty((self.D, Y, X, C), dt)</span>
+            <span class="c1">#     k = np.empty((self.D, self.K, Y, X, C), dt)</span>
             <span class="c1"># for d in range(self.D):</span>
-            <span class="c1">#     w[d] /= np.sum(w[d])</span>
+            <span class="c1">#     A[d] = np.mean(I[: np.sum(self._N[d])])</span>
+            <span class="c1">#     for i in range(self.K):</span>
+            <span class="c1">#         t = np.arange(self._N[d, i]) / self._N[d, i]  # sampling points i.e. normalized time coordinates</span>
+            <span class="c1">#         # t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen</span>
+            <span class="c1">#         c = np.exp(1j * 2 * np.pi * self._f[d, i] * t)</span>
+            <span class="c1">#         z = np.sum(c[:, None, None, None] * I[ti[d, i] : ti[d, i + 1]], axis=0)</span>
+            <span class="c1">#         B[d] = np.abs(z) / self._N[d, i] * 2</span>
+            <span class="c1">#         p[d] = np.angle(z)</span>
+            <span class="c1">#</span>
+            <span class="c1">#     if self.K == 1:</span>
+            <span class="c1">#         if self._v[d, 0] == 0:  # no spatial modulation</span>
+            <span class="c1">#             if self.R[d] == 1:</span>
+            <span class="c1">#                 x[</span>
+            <span class="c1">#                     d</span>
+            <span class="c1">#                 ] = 0  # the only possible value; however this is obsolete as it makes no senso to encode only one single coordinate</span>
+            <span class="c1">#                 if self.verbose or verbose:</span>
+            <span class="c1">#                     r[d] = 0</span>
+            <span class="c1">#                     k[d] = 0</span>
+            <span class="c1">#             else:</span>
+            <span class="c1">#                 x[d] = np.nan  # no spatial modulation, therefore we can&#39;t compute value</span>
+            <span class="c1">#                 if self.verbose or verbose:</span>
+            <span class="c1">#                     r[d] = np.nan</span>
+            <span class="c1">#                     k[d] = np.nan</span>
+            <span class="c1">#         elif self._v[d, 0] &lt;= 1:  # one period covers whole screen: no unwrapping required</span>
+            <span class="c1">#             x[d] = (</span>
+            <span class="c1">#                 (p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0]</span>
+            <span class="c1">#             )  # revert offset and change codomain from [-PI, PI] to [0, 1) -&gt; normalized phi</span>
+            <span class="c1">#             if self.verbose or verbose:</span>
+            <span class="c1">#                 r[d] = 0  # todo: uncertainty</span>
+            <span class="c1">#                 k[d] = 0</span>
+            <span class="c1">#         else:  # spatial phase unwrapping</span>
+            <span class="c1">#             if func in &quot;cv2&quot;:  # OpenCV unwrapping</span>
+            <span class="c1">#                 # params = cv2.phase_unwrapping_HistogramPhaseUnwrapping_Params()</span>
+            <span class="c1">#                 params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()</span>
+            <span class="c1">#                 params.height = Y</span>
+            <span class="c1">#                 params.width = X</span>
+            <span class="c1">#                 # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)</span>
+            <span class="c1">#                 unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)</span>
+            <span class="c1">#</span>
+            <span class="c1">#             #     if self.K == 1:  # todo: self.K[d] == 1</span>
+            <span class="c1">#             #         self.logger.info(f&quot;Spatial phase unwrapping in 2D{&#39; for each color indepently&#39; if C &gt; 1 else &#39;&#39;}.&quot;)</span>
+            <span class="c1">#             #     else:</span>
+            <span class="c1">#             #         self.logger.info(f&quot;Spatial phase unwrapping in 3D{&#39; for each color indepently&#39; if C &gt; 1 else &#39;&#39;}.&quot;)</span>
+            <span class="c1">#             #         func = &quot;ski&quot;  # todo: 3D SPU with OpenCV?</span>
+            <span class="c1">#</span>
+            <span class="c1">#             for c in range(C):</span>
+            <span class="c1">#                 if (</span>
+            <span class="c1">#                     func in &quot;cv2&quot;</span>
+            <span class="c1">#                 ):  # OpenCV algorithm is usually faster, but can be much slower in noisy images</span>
+            <span class="c1">#                     # dtype of p must be np.float32  # todo: test this</span>
+            <span class="c1">#                     if mask:</span>
+            <span class="c1">#                         SNR = self.B[d, :, :, c] / self.ui</span>
+            <span class="c1">#                         upi = (</span>
+            <span class="c1">#                             np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR</span>
+            <span class="c1">#                         )  # local phase uncertainties</span>
+            <span class="c1">#                         upin = upi / (2 * np.pi)  # normalized local phase uncertainty</span>
+            <span class="c1">#                         uxi = upin * self._l  # local positional uncertainties</span>
+            <span class="c1">#                         ux = np.sqrt(1 / np.sum(1 / uxi**2))</span>
+            <span class="c1">#                         mask = np.astype(ux &lt; 0.5, copy=False)  # todo: which limit?</span>
+            <span class="c1">#                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(</span>
+            <span class="c1">#                             p[d, 0, :, :, c], mask</span>
+            <span class="c1">#                         )  # todo: test this</span>
+            <span class="c1">#</span>
+            <span class="c1">#                         xmin = np.min(x[d, :, :, c])</span>
+            <span class="c1">#                         if xmin &lt; 0:</span>
+            <span class="c1">#                             x[d, :, :, c] -= xmin</span>
+            <span class="c1">#                     else:</span>
+            <span class="c1">#                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c])</span>
+            <span class="c1">#</span>
+            <span class="c1">#                         xmin = np.min(x[d, :, :, c])</span>
+            <span class="c1">#                         if xmin &lt; 0:</span>
+            <span class="c1">#                             x[d, :, :, c] -= xmin</span>
+            <span class="c1">#</span>
+            <span class="c1">#                     if self.verbose or verbose:</span>
+            <span class="c1">#                         r[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: test this</span>
+            <span class="c1">#                         # todo: res vs. rel</span>
+            <span class="c1">#                 else:  # Scikit-image algorithm is usually slower, but delivers better results on edges</span>
+            <span class="c1">#                     x[d, :, :, c] = ski.restoration.unwrap_phase(p[d, 0, :, :, c])  # todo: res</span>
+            <span class="c1">#</span>
+            <span class="c1">#             x[d] *= 1 / (2 * np.pi) * self._l[d, 0]</span>
+            <span class="c1">#</span>
+            <span class="c1">#             if self.verbose or verbose:</span>
+            <span class="c1">#                 k[d, 0] = np.nan  # unknown</span>
+            <span class="c1">#     else:  # K &gt; 1: temporal phase unwrapping</span>
+            <span class="c1">#         if self.mode == &quot;fast&quot;:</span>
+            <span class="c1">#             w = np.ones(self.K, np.uint8)</span>
+            <span class="c1">#             i0 = np.argmin(self._v[d])</span>
+            <span class="c1">#         else:</span>
+            <span class="c1">#             w = 1 / self._v[d] / np.sqrt(self._N[d])  # todo: M, B</span>
+            <span class="c1">#             i0 = np.argmin(w, axis=0)</span>
+            <span class="c1">#         w = w / np.sum(w, axis=0)</span>
+            <span class="c1">#         vmax = np.ceil(self._v[d, i0] / self.alpha).astype(int)</span>
+            <span class="c1">#</span>
+            <span class="c1">#         # C = sp.special.comb(n, self.K, exact=True)  # number of unique combinations</span>
+            <span class="c1">#         # combos = it.combinations(range(lmin, lmax + 1), self.K)</span>
+            <span class="c1">#         mn = np.inf</span>
+            <span class="c1">#         pn = (p[d] % (2 * np.pi) + self.o) / (2 * np.pi) % 1  # shape = (K, Y, X, C)</span>
+            <span class="c1">#</span>
+            <span class="c1">#         for k in range(vmax):</span>
+            <span class="c1">#             xi0 = (k + pn[i0]) * self._l[d, i0]</span>
+            <span class="c1">#             s = xi0</span>
+            <span class="c1">#             ssd = xi0**2</span>
+            <span class="c1">#</span>
+            <span class="c1">#             for i in it.chain(range(0, i0), range(i0 + 1, 1)):</span>
+            <span class="c1">#                 j = (xi0 / self._d[d, i]).astype(int)</span>
+            <span class="c1">#                 xj = (j + pn[i]) * self._l[d]</span>
+            <span class="c1">#                 s += xj</span>
+            <span class="c1">#                 ssd += xj**2</span>
+            <span class="c1">#</span>
+            <span class="c1">#             ssd -= s**2 / self.K</span>
+            <span class="c1">#</span>
+            <span class="c1">#             np.minimum(mn, ssd, out=mn)</span>
+            <span class="c1">#</span>
+            <span class="c1">#         q = 1</span>
 
             <span class="n">phi</span><span class="p">,</span> <span class="n">bri</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">reg</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">fid</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span>
                 <span class="n">I</span><span class="p">,</span>
@@ -750,10 +969,26 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">si</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="p">)</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">phi</span><span class="p">,</span> <span class="n">bri</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">reg</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">fid</span>
+        <span class="k">return</span> <span class="n">bri</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">reg</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">res</span>
 
     <span class="k">def</span> <span class="nf">_multiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">rint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Multiplex fringe patterns.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Multiplex fringe patterns.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Base fringe patterns.</span>
+<span class="sd">        rint : bool, optional</span>
+<span class="sd">            If this is set to True (the default)</span>
+<span class="sd">            and the used dtype (attribute &#39;dtype&#39; of the Fringes instance) is of type interger,</span>
+<span class="sd">            the encoded patterns will be rounded to the nearest integer.</span>
+<span class="sd">            If this is set False and the used dtype is of type interger,</span>
+<span class="sd">            the fractional part of the encoded patterns will be discarded.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Multiplexed fringe patterns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -808,7 +1043,18 @@
         <span class="k">return</span> <span class="n">I</span>
 
     <span class="k">def</span> <span class="nf">_demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Demultiplexing fringe patterns.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Demultiplex fringe patterns.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Multiplexed fringe patterns.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Demultiplexed fringe patterns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -878,7 +1124,25 @@
         <span class="k">return</span> <span class="n">I</span>
 
     <span class="k">def</span> <span class="nf">_colorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">frames</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Colorize fringe patterns.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Colorize fringe patterns.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Base fringe patterns.</span>
+<span class="sd">        frames : None or int or tuple of ints, optional</span>
+<span class="sd">            Indices of the frame or frames to be encoded.</span>
+<span class="sd">            The default, frames=None, will encode all frames at once.</span>
+<span class="sd">            If frames is negative, it counts from the last to the first frame.</span>
+<span class="sd">            If frames contains numbers whose magnitude is larger than the total number of frames</span>
+<span class="sd">            (as specified by the attribute &#39;T&#39; of the Fringes instance), it is wrapped around.</span>
+<span class="sd">            If frames is a tuple of ints, only the frames specified in the tuple are encoded.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Colorized fringe patterns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -923,7 +1187,17 @@
         <span class="k">return</span> <span class="n">J</span>
 
     <span class="k">def</span> <span class="nf">_decolorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decolorize fringe patterns i.e. fuse hues/colors.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decolorize fringe patterns i.e. fuse hues/colors.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Colorized fringe patterns.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Decolorized fringe patterns.&quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -989,7 +1263,7 @@
         <span class="n">rint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">simulate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Encode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Encode fringe patterns.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1000,15 +1274,14 @@
 <span class="sd">            If frames contains numbers whose magnitude is larger than the total number of frames</span>
 <span class="sd">            (as specified by the attribute &#39;T&#39; of the Fringes instance), it is wrapped around.</span>
 <span class="sd">            If frames is a tuple of ints, only the frames specified in the tuple are encoded.</span>
-<span class="sd">        dtype: dtype, optional</span>
-<span class="sd">            The type of the returned array.</span>
-<span class="sd">            The default, dtype=None, will use the dtype specified in the attribute &#39;dtype&#39; of the Fringes instance.</span>
+
 <span class="sd">        rint : bool, optional</span>
 <span class="sd">            If this is set to True (the default)</span>
 <span class="sd">            and the used dtype (attribute &#39;dtype&#39; of the Fringes instance) is of type interger,</span>
 <span class="sd">            the encoded patterns will be rounded to the nearest integer.</span>
 <span class="sd">            If this is set False and the used dtype is of type interger,</span>
 <span class="sd">            the fractional part of the encoded patterns will be discarded.</span>
+
 <span class="sd">        simulate : bool, optional</span>
 <span class="sd">            If this is set to True, the acquisition, i.e. the transmission channel, will be simulated.</span>
 <span class="sd">            This includes the modulation transfer function</span>
@@ -1019,12 +1292,12 @@
 <span class="sd">            Default. False.</span>
 
 <span class="sd">        Returns</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -------</span>
 <span class="sd">        I : np.ndarray</span>
 <span class="sd">            Fringe pattern sequence.</span>
 
 <span class="sd">        Notes</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -----</span>
 <span class="sd">        To receive the frames iteratively (i.e. in a lazy manner),</span>
 <span class="sd">        simply iterate over the Fringes instance.</span>
 <span class="sd">        Alternatively, to receive arbitrary frames,</span>
@@ -1032,7 +1305,7 @@
 <span class="sd">        either with an integer, a tuple or a slice.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 
@@ -1076,9 +1349,7 @@
             <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
                 <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span><span class="n">frames</span><span class="p">]</span>
 
-            <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
-
-            <span class="n">frames</span> <span class="o">=</span> <span class="n">frames</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span>
+            <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">FDM</span><span class="p">:</span>
                 <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">frames</span><span class="p">])</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
@@ -1092,9 +1363,6 @@
                 <span class="n">frames</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">EN0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">EN0</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">frames</span><span class="p">])</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">frames</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
 
         <span class="c1"># modulate</span>
         <span class="n">I</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modulate</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">rint</span><span class="p">)</span>
@@ -1113,7 +1381,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">si</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="p">)</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span><span class="p">)</span> <span class="k">if</span> <span class="n">simulate</span> <span class="k">else</span> <span class="n">I</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">magnification</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span><span class="p">)</span> <span class="k">if</span> <span class="n">simulate</span> <span class="k">else</span> <span class="n">I</span></div>
 
 <div class="viewcode-block" id="Fringes.decode"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.decode">[docs]</a>    <span class="k">def</span> <span class="nf">decode</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -1122,21 +1390,20 @@
         <span class="n">despike</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">denoise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">namedtuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Decode fringe patterns.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        I : np.ndarray</span>
 <span class="sd">            Fringe pattern sequence.</span>
-<span class="sd">            &#39;I&#39; is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;)</span>
-<span class="sd">            before processing.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
 
-<span class="sd">            .. note:: It must have been encoded with the same parameters of the Fringes instance as the encoded one.</span>
+<span class="sd">            .. note:: It must have been encoded with the same parameters set to the Fringes instance as the encoded one.</span>
 
 <span class="sd">        verbose : bool, optional</span>
 <span class="sd">            If this or the argument &#39;verbose&#39; of the Fringes instance is set to True,</span>
 <span class="sd">            additional infomation is computed and retuned.</span>
-<span class="sd">            This includes: phase maps, residuals, fringe orders, visibility and relative exposure.</span>
+<span class="sd">            This includes: phase, residuals, orders, visibility and exposure.</span>
 
 <span class="sd">        despike: bool, optional</span>
 <span class="sd">            If this is set to true, single pixel outliers in the unwrapped phase map are replaced</span>
@@ -1177,12 +1444,12 @@
 <span class="sd">            Local exposure (relative average intensity).</span>
 
 <span class="sd">        Raises</span>
-<span class="sd">        ----------</span>
+<span class="sd">        ------</span>
 <span class="sd">        AssertionError</span>
 <span class="sd">            If the number of frames of &#39;I&#39; and the attribute &#39;T&#39; of the &#39;Fringes&#39; instance don&#39;t match.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 <span class="sd">        &gt;&gt;&gt; I = f.encode()</span>
@@ -1205,7 +1472,8 @@
 
         <span class="c1"># subtract dark signal</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">I</span><span class="p">[</span><span class="n">I</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span><span class="p">]</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span>
+            <span class="n">I</span><span class="p">[</span><span class="n">I</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span><span class="p">]</span> <span class="o">=</span> <span class="n">I</span><span class="p">[</span><span class="n">I</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span>
+            <span class="n">I</span><span class="p">[</span><span class="n">I</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">y0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># decolorize i.e. fuse hues/colors</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ismono</span><span class="p">:</span>  <span class="c1"># for gray fringes, color fusion is not performed, but extended averaging is</span>
@@ -1216,9 +1484,9 @@
             <span class="n">I</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_demultiplex</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
 
         <span class="c1"># demodulate</span>
-        <span class="n">phi</span><span class="p">,</span> <span class="n">bri</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">reg</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">fid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_demodulate</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+        <span class="n">bri</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">reg</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_demodulate</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="n">V</span> <span class="o">=</span> <span class="p">(</span><span class="n">mod</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span> <span class="o">/</span> <span class="n">bri</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">I</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="s2">&quot;ui&quot;</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">I</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">bits</span> <span class="o">&gt;</span> <span class="mi">8</span><span class="p">:</span>  <span class="c1"># data may hold less bits of information</span>
@@ -1321,9 +1589,32 @@
         <span class="k">return</span> <span class="n">dec</span></div>
 
     <span class="k">def</span> <span class="nf">_unwrap</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">phi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">B</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ski&quot;</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">phi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ski&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">namedtuple</span><span class="p">:</span>  <span class="c1"># todo: use B for quality guidance</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unwrap phase maps spacially.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unwrap phase maps spacially.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        phi : np.ndarray</span>
+<span class="sd">            Phase maps to unwrap spatially, stacked along the first dimension.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
+<span class="sd">            The frames (along first dimension) as well the color channels (along last dimension)</span>
+<span class="sd">            are unwrapped separately.</span>
+
+<span class="sd">        mask : np.ndarray, optional</span>
+<span class="sd">            Mask image with dtype &#39;np.uint8&#39; used when some pixels do not hold any phase information.</span>
+
+<span class="sd">        func : str, optional</span>
+<span class="sd">            Unwrapping function to use. The default is &#39;ski&#39;.</span>
+
+<span class="sd">            - &#39;ski&#39;: `Scikit-image &lt;https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html&gt;`_</span>
+
+<span class="sd">            - else: `OpenCV https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html&gt;`_</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        unwrapped : np.ndarray</span>
+<span class="sd">            Unwrapped phase map(s).&quot;&quot;&quot;</span>
 
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
@@ -1414,8 +1705,7 @@
 <span class="sd">        ----------</span>
 <span class="sd">        phi : np.ndarray</span>
 <span class="sd">            Phase maps to unwrap spatially, stacked along the first dimension.</span>
-<span class="sd">            &#39;phi&#39; is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;)</span>
-<span class="sd">            before processing.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
 <span class="sd">            The frames (along first dimension) as well the color channels (along last dimension)</span>
 <span class="sd">            are unwrapped separately.</span>
 
@@ -1425,14 +1715,14 @@
 <span class="sd">        func : str, optional</span>
 <span class="sd">            Unwrapping function to use. The default is &#39;ski&#39;.</span>
 
-<span class="sd">            - &#39;ski&#39;: https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html</span>
+<span class="sd">            - &#39;ski&#39;: `Scikit-image &lt;https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html&gt;`_</span>
 
-<span class="sd">            - else: https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html</span>
+<span class="sd">            - else: `OpenCV &lt;https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html&gt;`_</span>
 
 <span class="sd">        Returns</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -------</span>
 <span class="sd">        unwrapped : np.ndarray</span>
-<span class="sd">            Unwrapped phase maps.</span>
+<span class="sd">            Unwrapped phase map(s).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">T</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">vshape</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span>
@@ -1478,6 +1768,7 @@
 <span class="sd">        are mapped from the camera grid</span>
 <span class="sd">        to integer positions on the screen grid</span>
 <span class="sd">        with weights from the modulation.</span>
+
 <span class="sd">        This yields the source activation heatmap:</span>
 <span class="sd">        a grid representing the screen (light source)</span>
 <span class="sd">        with the pixel values being a relative measure</span>
@@ -1490,17 +1781,15 @@
 <span class="sd">        ----------</span>
 <span class="sd">        xi : np.ndarray</span>
 <span class="sd">            Registration, i.e. the decoded screen coordinates as seen by the camera.</span>
-<span class="sd">            &#39;xi&#39; is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;)</span>
-<span class="sd">            before processing.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
 
 <span class="sd">        B : np.ndarray, optional</span>
 <span class="sd">            Modulation. Used for weighting.</span>
-<span class="sd">            &#39;B&#39; is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;)</span>
-<span class="sd">            before processing.</span>
+<span class="sd">            It is reshaped to videoshape (frames &#39;T&#39;, height &#39;Y&#39;, width &#39;X&#39;, color channels &#39;C&#39;) before processing.</span>
 <span class="sd">            If &#39;B&#39; is not given, equal weights are used.</span>
 
 <span class="sd">        dx : float, optional</span>
-<span class="sd">            Magnification. Size of one camera pixel, projected onto the screen, in units of screen pixels.</span>
+<span class="sd">            Magnification: Size of one camera pixel, projected onto the screen, in units of screen pixels.</span>
 <span class="sd">            Default is one.</span>
 
 <span class="sd">        p : int, optional</span>
@@ -1508,24 +1797,25 @@
 <span class="sd">            Default is two.</span>
 
 <span class="sd">        fast : bool</span>
-<span class="sd">            Flag for defining whether to use fast remapping or inverse distance weighted remapping,</span>
+<span class="sd">            If True, fast remapping is applied.</span>
+<span class="sd">            Else, inverse distance weighted remapping is applied,</span>
 <span class="sd">            which is more precise but also more time-consuming.</span>
 <span class="sd">            Default is True.</span>
 
 <span class="sd">        Returns</span>
-<span class="sd">        ----------</span>
+<span class="sd">        -------</span>
 <span class="sd">        src : np.ndarray</span>
 <span class="sd">            Source activation heatmap.</span>
 
 <span class="sd">        Examples</span>
-<span class="sd">        ----------</span>
+<span class="sd">        --------</span>
 <span class="sd">        &gt;&gt;&gt; import fringes as frng</span>
 <span class="sd">        &gt;&gt;&gt; f = frng.Fringes()</span>
 <span class="sd">        &gt;&gt;&gt; I = f.encode()</span>
 
 <span class="sd">        &gt;&gt;&gt; A, B, x = f.decode(I)</span>
 
-<span class="sd">        &gt;&gt;&gt; src = f.heatmap(x, B)</span>
+<span class="sd">        &gt;&gt;&gt; src = f.remap(x, B)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">fast</span><span class="p">:</span>
@@ -1663,25 +1953,60 @@
     <span class="k">def</span> <span class="nf">_simulate</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">magnification</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="c1"># magnification: float = 1,</span>
         <span class="n">PSF</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
         <span class="n">system_gain</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.038</span><span class="p">,</span>
         <span class="n">dark_current</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.64</span> <span class="o">/</span> <span class="mf">0.038</span><span class="p">,</span>  <span class="c1"># [electrons]  # some cameras feature a dark current compensation</span>
-        <span class="n">dark_noise</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">16.7</span><span class="p">,</span>  <span class="c1"># [electrons]</span>
+        <span class="n">dark_noise</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">13.7</span><span class="p">,</span>  <span class="c1"># [electrons]</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">268664434431581513926327163960690138719</span><span class="p">,</span>  <span class="c1"># secrets.randbits(128)</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the acquisition, i.e. the transmission channel.</span>
+
 <span class="sd">        This includes the modulation transfer function (computed from the imaging system&#39;s point spread function)</span>
-<span class="sd">        and intensity noise added by the camera.&quot;&quot;&quot;</span>
+<span class="sd">        and intensity noise added by the camera.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Fringe pattern sequence.</span>
+
+<span class="sd">        PDF : float, optional</span>
+<span class="sd">            Standard deviation of the Point Spread Function, in pixel units.</span>
+<span class="sd">            The default is 3.</span>
+
+<span class="sd">        system_gain : float, optional</span>
+<span class="sd">            System gain of the digital camera.</span>
+<span class="sd">            The default is 0.038.</span>
+
+<span class="sd">        dark_current : float, optional</span>
+<span class="sd">            Dark current of the digital camera, in unit electrons.</span>
+<span class="sd">            The default is ~100.</span>
+
+<span class="sd">        dark_noise : float, optional</span>
+<span class="sd">            Dark noise of the digital camera, in units electrons.</span>
+<span class="sd">            The default is 13.7</span>
+
+<span class="sd">        seed : int, optional</span>
+<span class="sd">            A seed to initialize the Random Number Generator.</span>
+<span class="sd">            It makes the random numbers predictable.</span>
+<span class="sd">            See `Seeding and Entropy &lt;http://www.example.com&gt;`_ for more information about seeding.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        I : np.ndarray</span>
+<span class="sd">            Simulated fringe pattern sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">I</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">T</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">vshape</span><span class="p">(</span><span class="n">I</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">I</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-        <span class="c1"># magnification</span>
-        <span class="n">I</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">uniform_filter</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">magnification</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="c1"># # magnification</span>
+        <span class="c1"># if magnification != 1:</span>
+        <span class="c1">#     I = sp.ndimage.uniform_filter(I, size=magnification, mode=&quot;reflect&quot;, axes=(1, 2))</span>
 
         <span class="c1"># PSF (e.g. defocus)</span>
-        <span class="n">I</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">gaussian_filter</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">PSF</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">PSF</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">I</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">gaussian_filter</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">PSF</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
         <span class="c1"># random number generator</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
@@ -1708,71 +2033,6 @@
 
         <span class="k">return</span> <span class="n">I</span>
 
-    <span class="k">def</span> <span class="nf">_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># todo: remove</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Error.&quot;&quot;&quot;</span>
-        <span class="c1"># &quot;&quot;&quot;Mean absolute distance between decoded and true coordinates, considering only quantization noise.&quot;&quot;&quot;</span>
-
-        <span class="c1"># f = Fringes(**{k: v for k, v in self.params.items() if k in Fringes.defaults})</span>
-        <span class="n">I</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-        <span class="n">dec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
-
-        <span class="n">eps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span> <span class="o">-</span> <span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">)</span>  <span class="c1"># / self.L</span>
-        <span class="n">idxe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">eps</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">)</span>
-
-        <span class="n">xavg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
-        <span class="n">xmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
-        <span class="n">xmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
-        <span class="n">xstd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
-        <span class="n">SNR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">/</span> <span class="n">xstd</span>
-        <span class="n">SPNR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">/</span> <span class="n">xmax</span>
-        <span class="n">B</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">SNR</span><span class="p">))</span>
-        <span class="c1"># reserve = int(SNR / self.L) if SNR != np.inf else SNR</span>
-        <span class="n">reserve</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">SNR</span><span class="p">)</span> <span class="k">if</span> <span class="n">SNR</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="k">else</span> <span class="n">SNR</span>
-        <span class="n">DR</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">SNR</span><span class="p">))</span>
-        <span class="n">DRP</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">SPNR</span><span class="p">))</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
-            <span class="n">ravg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">residuals</span><span class="p">)</span>
-            <span class="n">rmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">residuals</span><span class="p">)</span>
-            <span class="n">rmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">residuals</span><span class="p">)</span>
-
-            <span class="n">errors</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span>
-                <span class="s2">&quot;errors&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve, SNR, SPNR, rmeanabsdist rmedabsdist rmaxabsdist&quot;</span><span class="p">,</span>
-            <span class="p">)(</span>
-                <span class="n">DR</span><span class="p">,</span>
-                <span class="n">DRP</span><span class="p">,</span>
-                <span class="n">B</span><span class="p">,</span>
-                <span class="n">xavg</span><span class="p">,</span>
-                <span class="n">xmed</span><span class="p">,</span>
-                <span class="n">xmax</span><span class="p">,</span>
-                <span class="n">xstd</span><span class="p">,</span>
-                <span class="n">reserve</span><span class="p">,</span>
-                <span class="n">SNR</span><span class="p">,</span>
-                <span class="n">SPNR</span><span class="p">,</span>
-                <span class="n">ravg</span><span class="p">,</span>
-                <span class="n">rmed</span><span class="p">,</span>
-                <span class="n">rmax</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">errors</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span>
-                <span class="s2">&quot;errors&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve SNR SPNR&quot;</span><span class="p">,</span>
-            <span class="p">)(</span>
-                <span class="n">DR</span><span class="p">,</span>
-                <span class="n">DRP</span><span class="p">,</span>
-                <span class="n">B</span><span class="p">,</span>
-                <span class="n">xavg</span><span class="p">,</span>
-                <span class="n">xmed</span><span class="p">,</span>
-                <span class="n">xmax</span><span class="p">,</span>
-                <span class="n">xstd</span><span class="p">,</span>
-                <span class="n">reserve</span><span class="p">,</span>
-                <span class="n">SNR</span><span class="p">,</span>
-                <span class="n">SPNR</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">errors</span>
-
     <span class="k">def</span> <span class="nf">_trim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Change &#39;ndim&#39; to 2 and limit &#39;shape&#39;.&quot;&quot;&quot;</span>
 
@@ -1787,50 +2047,131 @@
 
         <span class="k">return</span> <span class="n">a</span>
 
-<div class="viewcode-block" id="Fringes.MTF"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.MTF">[docs]</a>    <span class="k">def</span> <span class="nf">MTF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Modulation Transfer Function.&quot;&quot;&quot;</span>
-        <span class="c1"># &quot;&quot;&quot;Modulation Transfer Function.</span>
-        <span class="c1">#</span>
-        <span class="c1"># Returns normalized modulation at spatial frequencies &#39;v&#39;.</span>
-        <span class="c1">#</span>
-        <span class="c1"># Parameters</span>
-        <span class="c1"># ----------</span>
-        <span class="c1"># v: np.ndarray</span>
-        <span class="c1">#     Spatial frequencies at which to determine the normalized modulation.</span>
-        <span class="c1">#</span>
-        <span class="c1"># Returns</span>
-        <span class="c1"># ----------</span>
-        <span class="c1"># B : np.ndarray</span>
-        <span class="c1">#     Normalized modulation, in the same shape as &#39;v&#39;.</span>
-        <span class="c1">#</span>
-        <span class="c1"># Notes</span>
-        <span class="c1"># ----------</span>
-        <span class="c1"># - If the attribute &#39;Bv&#39; of the Fringes instance is not None,</span>
-        <span class="c1"># the MTF is interpolated from previous measurements.</span>
-        <span class="c1"># - Else, if the attribute &#39;PSF&#39; of the Fringes instance is larger than zero,</span>
-        <span class="c1"># the MTF is computed from the optical transfer function of the optical system,</span>
-        <span class="c1"># i.e. as the magnitude of the Fourier-transformed &#39;Point Spread Function&#39; (PSF).</span>
-        <span class="c1"># - Else, it returns ones.</span>
-        <span class="c1"># &quot;&quot;&quot;</span>
-        <span class="c1"># todo: ...and extrapolated at points outside the data range?</span>
+<div class="viewcode-block" id="Fringes.errors"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.errors">[docs]</a>    <span class="k">def</span> <span class="nf">errors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Error metrics.</span>
 
-        <span class="n">v_</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dmed : np.ndarray</span>
+<span class="sd">            Median of absolute distance between true and decoded coordinates.</span>
+
+<span class="sd">        dcmed : np.ndarray</span>
+<span class="sd">            Median of absolute circular distance between true and decoded coordinates.</span>
+
+<span class="sd">        davg : np.ndarray</span>
+<span class="sd">            Mean of absolute distance between true and decoded coordinates.</span>
+
+<span class="sd">        dcavg : np.ndarray</span>
+<span class="sd">            Mean of absolute circular distance between true and decoded coordinates.</span>
+
+<span class="sd">        dmin : np.ndarray</span>
+<span class="sd">            Mimimum of absolute distance between true and decoded coordinates.</span>
+
+<span class="sd">        dcmin : np.ndarray</span>
+<span class="sd">            Minimum of absolute circular distance between true and decoded coordinates.</span>
+
+<span class="sd">        dmax : np.ndarray</span>
+<span class="sd">            Maximum of absolute distance between true and decoded coordinates.</span>
+
+<span class="sd">        dcmax : np.ndarray</span>
+<span class="sd">            Maximum of absolute circular distance between true and decoded coordinates.</span>
+
+<span class="sd">        std : np.ndarray</span>
+<span class="sd">            Standard deviation of absolute distance between true and decoded coordinates.</span>
+
+<span class="sd">        stdc : np.ndarray</span>
+<span class="sd">            Standard deviation of absolute dircular distance between true and decoded coordinates.</span>
+
+<span class="sd">        savg : np.ndarray</span>
+<span class="sd">            Mean of success rate of phase unwrapping.</span>
+
+<span class="sd">        smed : np.ndarray</span>
+<span class="sd">            Median of success rate of phase unwrapping.</span>
+
+<span class="sd">        smin : np.ndarray</span>
+<span class="sd">            Minimum of success rate of phase unwrapping.</span>
+
+<span class="sd">        smax : np.ndarray</span>
+<span class="sd">            Maximum of success rate of phase unwrapping.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">dec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">simulate</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
+        <span class="n">xest</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">registration</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">xest</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">dabs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">dmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">dabs</span><span class="p">)</span>
+        <span class="n">davg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dabs</span><span class="p">)</span>
+        <span class="n">dmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">dabs</span><span class="p">)</span>
+        <span class="n">dmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dabs</span><span class="p">)</span>
+
+        <span class="n">dc</span> <span class="o">=</span> <span class="n">circular_distance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">)</span>
+        <span class="n">stdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">dc</span><span class="p">)</span>
+        <span class="n">dcabs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dc</span><span class="p">)</span>
+        <span class="n">dcavg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dcabs</span><span class="p">)</span>
+        <span class="n">dcmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">dcabs</span><span class="p">)</span>
+        <span class="n">dcmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">dcabs</span><span class="p">)</span>
+        <span class="n">dcmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">dcabs</span><span class="p">)</span>
+        <span class="n">dcmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dcabs</span><span class="p">)</span>
+
+        <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orders</span><span class="p">()</span>
+        <span class="n">kest</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">orders</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">==</span> <span class="n">kest</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">savg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+        <span class="n">smed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+        <span class="n">smin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+        <span class="n">smax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span>
+            <span class="s2">&quot;errors&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dmed dcmed davg dcavg dmin dcmin dmax dcmax std stdc savg smed smin smax&quot;</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">dmed</span><span class="p">,</span> <span class="n">dcmed</span><span class="p">,</span> <span class="n">davg</span><span class="p">,</span> <span class="n">dcavg</span><span class="p">,</span> <span class="n">dmin</span><span class="p">,</span> <span class="n">dcmin</span><span class="p">,</span> <span class="n">dmax</span><span class="p">,</span> <span class="n">dcmax</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">stdc</span><span class="p">,</span> <span class="n">savg</span><span class="p">,</span> <span class="n">smed</span><span class="p">,</span> <span class="n">smin</span><span class="p">,</span> <span class="n">smax</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">errors</span></div>
+
+<div class="viewcode-block" id="Fringes.MTF"><a class="viewcode-back" href="../../fringes.html#fringes.fringes.Fringes.MTF">[docs]</a>    <span class="k">def</span> <span class="nf">MTF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Modulation Transfer Function.</span>
+
+<span class="sd">        Returns the relative modulation at spatial frequencies &#39;v&#39;.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        v: np.ndarray</span>
+<span class="sd">            Spatial frequencies at which to determine the normalized modulation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
+<span class="sd">        B : np.ndarray</span>
+<span class="sd">            Relative modulation, in the same shape as &#39;v&#39;.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - If the attribute &#39;Bv&#39; of the Fringes instance is not None, the MTF is interpolated from previous measurements.\n</span>
+<span class="sd">        - Else, if the attribute &#39;PSF&#39; of the Fringes instance is larger than zero, the MTF is computed from the optical transfer function of the optical system, i.e. as the magnitude of the Fourier-transformed &#39;Point Spread Function&#39; (PSF).\n</span>
+<span class="sd">        - Else, it returns ones.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Bv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># interpolate from measurement</span>
-            <span class="c1"># todo: unique + LUT -&gt; test</span>
+            <span class="c1"># todo: test: unique + LUT</span>
+            <span class="n">v_</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
             <span class="n">vu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-            <span class="n">MTF</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">v_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Bv</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">MTF</span><span class="p">(</span><span class="n">v_</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># interpolate from measured modulation values</span>
+            <span class="n">MTF</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+                <span class="n">v_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Bv</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span>
+            <span class="p">)</span>  <span class="c1"># todo: ...and extrapolated at points outside the data range?</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">MTF</span><span class="p">(</span><span class="n">vu</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># interpolate from measured modulation values</span>
             <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">vu</span><span class="p">)</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">B</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">B</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># determine from PSF</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span> <span class="o">*</span> <span class="n">v_</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-            <span class="c1"># todo: magnification</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span> <span class="o">*</span> <span class="n">v</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># todo: fix</span>
+            <span class="c1"># todo: what is smaller: dl or lv?</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">v</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lmin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># approximation of [Bothe2008]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">v_</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-            <span class="c1"># B = 1 - v_ / self.vmax  # approximation of [Bothe2008]</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">B</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">B</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">Bv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -2493,7 +2834,7 @@
 
 <span class="sd">        The directions D and the sets K are multiplexed, resulting in a crossed fringe pattern if D ≡ 2.</span>
 <span class="sd">        It can only be activated if D ∨ K &gt; 1 i.e. D * K &gt; 1.</span>
-<span class="sd">        The amplitude B as well as the number of shifts is reduced by the factor D * K.</span>
+<span class="sd">        The amplitude B is reduced by the factor D * K.</span>
 <span class="sd">        Usually f equals 1 and is essentially only changed if frequency division multiplexing (FDM) is activated:</span>
 <span class="sd">        Each set per direction receives an individual temporal frequency f, which is used in temporal demodulation to distinguish the individual sets.</span>
 <span class="sd">        A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.</span>
@@ -2715,21 +3056,27 @@
                 <span class="n">K</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l_</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">)</span>
 
                 <span class="n">C</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">special</span><span class="o">.</span><span class="n">comb</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">exact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">repetition</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># number of unique combinations</span>
+                <span class="n">combos</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">combinations_with_replacement</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">K</span><span class="p">)</span>
 
-                <span class="n">B</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">lmax</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">8</span><span class="p">))</span> <span class="o">*</span> <span class="mi">8</span>  <span class="c1"># number of bits required to store integers up to lmax</span>
-                <span class="n">lcombos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromiter</span><span class="p">(</span>
-                    <span class="n">it</span><span class="o">.</span><span class="n">combinations_with_replacement</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">K</span><span class="p">),</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;uint</span><span class="si">{</span><span class="n">B</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">K</span><span class="p">)),</span>
-                    <span class="n">C</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">lcombos</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">lcombos</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">lmin</span><span class="p">)</span>
+                <span class="c1"># B = int(np.ceil(np.log2(lmax - 1) / 8)) * 8  # number of bits required to store integers up to lmax</span>
+                <span class="c1"># combos = np.fromiter(combos, np.dtype((f&quot;uint{B}&quot;, K)), C)</span>
 
-                <span class="c1"># idx0 = np.argmax(np.sum(1 / lcombos**2, axis=1))</span>
-                <span class="c1"># l0 = lcombos[idx0]</span>
+                <span class="n">kroot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">K</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lmin</span> <span class="o">&lt;=</span> <span class="n">kroot</span><span class="p">:</span>
+                    <span class="n">lcombos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">combos</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">l</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">kroot</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">lcm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lcombos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">combos</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">lcm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">])</span>
+
+                <span class="c1"># lcombos = filter(lcombos, K, self.L, lmin)</span>
+
+                <span class="c1"># idx = np.argmax(np.sum(1 / lcombos**2, axis=1))</span>
+                <span class="c1"># l = lcombos[idx]</span>
 
                 <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">/</span> <span class="n">lcombos</span>
-                <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MTF</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>  <span class="c1"># B0 i.e. self.B is constant, can be put before weighted sum, hence</span>
-                <span class="n">var</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">[:</span><span class="n">K</span><span class="p">]</span> <span class="o">*</span> <span class="n">lcombos</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">B</span><span class="o">**</span><span class="mi">2</span>
+                <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MTF</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">var</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">*</span> <span class="n">lcombos</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">B</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># todo: D, M</span>
                 <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">var</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 
                 <span class="n">l</span> <span class="o">=</span> <span class="n">lcombos</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
@@ -2825,9 +3172,9 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Bv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># interpolate from measurement</span>
             <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
             <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MTF</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">B</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># approximation [Bothe2008]</span>
-            <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">idx</span> <span class="o">-=</span> <span class="mi">1</span>  <span class="c1"># index of last element where MTF &gt;= 0.5</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[</span><span class="n">np</span><span class="o">.</span><span class="n">argpartition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">.</span><span class="n">size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))[</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">.</span><span class="n">size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)]]</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">/</span> <span class="n">N</span> <span class="o">/</span> <span class="p">(</span><span class="n">v</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">B</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># todo: D, M</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">var</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
             <span class="n">vopt</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># determine from PSF</span>
             <span class="n">vopt_</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PSF</span><span class="p">)</span>
@@ -3295,7 +3642,8 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">y0</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dark signal.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dark signal.</span>
+<span class="sd">        [y0] = DN&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_y0</span>
 
     <span class="nd">@y0</span><span class="o">.</span><span class="n">setter</span>
@@ -3307,6 +3655,22 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_y0</span><span class="w"> </span><span class="si">= }</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ui</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Intensity noise.&quot;&quot;&quot;</span>
+        <span class="n">quant</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">quant</span>
+        <span class="n">ui</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">quant</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ui</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">upi</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Phase uncertainty.</span>
+<span class="sd">        [upi] = rad&quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">MTF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">)</span>
+        <span class="n">SNR</span> <span class="o">=</span> <span class="n">B</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span>
+        <span class="n">upi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span> <span class="o">/</span> <span class="n">SNR</span>  <span class="c1"># local phase uncertainties</span>
+        <span class="k">return</span> <span class="n">upi</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">u</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Uncertainty of measurement (standard deviation).</span>
 <span class="sd">        [u] = px.</span>
@@ -3314,12 +3678,7 @@
 <span class="sd">        It is based on the phase noise model from [Surrel 1997]</span>
 <span class="sd">        and propagated through the unwrapping process and the phase fusion.&quot;&quot;&quot;</span>
 
-        <span class="n">quant</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">quant</span>
-        <span class="n">ui</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dark</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">quant</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># intensity noise</span>
-        <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">MTF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">)</span>
-        <span class="n">SNR</span> <span class="o">=</span> <span class="n">B</span> <span class="o">/</span> <span class="n">ui</span>
-        <span class="n">upi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span> <span class="o">/</span> <span class="n">SNR</span>  <span class="c1"># local phase uncertainties</span>
-        <span class="n">upin</span> <span class="o">=</span> <span class="n">upi</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>  <span class="c1"># normalized local phase uncertainty</span>
+        <span class="n">upin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upi</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>  <span class="c1"># normalized local phase uncertainty</span>
         <span class="n">uxi</span> <span class="o">=</span> <span class="n">upin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_l</span>  <span class="c1"># local positional uncertainties</span>
         <span class="n">ux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">uxi</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># global positional uncertainty (by inverse variance weighting)</span>
         <span class="c1"># todo: factor out L ?!</span>

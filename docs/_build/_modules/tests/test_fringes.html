@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>tests.test_fringes &mdash; Fringes  documentation</title>
+  <title>tests.test_fringes &mdash; Fringes 0.2.0 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -42,8 +42,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"></div>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Fringes</a></li>
+</ul>
+
         </div>
       </div>
     </nav>
@@ -335,7 +338,7 @@
 
         <span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span> <span class="s2">&quot;Return value isn&#39;t a &#39;Numpy array&#39;.&quot;</span></div>
+        <span class="k">assert</span> <span class="n">I</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s2">&quot;Wrong dtype.&quot;</span></div>
 
 
 <span class="c1"># def test_grids():</span>
@@ -536,7 +539,8 @@
 
 <div class="viewcode-block" id="test_simulation"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_simulation">[docs]</a><span class="k">def</span> <span class="nf">test_simulation</span><span class="p">():</span>
     <span class="c1"># no low pass from PSF causing decrease in modulation</span>
-    <span class="c1"># no clipping todo: add salt and pepper noise?</span>
+    <span class="c1"># no clipping</span>
+    <span class="c1"># no hit pixels -&gt; add salt and pepper noise?</span>
 
     <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
     <span class="n">f</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span>
@@ -577,175 +581,11 @@
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
-    <span class="c1">#f.PSF = 3  # 0.001</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1920</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1280</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">PSF</span> <span class="o">=</span> <span class="mf">0.001</span> <span class="o">*</span> <span class="n">f</span><span class="o">.</span><span class="n">L</span>  <span class="c1"># 1.2  # 3</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">lmin</span> <span class="o">=</span> <span class="mi">16</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;optimal&quot;</span>
-
     <span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-    <span class="n">Imin</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-    <span class="n">Imax</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-
-    <span class="n">In</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">_simulate</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
-    <span class="n">Inmin</span> <span class="o">=</span> <span class="n">In</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-    <span class="n">Inmax</span> <span class="o">=</span> <span class="n">In</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-
-    <span class="n">Igen</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">f</span><span class="p">)</span>
-    <span class="n">I0</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">Igen</span><span class="p">)</span>
-    <span class="n">I0</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">g</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">glossary</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">umax</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-
-    <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">832</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">2</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">17</span><span class="c1">#&quot;optimal&quot;</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">10</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;exponential&quot;</span>
-    <span class="c1">#test_noise()</span>
-
-    <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1920</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">lmin</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># todo: f.L / 256</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span><span class="p">))</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span><span class="p">))</span>
-    <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="n">dr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="n">UMR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">x</span><span class="p">:</span>
-            <span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">dr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">dr</span><span class="p">[</span><span class="n">x</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">u</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-            <span class="n">l</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-            <span class="k">continue</span>  <span class="c1"># todo: test with -&gt; comment out</span>
-
-        <span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">UMR</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">dr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">dr</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">u</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">l</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-
-        <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;optimal&quot;</span>
-        <span class="n">l</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">l</span>
-        <span class="n">v</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">v</span>
-        <span class="n">u</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">dr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="n">u</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
-        <span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">UMR</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">L</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">UMR</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
-
-    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;l_i&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">l</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;r.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">l</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;g.&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">l</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="s2">&quot;b.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">l</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">],</span> <span class="s2">&quot;c.&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
-                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">l</span><span class="p">[:,</span> <span class="mi">4</span><span class="p">],</span> <span class="s2">&quot;m.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">f</span><span class="o">.</span><span class="n">K</span><span class="p">),</span> <span class="s2">&quot;k.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;UMR&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">UMR</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="s2">&quot;k&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">u</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;DR&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)),</span> <span class="n">dr</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-    <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
-
-    <span class="c1"># import matplotlib.pyplot as plt</span>
-    <span class="c1"># import numpy as np</span>
-    <span class="c1">#</span>
-    <span class="c1"># L = 1000</span>
-    <span class="c1"># v = int(np.sqrt(L))</span>
-    <span class="c1"># Imax = 255</span>
-    <span class="c1"># x = np.linspace(0, 1, L)[:, None]</span>
-    <span class="c1"># beta = np.linspace(0, 1, L)[None, :]</span>
-    <span class="c1"># V = np.linspace(1, 0, L)[:, None]</span>
-    <span class="c1"># mask = beta &lt;= 1 / (1 + V)</span>
-    <span class="c1"># gamma = 1</span>
-    <span class="c1"># o = np.pi</span>
-    <span class="c1"># k = 2 * np.pi * v</span>
-    <span class="c1"># I = Imax * beta * (1 + V * np.cos(k * x - np.pi))</span>
-    <span class="c1"># I = Imax * (beta * (1 + V * np.cos(k * x - o))) ** gamma</span>
-    <span class="c1"># I[~ mask] = Imax</span>
-    <span class="c1"># import matplotlib.pyplot as plt</span>
-    <span class="c1">#</span>
-    <span class="c1"># plt.figure()</span>
-    <span class="c1"># plt.imshow(I, cmap=&quot;gray&quot;)</span>
-    <span class="c1"># #plt.scatter(0.5 * L, 0, c=&#39;red&#39;)</span>
-    <span class="c1"># #plt.scatter(0.5 * L, (1 - 0.5) * L, c=&#39;red&#39;)</span>
-    <span class="c1"># plt.xlabel(&quot;β&quot;)</span>
-    <span class="c1"># plt.ylabel(&quot;V&quot;, rotation=0)</span>
-    <span class="c1"># plt.xticks([0, L], &quot;01&quot;)</span>
-    <span class="c1"># plt.yticks([0, L], &quot;10&quot;)</span>
-    <span class="c1"># plt.savefig(r&quot;C:\Users\chr55261\Pictures\codomain.png&quot;)</span>
-    <span class="c1"># plt.show()</span>
-
-    <span class="n">L</span> <span class="o">=</span> <span class="mi">300</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">89</span><span class="p">])</span>
-    <span class="n">l</span> <span class="o">=</span> <span class="n">L</span> <span class="o">/</span> <span class="n">v</span>
-    <span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
-    <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">lcm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">L</span> <span class="o">/</span> <span class="n">l</span>
-    <span class="n">gcd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gcd</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>  <span class="c1"># todo: extend to rational numbers</span>
-    <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-
-    <span class="c1"># all possible combinations</span>
-    <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
-    <span class="n">xi</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">vi</span><span class="p">)</span> <span class="k">for</span> <span class="n">vi</span> <span class="ow">in</span> <span class="n">v</span><span class="p">)</span>
-    <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="o">*</span><span class="n">xi</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># all valid combinations</span>
-    <span class="n">xmin</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">xmax</span> <span class="o">=</span> <span class="n">L</span>
-    <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">k1a</span> <span class="o">=</span> <span class="n">x1</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">//</span> <span class="n">l</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
-    <span class="n">k1b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">k1a</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">gcd</span><span class="p">)</span>
-    <span class="n">k2a</span> <span class="o">=</span> <span class="n">x2</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">//</span> <span class="n">l</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
-    <span class="n">k2b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">k2a</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># all valid combinations and neighbouring fringe orders</span>
-    <span class="n">k3a</span> <span class="o">=</span> <span class="n">k2b</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)))[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-    <span class="n">k3a</span> <span class="o">=</span> <span class="n">k3a</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">k3a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">remainder</span><span class="p">(</span><span class="n">k3a</span><span class="p">,</span> <span class="n">l</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
-    <span class="n">k3b</span> <span class="o">=</span> <span class="n">k2b</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)))[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-    <span class="n">k3b</span> <span class="o">=</span> <span class="n">k3b</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">k3b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">remainder</span><span class="p">(</span><span class="n">k3b</span><span class="p">,</span> <span class="n">l</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
-    <span class="n">k3c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">k2b</span><span class="p">,</span> <span class="n">k3a</span><span class="p">,</span> <span class="n">k3b</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">k3d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">k3c</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># order: inside out + break criteriom</span>
-
-    <span class="c1"># derive from v_ref</span>
+    <span class="n">dec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
 
     <span class="c1"># pytest.main()</span>
-    <span class="c1"># subprocess.run([&#39;pytest&#39;, &#39;--tb=short&#39;, str(__file__)])</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s1">&#39;pytest&#39;</span><span class="p">,</span> <span class="s1">&#39;--tb=short&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)])</span>
 </pre></div>
 
            </div>

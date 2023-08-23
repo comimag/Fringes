@@ -16,11 +16,11 @@ import asdf
 from si_prefix import si_format as si
 
 
-from .util import vshape, bilateral, median, remap, filter
+from .util import vshape, bilateral, median, remap, circular_distance
 from . import grid
 
 # from .decoder import decode  # todo: fast_decode i.e. fast_unwrap
-from .decoder3 import decode  # todo: fast_decode i.e. fast_unwrap
+from .decoder4 import decode  # todo: fast_decode i.e. fast_unwrap
 
 
 class Fringes:
@@ -167,7 +167,7 @@ class Fringes:
     def __repr__(self) -> str:
         return f"{self.params}"
 
-    def load(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> dict:
+    def load(self, fname: str = None) -> dict:
         """Load parameters from a config file to the 'Fringes' instance.
 
         .. warning:: The parameters are only loaded if the config file provides the section `fringes`.
@@ -180,21 +180,24 @@ class Fringes:
             If `'fname'` is not provided, the file `.fringes.yaml` within the user home directory is loaded.
 
         Returns
-        ----------
+        -------
         params : dict
             The loaded parameters as a dictionary.
             'params' may be empty.
 
         Examples
-        ----------
+        --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+        >>> fname = os.path.join(os.path.expanduser('~'), '.fringes.yaml')
 
         >>> import fringes as frng
         >>> f = frng.Fringes()
 
         >>> f.load(fname)
         """
+
+        if fname is None:
+            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         if not os.path.isfile(fname):
             self.logger.error(f"File '{fname}' does not exist.")
@@ -227,7 +230,7 @@ class Fringes:
             self.logger.error(f"No 'fringes' section in file '{fname}'.")
             return {}
 
-    def save(self, fname: str = os.path.join(os.path.expanduser("~"), ".fringes.yaml")) -> None:
+    def save(self, fname: str = None) -> None:
         """Save the parameters of the 'Fringes' instance to a config file.
 
         Within the file, the parameters are written to the section `fringes`
@@ -241,15 +244,18 @@ class Fringes:
             the file `.fringes.yaml` within the user home directory.
 
         Examples
-        ----------
+        --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+        >>> fname = os.path.join(os.path.expanduser('~'), '.fringes.yaml')
 
         >>> import fringes as frng
         >>> f = frng.Fringes()
 
         >>> f.save(fname)
         """
+
+        if fname is None:
+            fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         if not os.path.isdir(os.path.dirname(fname)):
             self.logger.warning(f"File directory does not exist.")
@@ -293,7 +299,7 @@ class Fringes:
             Must be greater than zero.
 
         Notes
-        ----------
+        -----
         If 'umax' is specified, the parameters are determined
         that allow a maximal uncertainty of 'umax'
         with a minimum number of frames.
@@ -328,7 +334,7 @@ class Fringes:
         J = I / Imax
 
         # estimate gamma correction factor
-        med = np.nanmedian(J)  # median is a robust estimator for the mean
+        med = np.nanmedian(J)  # Median is a robust estimator for the mean.
         gamma = np.log(med) / np.log(0.5)
         inv_gamma = 1 / gamma
 
@@ -352,21 +358,22 @@ class Fringes:
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            'I' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
-            before processing.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+
+            .. math:: I = cos(\\phi)
 
         Returns
-        ----------
+        -------
         I : np.ndarray
             Deinterlaced fringe pattern sequence.
 
         Raises
-        ----------
+        ------
         AssertionError
             If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
 
         Examples
-        ----------
+        --------
         >>> import fringes as frng
         >>> f = frng.Fringes()
         >>> I = f.deinterlace(I)
@@ -407,8 +414,58 @@ class Fringes:
 
         return xi.reshape((self.D, self.Y, self.X, 1))
 
-    def _modulate(self, frames: tuple = None, rint: bool = True) -> np.ndarray:
-        """Encode base fringe patterns by spatio-temporal modulation."""
+    def _orders(self) -> np.ndarray:
+        """Generate fringe orders.
+
+        Returns
+        -------
+        k : np.ndarray
+            Fringe orders of the encoded fringe pattern sequence,
+            in shape (D, K, Y, X), where
+            D is number of dimensions, K is number of sets i.e. number of spatial frequencies, Y is height, X is width.
+        """
+
+        if self.mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
+            w = (
+                self._N * self._v**2
+            )  # weights of phase measurements are their inverse variances (must be multiplied with m later on)
+            idx = [
+                np.argmax(w[d] * (self._N[d] > 2) * (self._v[d] > 0)) for d in range(f.D)
+            ]  # the set with most precise phases
+        # elif mode == "robust":  # todo: "exhaustive"?
+        #     NotImplemented  # todo: try neighboring fringe orders / all permutations = exhaustive search?
+        else:  # fast (fallback)
+            w = np.ones((self.D, self.K), dtype=np.int_)
+            idx = [
+                np.argmax(1 / self._v[d] * (self._N[d] > 2) * (self._v[d] > 0)) for d in range(self.D)
+            ]  # the set with the least number of periods
+
+        k = self.coordinates() // np.array([self.L / self._v[d, idx[d]] for d in range(self.D)])[:, None, None, None]
+
+    def _modulate(self, frames: int | tuple = None, rint: bool = True) -> np.ndarray:
+        """Encode base fringe patterns by spatio-temporal modulation.
+
+        Parameters
+        ----------
+        frames : None or int or tuple of ints, optional
+            Indices of the frame or frames to be encoded.
+            The default, frames=None, will encode all frames at once.
+            If frames is negative, it counts from the last to the first frame.
+            If frames contains numbers whose magnitude is larger than the total number of frames
+            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            If frames is a tuple of ints, only the frames specified in the tuple are encoded.
+        rint : bool, optional
+            If this is set to True (the default)
+            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            the encoded patterns will be rounded to the nearest integer.
+            If this is set False and the used dtype is of type interger,
+            the fractional part of the encoded patterns will be discarded.
+
+        Returns
+        -------
+        I : np.ndarray
+            Base fringe patterns.
+        """
 
         # dd = [d for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
         # kk = [k for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
@@ -437,7 +494,7 @@ class Fringes:
         except TypeError:
             T = 1
             frames = [frames]
-        frames = np.array(frames, int)
+        frames = np.array(frames, int).ravel() % np.sum(self._N)
 
         if self.grid != "image" or self.angle != 0:
             xi = self.coordinates()[..., 0]
@@ -497,8 +554,51 @@ class Fringes:
 
         return I.reshape(-1, self.Y, self.X, 1)
 
-    def _demodulate(self, I: np.ndarray, verbose: bool = False) -> tuple:
-        """Decode base fringe patterns by spatio-temporal demodulation."""
+    def _demodulate(self, I: np.ndarray, verbose: bool = False, func: str = "ski") -> tuple:
+        """Decode base fringe patterns by spatio-temporal demodulation.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Fringe pattern sequence.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+
+        verbose : bool, optional
+            If this or the argument 'verbose' of the Fringes instance is set to True,
+            additional infomation is computed and retuned.
+            This includes: phase maps, residuals, fringe orders, visibility and relative exposure.
+
+        func : str, optional
+            Unwrapping function to use. The default is 'ski'.
+
+            - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
+
+            - else: `OpenCV https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
+
+        Returns
+        -------
+        brightness : np.ndarray
+            Local background signal.
+
+        modulation : np.ndarray
+            Local amplitude of the cosine signal.
+
+        registration : np.ndarray
+            Decoded coordinates.
+
+            .. note:: The registration is a mapping in the same pixel grid as the camera sensor
+              and contains the information where each camera pixel, i.e. each camera sightray,
+              was looking at during the fringe pattern acquisition.
+
+        phase : np.ndarray, optional
+            Local phase.
+
+        orders : np.ndarray, optional
+            Fringe orders.
+
+        residuals : np.ndarray, optional
+            Residuals from the optimization-based unwrapping process.
+        """
 
         t0 = time.perf_counter()
 
@@ -642,23 +742,142 @@ class Fringes:
                         res[0, ..., c] = np.log(np.abs(I_FFT))  # J
                         # todo: I - J
         else:
-            if I.dtype == np.float16:
-                I = I.astype(np.float32, copy=False)  # numba does not support float16
-
             if self.mode == "fast":
                 SQNR = self.B / self.quant
-                r = min(self.u, 1.0)  # todo: 0.5 or self.u
+                r = min(self.u.max(), 1.0)  # todo: 0.5 or self.u
                 # todo: r[d] for d in range(self.D)
             else:
                 r = 0.0
             r = 0.0  # todo
 
-            # """Weights for inverse variance weighting."""
-            # var = 1 / self._N / self.M / np.sqrt(
-            #     self._v)  # / B has to be done in decoder as it depends on captured scene
-            # w = 1 / var
+            # # time/frame indices for when decoding shifts of each set
+            # Nacc = np.cumsum(self._N.ravel()).reshape(self.D, self.K)
+            # N0 = np.array([[0], [Nacc[0, -1]]])[: self.D]
+            # ti = np.concatenate((N0, Nacc), axis=1).astype(np.int_)  # indices for traversing t
+            #
+            # dt = np.float32
+            # A = np.empty((self.D, Y, X, C), dt)
+            # B = np.empty((self.D, self.K, Y, X, C), dt)
+            # x = np.empty((self.D, Y, X, C), dt)
+            # p = np.empty((self.D, self.K, Y, X, C), dt)
+            # if self.verbose or verbose:
+            #     r = np.empty((self.D, Y, X, C), dt)
+            #     k = np.empty((self.D, self.K, Y, X, C), dt)
             # for d in range(self.D):
-            #     w[d] /= np.sum(w[d])
+            #     A[d] = np.mean(I[: np.sum(self._N[d])])
+            #     for i in range(self.K):
+            #         t = np.arange(self._N[d, i]) / self._N[d, i]  # sampling points i.e. normalized time coordinates
+            #         # t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen
+            #         c = np.exp(1j * 2 * np.pi * self._f[d, i] * t)
+            #         z = np.sum(c[:, None, None, None] * I[ti[d, i] : ti[d, i + 1]], axis=0)
+            #         B[d] = np.abs(z) / self._N[d, i] * 2
+            #         p[d] = np.angle(z)
+            #
+            #     if self.K == 1:
+            #         if self._v[d, 0] == 0:  # no spatial modulation
+            #             if self.R[d] == 1:
+            #                 x[
+            #                     d
+            #                 ] = 0  # the only possible value; however this is obsolete as it makes no senso to encode only one single coordinate
+            #                 if self.verbose or verbose:
+            #                     r[d] = 0
+            #                     k[d] = 0
+            #             else:
+            #                 x[d] = np.nan  # no spatial modulation, therefore we can't compute value
+            #                 if self.verbose or verbose:
+            #                     r[d] = np.nan
+            #                     k[d] = np.nan
+            #         elif self._v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
+            #             x[d] = (
+            #                 (p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0]
+            #             )  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
+            #             if self.verbose or verbose:
+            #                 r[d] = 0  # todo: uncertainty
+            #                 k[d] = 0
+            #         else:  # spatial phase unwrapping
+            #             if func in "cv2":  # OpenCV unwrapping
+            #                 # params = cv2.phase_unwrapping_HistogramPhaseUnwrapping_Params()
+            #                 params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
+            #                 params.height = Y
+            #                 params.width = X
+            #                 # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)
+            #                 unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
+            #
+            #             #     if self.K == 1:  # todo: self.K[d] == 1
+            #             #         self.logger.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
+            #             #     else:
+            #             #         self.logger.info(f"Spatial phase unwrapping in 3D{' for each color indepently' if C > 1 else ''}.")
+            #             #         func = "ski"  # todo: 3D SPU with OpenCV?
+            #
+            #             for c in range(C):
+            #                 if (
+            #                     func in "cv2"
+            #                 ):  # OpenCV algorithm is usually faster, but can be much slower in noisy images
+            #                     # dtype of p must be np.float32  # todo: test this
+            #                     if mask:
+            #                         SNR = self.B[d, :, :, c] / self.ui
+            #                         upi = (
+            #                             np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR
+            #                         )  # local phase uncertainties
+            #                         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
+            #                         uxi = upin * self._l  # local positional uncertainties
+            #                         ux = np.sqrt(1 / np.sum(1 / uxi**2))
+            #                         mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
+            #                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
+            #                             p[d, 0, :, :, c], mask
+            #                         )  # todo: test this
+            #
+            #                         xmin = np.min(x[d, :, :, c])
+            #                         if xmin < 0:
+            #                             x[d, :, :, c] -= xmin
+            #                     else:
+            #                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c])
+            #
+            #                         xmin = np.min(x[d, :, :, c])
+            #                         if xmin < 0:
+            #                             x[d, :, :, c] -= xmin
+            #
+            #                     if self.verbose or verbose:
+            #                         r[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: test this
+            #                         # todo: res vs. rel
+            #                 else:  # Scikit-image algorithm is usually slower, but delivers better results on edges
+            #                     x[d, :, :, c] = ski.restoration.unwrap_phase(p[d, 0, :, :, c])  # todo: res
+            #
+            #             x[d] *= 1 / (2 * np.pi) * self._l[d, 0]
+            #
+            #             if self.verbose or verbose:
+            #                 k[d, 0] = np.nan  # unknown
+            #     else:  # K > 1: temporal phase unwrapping
+            #         if self.mode == "fast":
+            #             w = np.ones(self.K, np.uint8)
+            #             i0 = np.argmin(self._v[d])
+            #         else:
+            #             w = 1 / self._v[d] / np.sqrt(self._N[d])  # todo: M, B
+            #             i0 = np.argmin(w, axis=0)
+            #         w = w / np.sum(w, axis=0)
+            #         vmax = np.ceil(self._v[d, i0] / self.alpha).astype(int)
+            #
+            #         # C = sp.special.comb(n, self.K, exact=True)  # number of unique combinations
+            #         # combos = it.combinations(range(lmin, lmax + 1), self.K)
+            #         mn = np.inf
+            #         pn = (p[d] % (2 * np.pi) + self.o) / (2 * np.pi) % 1  # shape = (K, Y, X, C)
+            #
+            #         for k in range(vmax):
+            #             xi0 = (k + pn[i0]) * self._l[d, i0]
+            #             s = xi0
+            #             ssd = xi0**2
+            #
+            #             for i in it.chain(range(0, i0), range(i0 + 1, 1)):
+            #                 j = (xi0 / self._d[d, i]).astype(int)
+            #                 xj = (j + pn[i]) * self._l[d]
+            #                 s += xj
+            #                 ssd += xj**2
+            #
+            #             ssd -= s**2 / self.K
+            #
+            #             np.minimum(mn, ssd, out=mn)
+            #
+            #         q = 1
 
             phi, bri, mod, reg, res, fid = decode(
                 I,
@@ -676,10 +895,26 @@ class Fringes:
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
-        return phi, bri, mod, reg, res, fid
+        return bri, mod, reg, phi, fid, res
 
     def _multiplex(self, I: np.ndarray, rint: bool = True) -> np.ndarray:
-        """Multiplex fringe patterns."""
+        """Multiplex fringe patterns.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Base fringe patterns.
+        rint : bool, optional
+            If this is set to True (the default)
+            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            the encoded patterns will be rounded to the nearest integer.
+            If this is set False and the used dtype is of type interger,
+            the fractional part of the encoded patterns will be discarded.
+        Returns
+        -------
+        I : np.ndarray
+            Multiplexed fringe patterns.
+        """
 
         t0 = time.perf_counter()
 
@@ -734,7 +969,18 @@ class Fringes:
         return I
 
     def _demultiplex(self, I: np.ndarray) -> np.ndarray:
-        """Demultiplexing fringe patterns."""
+        """Demultiplex fringe patterns.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Multiplexed fringe patterns.
+
+        Returns
+        -------
+        I : np.ndarray
+            Demultiplexed fringe patterns.
+        """
 
         t0 = time.perf_counter()
 
@@ -804,7 +1050,25 @@ class Fringes:
         return I
 
     def _colorize(self, I: np.ndarray, frames: tuple = None) -> np.ndarray:
-        """Colorize fringe patterns."""
+        """Colorize fringe patterns.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Base fringe patterns.
+        frames : None or int or tuple of ints, optional
+            Indices of the frame or frames to be encoded.
+            The default, frames=None, will encode all frames at once.
+            If frames is negative, it counts from the last to the first frame.
+            If frames contains numbers whose magnitude is larger than the total number of frames
+            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            If frames is a tuple of ints, only the frames specified in the tuple are encoded.
+
+        Returns
+        -------
+        I : np.ndarray
+            Colorized fringe patterns.
+        """
 
         t0 = time.perf_counter()
 
@@ -849,7 +1113,17 @@ class Fringes:
         return J
 
     def _decolorize(self, I: np.ndarray) -> np.ndarray:
-        """Decolorize fringe patterns i.e. fuse hues/colors."""
+        """Decolorize fringe patterns i.e. fuse hues/colors.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Colorized fringe patterns.
+
+        Returns
+        -------
+        I : np.ndarray
+            Decolorized fringe patterns."""
 
         t0 = time.perf_counter()
 
@@ -915,7 +1189,7 @@ class Fringes:
         rint: bool = True,
         simulate: bool = False,
     ) -> np.ndarray:
-        """Encode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).
+        r"""Encode fringe patterns.
 
         Parameters
         ----------
@@ -926,15 +1200,14 @@ class Fringes:
             If frames contains numbers whose magnitude is larger than the total number of frames
             (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
             If frames is a tuple of ints, only the frames specified in the tuple are encoded.
-        dtype: dtype, optional
-            The type of the returned array.
-            The default, dtype=None, will use the dtype specified in the attribute 'dtype' of the Fringes instance.
+
         rint : bool, optional
             If this is set to True (the default)
             and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
             the encoded patterns will be rounded to the nearest integer.
             If this is set False and the used dtype is of type interger,
             the fractional part of the encoded patterns will be discarded.
+
         simulate : bool, optional
             If this is set to True, the acquisition, i.e. the transmission channel, will be simulated.
             This includes the modulation transfer function
@@ -945,12 +1218,12 @@ class Fringes:
             Default. False.
 
         Returns
-        ----------
+        -------
         I : np.ndarray
             Fringe pattern sequence.
 
         Notes
-        ----------
+        -----
         To receive the frames iteratively (i.e. in a lazy manner),
         simply iterate over the Fringes instance.
         Alternatively, to receive arbitrary frames,
@@ -958,7 +1231,7 @@ class Fringes:
         either with an integer, a tuple or a slice.
 
         Examples
-        ----------
+        --------
         >>> import fringes as frng
         >>> f = frng.Fringes()
 
@@ -1002,9 +1275,7 @@ class Fringes:
             except TypeError:
                 frames = [frames]
 
-            frames = np.array(frames, int).ravel()
-
-            frames = frames % np.sum(self._N)
+            frames = np.array(frames, int).ravel() % np.sum(self._N)
 
             if self.FDM:
                 frames = np.array([np.arange(i * self.D * self.K, (i + 1) * self.D * self.K) for i in frames]).ravel()
@@ -1018,9 +1289,6 @@ class Fringes:
                 frames = np.array([np.arange(i, i + EN0 + 1, EN0) for i in frames]).ravel()
         else:
             frames = None
-
-        if dtype is not None:
-            self.dtype = dtype
 
         # modulate
         I = self._modulate(frames, rint)
@@ -1039,7 +1307,7 @@ class Fringes:
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
-        return self._simulate(I, self.PSF, self.gain, 0, self.dark) if simulate else I
+        return self._simulate(I, self.magnification, self.PSF, self.gain, 0, self.dark) if simulate else I
 
     def decode(
         self,
@@ -1048,21 +1316,20 @@ class Fringes:
         despike: bool = False,
         denoise: bool = False,
     ) -> namedtuple:
-        """Decode fringe patterns of the form .. math:: I = A + B \cos(2 \pi \nu x - 2 \pi f t - \phi_0).
+        r"""Decode fringe patterns.
 
         Parameters
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            'I' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
-            before processing.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
 
-            .. note:: It must have been encoded with the same parameters of the Fringes instance as the encoded one.
+            .. note:: It must have been encoded with the same parameters set to the Fringes instance as the encoded one.
 
         verbose : bool, optional
             If this or the argument 'verbose' of the Fringes instance is set to True,
             additional infomation is computed and retuned.
-            This includes: phase maps, residuals, fringe orders, visibility and relative exposure.
+            This includes: phase, residuals, orders, visibility and exposure.
 
         despike: bool, optional
             If this is set to true, single pixel outliers in the unwrapped phase map are replaced
@@ -1103,12 +1370,12 @@ class Fringes:
             Local exposure (relative average intensity).
 
         Raises
-        ----------
+        ------
         AssertionError
             If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
 
         Examples
-        ----------
+        --------
         >>> import fringes as frng
         >>> f = frng.Fringes()
         >>> I = f.encode()
@@ -1131,7 +1398,8 @@ class Fringes:
 
         # subtract dark signal
         if self.y0 > 0:
-            I[I >= self.y0] -= self.y0
+            I[I >= self.y0] = I[I >= self.y0] - self.y0
+            I[I < self.y0] = 0
 
         # decolorize i.e. fuse hues/colors
         if self.H > 1 or not self._ismono:  # for gray fringes, color fusion is not performed, but extended averaging is
@@ -1142,9 +1410,9 @@ class Fringes:
             I = self._demultiplex(I)
 
         # demodulate
-        phi, bri, mod, reg, res, fid = self._demodulate(I, verbose)
+        bri, mod, reg, phi, fid, res = self._demodulate(I, verbose)
 
-        if self.verbose:
+        if self.verbose or verbose:
             V = (mod.reshape(self.D, self.K, Y, X, C) / bri[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
             if I.dtype.kind in "ui":
                 if np.iinfo(I.dtype).bits > 8:  # data may hold less bits of information
@@ -1247,9 +1515,32 @@ class Fringes:
         return dec
 
     def _unwrap(
-        self, phi: np.ndarray, B: np.ndarray = None, func: str = "ski"
+        self, phi: np.ndarray, mask: np.ndarray = None, func: str = "ski"
     ) -> namedtuple:  # todo: use B for quality guidance
-        """Unwrap phase maps spacially."""
+        """Unwrap phase maps spacially.
+
+        Parameters
+        ----------
+        phi : np.ndarray
+            Phase maps to unwrap spatially, stacked along the first dimension.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            The frames (along first dimension) as well the color channels (along last dimension)
+            are unwrapped separately.
+
+        mask : np.ndarray, optional
+            Mask image with dtype 'np.uint8' used when some pixels do not hold any phase information.
+
+        func : str, optional
+            Unwrapping function to use. The default is 'ski'.
+
+            - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
+
+            - else: `OpenCV https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
+
+        Returns
+        -------
+        unwrapped : np.ndarray
+            Unwrapped phase map(s)."""
 
         t0 = time.perf_counter()
 
@@ -1340,8 +1631,7 @@ class Fringes:
         ----------
         phi : np.ndarray
             Phase maps to unwrap spatially, stacked along the first dimension.
-            'phi' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
-            before processing.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
             The frames (along first dimension) as well the color channels (along last dimension)
             are unwrapped separately.
 
@@ -1351,14 +1641,14 @@ class Fringes:
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
 
-            - 'ski': https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html
+            - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
 
-            - else: https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html
+            - else: `OpenCV <https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
 
         Returns
-        ----------
+        -------
         unwrapped : np.ndarray
-            Unwrapped phase maps.
+            Unwrapped phase map(s).
         """
 
         T, Y, X, C = vshape(phi).shape
@@ -1404,6 +1694,7 @@ class Fringes:
         are mapped from the camera grid
         to integer positions on the screen grid
         with weights from the modulation.
+
         This yields the source activation heatmap:
         a grid representing the screen (light source)
         with the pixel values being a relative measure
@@ -1416,17 +1707,15 @@ class Fringes:
         ----------
         xi : np.ndarray
             Registration, i.e. the decoded screen coordinates as seen by the camera.
-            'xi' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
-            before processing.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
 
         B : np.ndarray, optional
             Modulation. Used for weighting.
-            'B' is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C')
-            before processing.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
             If 'B' is not given, equal weights are used.
 
         dx : float, optional
-            Magnification. Size of one camera pixel, projected onto the screen, in units of screen pixels.
+            Magnification: Size of one camera pixel, projected onto the screen, in units of screen pixels.
             Default is one.
 
         p : int, optional
@@ -1434,31 +1723,35 @@ class Fringes:
             Default is two.
 
         fast : bool
-            Flag for defining whether to use fast remapping or inverse distance weighted remapping,
+            If True, fast remapping is applied.
+            Else, inverse distance weighted remapping is applied,
             which is more precise but also more time-consuming.
             Default is True.
 
         Returns
-        ----------
+        -------
         src : np.ndarray
             Source activation heatmap.
 
         Examples
-        ----------
+        --------
         >>> import fringes as frng
         >>> f = frng.Fringes()
         >>> I = f.encode()
 
         >>> A, B, x = f.decode(I)
 
-        >>> src = f.heatmap(x, B)
+        >>> src = f.remap(x, B)
         """
 
         if fast:
-            # return remap(xi, B, X=self.X, Y=self.Y)
-            return self._remap1(xi, B)
+            if B is None:
+                return remap(xi, np.ones(1), Y=self.Y, X=self.X, C=self.C)  # fixme: without param B  # todo
+            else:
+                return remap(xi, B, Y=self.Y, X=self.X, C=self.C)
+            # return self._remap1(xi, B)
         else:
-            return self._remap3(xi, B)
+            return self._remap3(xi, B, dx, p)
 
     def _remap1(
         self,
@@ -1589,25 +1882,60 @@ class Fringes:
     def _simulate(
         self,
         I: np.ndarray,
-        magnification: float = 1,
+        # magnification: float = 1,
         PSF: float = 3,
         system_gain: float = 0.038,
         dark_current: float = 3.64 / 0.038,  # [electrons]  # some cameras feature a dark current compensation
-        dark_noise: float = 16.7,  # [electrons]
+        dark_noise: float = 13.7,  # [electrons]
         seed: int = 268664434431581513926327163960690138719,  # secrets.randbits(128)
     ) -> np.ndarray:
         """Simulate the acquisition, i.e. the transmission channel.
+
         This includes the modulation transfer function (computed from the imaging system's point spread function)
-        and intensity noise added by the camera."""
+        and intensity noise added by the camera.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Fringe pattern sequence.
+
+        PDF : float, optional
+            Standard deviation of the Point Spread Function, in pixel units.
+            The default is 3.
+
+        system_gain : float, optional
+            System gain of the digital camera.
+            The default is 0.038.
+
+        dark_current : float, optional
+            Dark current of the digital camera, in unit electrons.
+            The default is ~100.
+
+        dark_noise : float, optional
+            Dark noise of the digital camera, in units electrons.
+            The default is 13.7
+
+        seed : int, optional
+            A seed to initialize the Random Number Generator.
+            It makes the random numbers predictable.
+            See `Seeding and Entropy <http://www.example.com>`_ for more information about seeding.
+
+        Returns
+        -------
+        I : np.ndarray
+            Simulated fringe pattern sequence.
+        """
 
         I.shape = T, Y, X, C = vshape(I).shape
         I = I.astype(float, copy=False)
 
-        # magnification
-        I = sp.ndimage.uniform_filter(I, size=magnification, mode="reflect", axes=(1, 2))
+        # # magnification
+        # if magnification != 1:
+        #     I = sp.ndimage.uniform_filter(I, size=magnification, mode="reflect", axes=(1, 2))
 
         # PSF (e.g. defocus)
-        I = sp.ndimage.gaussian_filter(I, sigma=PSF, order=0, mode="reflect", axes=(1, 2))
+        if PSF != 0:
+            I = sp.ndimage.gaussian_filter(I, sigma=PSF, order=0, mode="reflect", axes=(1, 2))
 
         # random number generator
         rng = np.random.default_rng(seed)
@@ -1634,71 +1962,6 @@ class Fringes:
 
         return I
 
-    def _error(self):  # todo: remove
-        """Error."""
-        # """Mean absolute distance between decoded and true coordinates, considering only quantization noise."""
-
-        # f = Fringes(**{k: v for k, v in self.params.items() if k in Fringes.defaults})
-        I = self.encode()
-        dec = self.decode(I)
-
-        eps = np.abs(self.coordinates() - dec.registration)  # / self.L
-        idxe = np.argwhere(eps.squeeze() > 0.1)
-
-        xavg = np.nanmean(eps)
-        xmed = np.nanmedian(eps)
-        xmax = np.nanmax(eps)
-        xstd = np.nanstd(eps)
-        SNR = self.L / xstd
-        SPNR = self.L / xmax
-        B = max(1, np.log2(SNR))
-        # reserve = int(SNR / self.L) if SNR != np.inf else SNR
-        reserve = int(SNR) if SNR != np.inf else SNR
-        DR = max(0, 20 * np.log10(SNR))
-        DRP = max(0, 20 * np.log10(SPNR))
-
-        if self.verbose:
-            ravg = np.nanmean(dec.residuals)
-            rmed = np.nanmedian(dec.residuals)
-            rmax = np.nanmax(dec.residuals)
-
-            errors = namedtuple(
-                "errors",
-                "dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve, SNR, SPNR, rmeanabsdist rmedabsdist rmaxabsdist",
-            )(
-                DR,
-                DRP,
-                B,
-                xavg,
-                xmed,
-                xmax,
-                xstd,
-                reserve,
-                SNR,
-                SPNR,
-                ravg,
-                rmed,
-                rmax,
-            )
-        else:
-            errors = namedtuple(
-                "errors",
-                "dynrange dynrangepeak bits meanabsdist medabsdist maxabsdist stdabsdist reserve SNR SPNR",
-            )(
-                DR,
-                DRP,
-                B,
-                xavg,
-                xmed,
-                xmax,
-                xstd,
-                reserve,
-                SNR,
-                SPNR,
-            )
-
-        return errors
-
     def _trim(self, a: np.ndarray) -> np.ndarray:
         """Change 'ndim' to 2 and limit 'shape'."""
 
@@ -1713,50 +1976,131 @@ class Fringes:
 
         return a
 
-    def MTF(self, v: float | np.ndarray) -> np.ndarray:
-        """Modulation Transfer Function."""
-        # """Modulation Transfer Function.
-        #
-        # Returns normalized modulation at spatial frequencies 'v'.
-        #
-        # Parameters
-        # ----------
-        # v: np.ndarray
-        #     Spatial frequencies at which to determine the normalized modulation.
-        #
-        # Returns
-        # ----------
-        # B : np.ndarray
-        #     Normalized modulation, in the same shape as 'v'.
-        #
-        # Notes
-        # ----------
-        # - If the attribute 'Bv' of the Fringes instance is not None,
-        # the MTF is interpolated from previous measurements.
-        # - Else, if the attribute 'PSF' of the Fringes instance is larger than zero,
-        # the MTF is computed from the optical transfer function of the optical system,
-        # i.e. as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).
-        # - Else, it returns ones.
-        # """
-        # todo: ...and extrapolated at points outside the data range?
+    def errors(self) -> tuple:
+        """Error metrics.
 
-        v_ = v.ravel()
+        Returns
+        -------
+        dmed : np.ndarray
+            Median of absolute distance between true and decoded coordinates.
+
+        dcmed : np.ndarray
+            Median of absolute circular distance between true and decoded coordinates.
+
+        davg : np.ndarray
+            Mean of absolute distance between true and decoded coordinates.
+
+        dcavg : np.ndarray
+            Mean of absolute circular distance between true and decoded coordinates.
+
+        dmin : np.ndarray
+            Mimimum of absolute distance between true and decoded coordinates.
+
+        dcmin : np.ndarray
+            Minimum of absolute circular distance between true and decoded coordinates.
+
+        dmax : np.ndarray
+            Maximum of absolute distance between true and decoded coordinates.
+
+        dcmax : np.ndarray
+            Maximum of absolute circular distance between true and decoded coordinates.
+
+        std : np.ndarray
+            Standard deviation of absolute distance between true and decoded coordinates.
+
+        stdc : np.ndarray
+            Standard deviation of absolute dircular distance between true and decoded coordinates.
+
+        savg : np.ndarray
+            Mean of success rate of phase unwrapping.
+
+        smed : np.ndarray
+            Median of success rate of phase unwrapping.
+
+        smin : np.ndarray
+            Minimum of success rate of phase unwrapping.
+
+        smax : np.ndarray
+            Maximum of success rate of phase unwrapping.
+        """
+
+        dec = self.decode(self.encode(simulate=True), verbose=True)
+
+        x = self.coordinates()
+        xest = dec.registration
+
+        d = x - xest
+        std = np.std(d)
+        dabs = np.abs(d)
+        dmed = np.median(dabs)
+        davg = np.mean(dabs)
+        dmin = np.min(dabs)
+        dmax = np.max(dabs)
+
+        dc = circular_distance(x, xest, self.L)
+        stdc = np.std(dc)
+        dcabs = np.abs(dc)
+        dcavg = np.mean(dcabs)
+        dcmed = np.median(dcabs)
+        dcmin = np.min(dcabs)
+        dcmin = np.min(dcabs)
+        dcmax = np.max(dcabs)
+
+        k = self._orders()
+        kest = dec.orders
+        C = (k == kest).astype(np.uint8, copy=False)
+        savg = np.mean(C)
+        smed = np.median(C)
+        smin = np.min(C)
+        smax = np.max(C)
+
+        errors = namedtuple(
+            "errors",
+            "dmed dcmed davg dcavg dmin dcmin dmax dcmax std stdc savg smed smin smax",
+        )(dmed, dcmed, davg, dcavg, dmin, dcmin, dmax, dcmax, std, stdc, savg, smed, smin, smax)
+
+        return errors
+
+    def MTF(self, v: float | np.ndarray) -> np.ndarray:
+        """Modulation Transfer Function.
+
+        Returns the relative modulation at spatial frequencies 'v'.
+
+        Parameters
+        ----------
+        v: np.ndarray
+            Spatial frequencies at which to determine the normalized modulation.
+
+        Returns
+        ----------
+        B : np.ndarray
+            Relative modulation, in the same shape as 'v'.
+
+        Notes
+        -----
+        - If the attribute 'Bv' of the Fringes instance is not None, the MTF is interpolated from previous measurements.\n
+        - Else, if the attribute 'PSF' of the Fringes instance is larger than zero, the MTF is computed from the optical transfer function of the optical system, i.e. as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).\n
+        - Else, it returns ones.
+        """
 
         if self.Bv is not None:  # interpolate from measurement
-            # todo: unique + LUT -> test
+            # todo: test: unique + LUT
+            v_ = v.ravel()
             vu = np.unique(v)
-            MTF = sp.interpolate.interp1d(v_, self.Bv, kind="cubic", fill_value="extrapolate")
-            B = MTF(v_).clip(0, 1).reshape(v.shape)  # interpolate from measured modulation values
+            MTF = sp.interpolate.interp1d(
+                v_, self.Bv, kind="cubic", fill_value="extrapolate"
+            )  # todo: ...and extrapolated at points outside the data range?
+            B = MTF(vu).clip(0, 1).reshape(v.shape)  # interpolate from measured modulation values
             idx = np.argwhere(v == vu)
-            B = B[idx]
+            B = B[idx].reshape(v.shape)
         elif self.PSF > 0:  # determine from PSF
-            B = np.exp(-2 * (np.pi * self.PSF * v_) ** 2)
-            # todo: magnification
+            B = self.B * np.exp(-2 * (np.pi * self.PSF * v) ** 2)  # todo: fix
+            # todo: what is smaller: dl or lv?
+            B = 1 - v / (self.L / (self.lmin - 1))  # approximation of [Bothe2008]
         else:
-            B = np.ones(v_.shape)
-            # B = 1 - v_ / self.vmax  # approximation of [Bothe2008]
+            B = np.ones(v.shape)
 
-        return B.reshape(v.shape)
+        return B
 
     @property
     def Bv(self) -> np.ndarray:
@@ -2419,7 +2763,7 @@ class Fringes:
 
         The directions D and the sets K are multiplexed, resulting in a crossed fringe pattern if D ≡ 2.
         It can only be activated if D ∨ K > 1 i.e. D * K > 1.
-        The amplitude B as well as the number of shifts is reduced by the factor D * K.
+        The amplitude B is reduced by the factor D * K.
         Usually f equals 1 and is essentially only changed if frequency division multiplexing (FDM) is activated:
         Each set per direction receives an individual temporal frequency f, which is used in temporal demodulation to distinguish the individual sets.
         A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.
@@ -2613,7 +2957,7 @@ class Fringes:
                 lmax = int(
                     np.ceil(
                         max(
-                            self.L / lmin,
+                            self.L / lmin,  # todo: only if B differ slightly
                             self.lmin,
                             min(self.lopt, self.L),
                             np.sqrt(self.L),
@@ -2641,21 +2985,27 @@ class Fringes:
                 K = min(len(l_), self.K)
 
                 C = sp.special.comb(n, K, exact=True, repetition=True)  # number of unique combinations
+                combos = it.combinations_with_replacement(range(lmin, lmax + 1), K)
 
-                B = int(np.ceil(np.log2(lmax - 1) / 8)) * 8  # number of bits required to store integers up to lmax
-                lcombos = np.fromiter(
-                    it.combinations_with_replacement(range(lmin, lmax + 1), K),
-                    np.dtype((f"uint{B}", K)),
-                    C,
-                )
-                lcombos = filter(lcombos, K, self.L, lmin)
+                # B = int(np.ceil(np.log2(lmax - 1) / 8)) * 8  # number of bits required to store integers up to lmax
+                # combos = np.fromiter(combos, np.dtype((f"uint{B}", K)), C)
 
-                # idx0 = np.argmax(np.sum(1 / lcombos**2, axis=1))
-                # l0 = lcombos[idx0]
+                kroot = self.L ** (1 / K)
+                if self.lmin <= kroot:
+                    lcombos = np.array(
+                        [l for l in combos if np.any(np.array([l]) > kroot) and np.lcm.reduce(l) >= self.L]
+                    )
+                else:
+                    lcombos = np.array([l for l in combos if np.lcm.reduce(l) >= self.L])
+
+                # lcombos = filter(lcombos, K, self.L, lmin)
+
+                # idx = np.argmax(np.sum(1 / lcombos**2, axis=1))
+                # l = lcombos[idx]
 
                 v = self.L / lcombos
-                B = self.MTF(v)  # B0 i.e. self.B is constant, can be put before weighted sum, hence
-                var = 1 / self.M / self.N[:K] * lcombos**2 / B**2
+                B = self.MTF(v)
+                var = 1 / self.M / self.N * lcombos**2 / B**2  # todo: D, M
                 idx = np.argmax(np.sum(1 / var, axis=1))
 
                 l = lcombos[idx]
@@ -2751,9 +3101,9 @@ class Fringes:
         if self.Bv is not None:  # interpolate from measurement
             v = np.arange(1, self.vmax + 1)
             B = self.MTF(v)
-            idx = np.argmin(B < 0.5)  # approximation [Bothe2008]
-            if idx > 0:
-                idx -= 1  # index of last element where MTF >= 0.5
+            N = self._N.ravel()[np.argpartition(self._N.ravel(), int(self._N.size // 2))[int(self._N.size // 2)]]
+            var = 1 / self.M / N / (v**2) / B**2  # todo: D, M
+            idx = np.argmax(np.sum(1 / var, axis=1))
             vopt = v[idx]
         elif self.PSF > 0:  # determine from PSF
             vopt_ = 1 / (2 * np.pi * self.PSF)
@@ -3221,7 +3571,8 @@ class Fringes:
 
     @property
     def y0(self) -> float:
-        """Dark signal."""
+        """Dark signal.
+        [y0] = DN"""
         return self._y0
 
     @y0.setter
@@ -3233,6 +3584,22 @@ class Fringes:
             self.logger.debug(f"{self._y0 = }")
 
     @property
+    def ui(self) -> float:
+        """Intensity noise."""
+        quant = 0 if self.dark > 0 else self.quant
+        ui = np.sqrt(self.gain**2 * self.dark**2 + quant**2 + self.gain**2 * self.shot**2)
+        return ui
+
+    @property
+    def upi(self) -> float:
+        """Phase uncertainty.
+        [upi] = rad"""
+        B = self.B * self.MTF(self._v)
+        SNR = B / self.ui
+        upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
+        return upi
+
+    @property
     def u(self) -> np.ndarray:
         """Uncertainty of measurement (standard deviation).
         [u] = px.
@@ -3240,12 +3607,7 @@ class Fringes:
         It is based on the phase noise model from [Surrel 1997]
         and propagated through the unwrapping process and the phase fusion."""
 
-        quant = 0 if self.dark > 0 else self.quant
-        ui = np.sqrt(self.gain**2 * self.dark**2 + quant**2 + self.gain**2 * self.shot**2)  # intensity noise
-        B = self.B * self.MTF(self._v)
-        SNR = B / ui
-        upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
-        upin = upi / (2 * np.pi)  # normalized local phase uncertainty
+        upin = self.upi / (2 * np.pi)  # normalized local phase uncertainty
         uxi = upin * self._l  # local positional uncertainties
         ux = np.sqrt(1 / np.sum(1 / uxi**2, axis=1))  # global positional uncertainty (by inverse variance weighting)
         # todo: factor out L ?!
