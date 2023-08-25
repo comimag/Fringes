@@ -327,7 +327,18 @@ class Fringes:
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
         """Automatically estimate and apply the gamma correction factor
-        to linearize the display/camera response curve."""
+        to linearize the display/camera response curve.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Recorded data.
+
+        Returns
+        -------
+        J : np.ndarray
+            Linearized data.
+        """
 
         # normalize to [0, 1]
         Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1
@@ -359,8 +370,6 @@ class Fringes:
         I : np.ndarray
             Fringe pattern sequence.
             It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-
-            .. math:: I = cos(\\phi)
 
         Returns
         -------
@@ -2952,7 +2961,10 @@ class Fringes:
     @l.setter
     def l(self, l: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(l, str):
-            if l == "optimal":
+            if "," in l:
+                l = np.array([float(i) for i in l.split(",")])
+                q = 1
+            elif l == "optimal":
                 lmin = int(np.ceil(self.lmin))
                 lmax = int(
                     np.ceil(
@@ -3083,7 +3095,7 @@ class Fringes:
                 return
 
         self._UMR = None  # to be safe
-        self.v = self.L / np.array(l)
+        self.v = self.L / l
 
     @property
     def _l(self) -> np.ndarray:  # kept for backwards compatibility with fringes-GUI

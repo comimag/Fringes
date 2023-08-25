@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parameters &mdash; Fringes 0.2.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Fringes
+          </a>
+              <div class="version">
+                0.2.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Parameters</a><ul>
+<li><a class="reference internal" href="#video-shape">Video Shape</a></li>
+<li><a class="reference internal" href="#coordinate-system">Coordinate System</a></li>
+<li><a class="reference internal" href="#set">Set</a></li>
+<li><a class="reference internal" href="#coloring-and-averaging">Coloring and Averaging</a></li>
+<li><a class="reference internal" href="#multiplexing">Multiplexing</a></li>
+<li><a class="reference internal" href="#data-type">Data Type</a></li>
+<li><a class="reference internal" href="#unwrapping">Unwrapping</a></li>
+<li><a class="reference internal" href="#quality-metrics">Quality Metrics</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Fringes</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Parameters</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/_source/user_guide/params.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="parameters">
+<h1>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h1>
+<p>All parameters are parsed when setting, so usually several input formats are accepted, e.g.
+<code class="docutils literal notranslate"><span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">str</span></code> for scalars and additionally <code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">ndarray</span></code> for arrays.</p>
+<p>Note that parameters might have circular dependencies which are resolved automatically,
+hence dependent parameters might change as well.</p>
+<figure class="align-center" id="id19">
+<img alt="interdependencies" src="../../_images/interdependencies.svg" /><figcaption>
+<p><span class="caption-text">Parameters and their Interdependencies.</span><a class="headerlink" href="#id19" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<section id="video-shape">
+<h2>Video Shape<a class="headerlink" href="#video-shape" title="Permalink to this heading"></a></h2>
+<p>Standardized <code class="docutils literal notranslate"><span class="pre">shape</span></code> (<code class="docutils literal notranslate"><span class="pre">T</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">C</span></code>) of fringe pattern sequence, with</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">T</span></code>: number of frames</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Y</span></code>: height (in pixel units)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">X</span></code>: width (in pixel units)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code>: number of color channels</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">T</span></code> depends on the paremeters <code class="docutils literal notranslate"><span class="pre">M</span></code>, <code class="docutils literal notranslate"><span class="pre">H</span></code>, <code class="docutils literal notranslate"><span class="pre">D</span></code>, <code class="docutils literal notranslate"><span class="pre">K</span></code>, <code class="docutils literal notranslate"><span class="pre">N</span></code> and the <a class="reference internal" href="#multiplexing">multiplexing</a> schemes activated:</p>
+<p>If all <code class="docutils literal notranslate"><span class="pre">N</span></code> are identical, then <code class="docutils literal notranslate"><span class="pre">T</span></code> = <code class="docutils literal notranslate"><span class="pre">M</span></code> * <code class="docutils literal notranslate"><span class="pre">H</span></code> * <code class="docutils literal notranslate"><span class="pre">D</span></code> * <code class="docutils literal notranslate"><span class="pre">K</span></code> * <code class="docutils literal notranslate"><span class="pre">N</span></code>, with <code class="docutils literal notranslate"><span class="pre">N</span></code> as a scalar,
+else <code class="docutils literal notranslate"><span class="pre">T</span></code> = <code class="docutils literal notranslate"><span class="pre">M</span></code> * <code class="docutils literal notranslate"><span class="pre">H</span></code> <img class="math" src="../../_images/math/ecb35d1330be14a0c69db1f319b6fe8ef584dfcc.png" alt="\sum"/> <code class="docutils literal notranslate"><span class="pre">N</span></code>, with <code class="docutils literal notranslate"><span class="pre">N</span></code> as an array.</p>
+<p>If a <a class="reference internal" href="#multiplexing">multiplexing</a> scheme is activated, <code class="docutils literal notranslate"><span class="pre">T</span></code> reduces further.</p>
+<p>The length <code class="docutils literal notranslate"><span class="pre">L</span></code> is the maximum of <code class="docutils literal notranslate"><span class="pre">X</span></code> and <code class="docutils literal notranslate"><span class="pre">Y</span></code> and denotes the length (in pixel units) to be ancoded.
+It can be extended by the factor <code class="docutils literal notranslate"><span class="pre">alpha</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">C</span></code> depends on the <a class="reference internal" href="#coloring-and-averaging">coloring</a> and <a class="reference internal" href="#multiplexing">multiplexing</a> schemes activated`.</p>
+<p><code class="docutils literal notranslate"><span class="pre">size</span></code> is the product of <code class="docutils literal notranslate"><span class="pre">shape</span></code>.</p>
+</section>
+<section id="coordinate-system">
+<h2>Coordinate System<a class="headerlink" href="#coordinate-system" title="Permalink to this heading"></a></h2>
+<p>The following coordinate systems can be used by setting <code class="docutils literal notranslate"><span class="pre">grid</span></code> to:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">image</span></code>: The top left corner pixel of the grid is the origin (0, 0) and positive directions are right- resp. downwards.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Cartesian</span></code>: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">polar</span></code>: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log-polar</span></code>: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">D</span></code> denotes the number of directions to be encoded.</p>
+<p><code class="docutils literal notranslate"><span class="pre">axis</span></code> is used to define along which axis of the coordinate system (index 0 or 1)
+the fringe pattern is shifted if <code class="docutils literal notranslate"><span class="pre">D</span></code> = 1.</p>
+<p><code class="docutils literal notranslate"><span class="pre">angle</span></code> can be used to tilt the coordinate system. The origin stays the same.</p>
+</section>
+<section id="set">
+<h2>Set<a class="headerlink" href="#set" title="Permalink to this heading"></a></h2>
+<p>Each set consists of the following attributes (cf. black box in above Figure):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">N</span></code>: number of shifts</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">l</span></code>: wavelength (in pixel units)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code>: spatial frequency, i.e. number of periods (per screen length <code class="docutils literal notranslate"><span class="pre">L</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">f</span></code>: temporal frequency, i.e. number of periods to shift over</p></li>
+</ul>
+<p>Each is an array with shape (number of directions <code class="docutils literal notranslate"><span class="pre">D</span></code>, number of sets <code class="docutils literal notranslate"><span class="pre">K</span></code>).
+For example, if <code class="docutils literal notranslate"><span class="pre">N</span></code>.shape = (2, 3), it means that we encode <code class="docutils literal notranslate"><span class="pre">D</span></code> = 2 directions with <code class="docutils literal notranslate"><span class="pre">K</span></code> = 3 sets each.
+Changing <code class="docutils literal notranslate"><span class="pre">D</span></code> or <code class="docutils literal notranslate"><span class="pre">K</span></code> directly, changes the shape of all set attributes.
+When setting a set attribute with a new shape (<code class="docutils literal notranslate"><span class="pre">D'</span></code>, <code class="docutils literal notranslate"><span class="pre">K'</span></code>),
+<code class="docutils literal notranslate"><span class="pre">D</span></code> and <code class="docutils literal notranslate"><span class="pre">K</span></code> are updated as well as the shape of the other set attributes.</p>
+<p>If a set attribute is 1D, then it is stacked to match the number of directions <code class="docutils literal notranslate"><span class="pre">D</span></code>.</p>
+<p>If a set attribute is 0D i.e. a scalar, then all values are simply replaced by the new one.</p>
+<p><code class="docutils literal notranslate"><span class="pre">l</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> are related by <code class="docutils literal notranslate"><span class="pre">l</span></code> = <code class="docutils literal notranslate"><span class="pre">L</span></code> / <code class="docutils literal notranslate"><span class="pre">v</span></code>.
+When <code class="docutils literal notranslate"><span class="pre">L</span></code> changes, <code class="docutils literal notranslate"><span class="pre">v</span></code> is kept constant and only <code class="docutils literal notranslate"><span class="pre">l</span></code> is changed.</p>
+<p>Usually <code class="docutils literal notranslate"><span class="pre">f</span></code> = 1 and is essentially only changed if <a class="reference internal" href="#multiplexing">frequency division multiplexing</a> <code class="docutils literal notranslate"><span class="pre">FDM</span></code> is activated.</p>
+<p><code class="docutils literal notranslate"><span class="pre">reverse</span></code> is a boolean which reverses the direction of the shifts (by multiplying <code class="docutils literal notranslate"><span class="pre">f</span></code> with -1).</p>
+<p><code class="docutils literal notranslate"><span class="pre">o</span></code> denotes the phase offset, which can be used to
+e.g. let the fringe patterns start (at the origin) with a gray value of zero.</p>
+</section>
+<section id="coloring-and-averaging">
+<h2>Coloring and Averaging<a class="headerlink" href="#coloring-and-averaging" title="Permalink to this heading"></a></h2>
+<p>The fringe patterns can be colorized by setting the hue <code class="docutils literal notranslate"><span class="pre">h</span></code> to any RGB color tuple in the interval [0, 255].
+However, black (0, 0, 0) is not allowed.
+<code class="docutils literal notranslate"><span class="pre">h</span></code> must be in shape (<code class="docutils literal notranslate"><span class="pre">H</span></code>, 3)`:</p>
+<p><code class="docutils literal notranslate"><span class="pre">H</span></code> is the number of hues and can be set directly; 3 is the length of the RGB color tuple.</p>
+<p>The hues <code class="docutils literal notranslate"><span class="pre">h</span></code> can also be set by assigning any combination of the following characters as a string:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code>: red</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">g</span></code>: green</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">b</span></code>: blue</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">c</span></code>: cyan</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m</span></code>: magenta</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">y</span></code>: yellow</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">w</span></code>: white</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">C</span></code> is the number of color channels required for either the set of hues <code class="docutils literal notranslate"><span class="pre">h</span></code>
+or <a class="reference internal" href="#multiplexing">wavelength division multiplexing</a>.
+For example, if all hues are monochromatic, i.e. the RGB values are identical for each hue, <code class="docutils literal notranslate"><span class="pre">C</span></code> equals 1, else 3.</p>
+<p>Repeating hues will be fused by averaging them before decoding.</p>
+<p><code class="docutils literal notranslate"><span class="pre">M</span></code> is the number of averaged intensity samples and can be set directly.</p>
+</section>
+<section id="multiplexing">
+<h2>Multiplexing<a class="headerlink" href="#multiplexing" title="Permalink to this heading"></a></h2>
+<p>The following multiplexing methods can be activated by setting them to <code class="docutils literal notranslate"><span class="pre">True</span></code>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">SDM</span></code>: Spatial Division Multiplexing <a class="footnote-reference brackets" href="#id10" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p>
+<p>This results in crossed fringe patterns. The amplitude <code class="docutils literal notranslate"><span class="pre">B</span></code> is halved.
+It can only be activated if we have two directions <code class="docutils literal notranslate"><span class="pre">D</span></code> = 2.
+The number of frames <code class="docutils literal notranslate"><span class="pre">T</span></code> is reduced by a factor of 2.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WDM</span></code>: Wavelength Divison Multiplexing <a class="footnote-reference brackets" href="#id11" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p>
+<p>All shifts <code class="docutils literal notranslate"><span class="pre">N</span></code> must equal 3. Then, the shifts are multiplexed into the color channel,
+resulting in an RGB fringe pattern.
+The number of frames <code class="docutils literal notranslate"><span class="pre">T</span></code> is reduced by a factor of 3.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FDM</span></code>: Frequency Division Multiplexing <a class="footnote-reference brackets" href="#id12" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a>, <a class="footnote-reference brackets" href="#id13" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a>, <a class="footnote-reference brackets" href="#id14" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a></p>
+<p>Here, the directions <code class="docutils literal notranslate"><span class="pre">D</span></code> and the sets <code class="docutils literal notranslate"><span class="pre">K</span></code> are multiplexed.
+Hence, the amplitude <code class="docutils literal notranslate"><span class="pre">B</span></code> is reduced by a factor of <code class="docutils literal notranslate"><span class="pre">D</span></code> * <code class="docutils literal notranslate"><span class="pre">K</span></code>.
+It can only be activated if <code class="docutils literal notranslate"><span class="pre">D</span></code> &gt; 1 or <code class="docutils literal notranslate"><span class="pre">K</span></code> &gt; 1.
+This results in crossed fringe patterns if <code class="docutils literal notranslate"><span class="pre">D</span></code> = 2.
+Each set per direction receives an individual temporal frequency <code class="docutils literal notranslate"><span class="pre">f`</span></code>,
+which is used in [temporal demodulation](#temporal-demodulation) to distinguish the individual sets.
+A minimal number of shifts <code class="docutils literal notranslate"><span class="pre">Nmin</span></code> <img class="math" src="../../_images/math/f1074eeb0adb59ffc473d55a30fc7436b9618efb.png" alt="\ge \lceil"/> 2 * <code class="docutils literal notranslate"><span class="pre">fmax</span></code> <img class="math" src="../../_images/math/34207e58160f0723d280825fcada0b1a8cae95ed.png" alt="\rceil"/> + 1
+is required to satisfy the sampling theorem and <code class="docutils literal notranslate"><span class="pre">N</span></code> is updated automatically if necessary.
+If one wants a static pattern, i.e. one that remains congruent when shifted, set <code class="docutils literal notranslate"><span class="pre">static</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">SDM</span></code> and <code class="docutils literal notranslate"><span class="pre">WDM</span></code> can be used together <a class="footnote-reference brackets" href="#id15" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a> (reducing <code class="docutils literal notranslate"><span class="pre">T</span></code> by a factor of 2 * 3 = 6), <code class="docutils literal notranslate"><span class="pre">FDM</span></code> with neighter.</p>
+<p>By default, the aforementioned multiplexing methods are deactivated,
+so we then only have <code class="docutils literal notranslate"><span class="pre">TDM</span></code>: Time Divison Multiplexing.</p>
+</section>
+<section id="data-type">
+<h2>Data Type<a class="headerlink" href="#data-type" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">dtype</span></code> denotes the data type of the fringe pattern sequence.
+Possible values are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uint8</span></code> (default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uint16</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">float32</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">float64</span></code></p></li>
+</ul>
+<p>The total number of bytes <code class="docutils literal notranslate"><span class="pre">nbytes</span></code> consumed by the fringe pattern sequence
+as well as its maximum gray value <code class="docutils literal notranslate"><span class="pre">Imax</span></code> are derived directly from it:</p>
+<p><code class="docutils literal notranslate"><span class="pre">Imax</span></code> = 1 for <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">bool</span></code>, and <code class="docutils literal notranslate"><span class="pre">Imax</span></code> = <img class="math" src="../../_images/math/ad07b79aae7ecf2163f579a8ca4ae959e4ec36d4.png" alt="2^r - 1"/> for <code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">integers</span></code> with r bits.
+It limits the offset <code class="docutils literal notranslate"><span class="pre">A</span></code> and the amplitude <code class="docutils literal notranslate"><span class="pre">B</span></code>.
+The fringe visibility (also called fringe contrast) is <code class="docutils literal notranslate"><span class="pre">V</span></code> = <code class="docutils literal notranslate"><span class="pre">A</span></code> / <code class="docutils literal notranslate"><span class="pre">B</span></code>, where <code class="docutils literal notranslate"><span class="pre">V</span></code> is within the range [0, 1].</p>
+<p>The quantization step size <code class="docutils literal notranslate"><span class="pre">q</span></code> is also derived from <code class="docutils literal notranslate"><span class="pre">dtype</span></code>:
+<code class="docutils literal notranslate"><span class="pre">q</span></code> = 1 for <code class="docutils literal notranslate"><span class="pre">bool</span></code> and <img class="math" src="../../_images/math/a2de4dd00e45c97074205d2a2620d93720318c1b.png" alt="2^r"/> for r-bit <code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">integers</span></code>,
+and for <code class="docutils literal notranslate"><span class="pre">float</span></code> its corresponding <a class="reference external" href="https://doi.org/10.1364/AO.41.007437">resolution</a>.</p>
+</section>
+<section id="unwrapping">
+<h2>Unwrapping<a class="headerlink" href="#unwrapping" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">PU</span></code> denotes the phase unwrapping method and is eihter <code class="docutils literal notranslate"><span class="pre">'none'</span></code>, <code class="docutils literal notranslate"><span class="pre">'temporal'</span></code>, <code class="docutils literal notranslate"><span class="pre">'spatial'</span></code> or <code class="docutils literal notranslate"><span class="pre">'FTM'</span></code>.
+See [spatial demodulation](#spatial-demodulation–phase-unwrapping–pu-) for more details.</p>
+<p><code class="docutils literal notranslate"><span class="pre">mode</span></code> denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping–tpu-).
+Choose either <code class="docutils literal notranslate"><span class="pre">'fast'</span></code> (the default) or <code class="docutils literal notranslate"><span class="pre">'precise'</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">verbose</span></code> can be set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to also receive
+the wrapped phase maps <img class="math" src="../../_images/math/3323924c79ca11b13ff2dce42dffcdc1a05cbe73.png" alt="\varphi_i"/>, the fringe orders <img class="math" src="../../_images/math/9630132210b904754c9ab272b61cb527d12263ca.png" alt="k"/> and the residuals <img class="math" src="../../_images/math/1ebe654cc7b8f2a0d8100aa5825cf2b9021adbbc.png" alt="R"/> from decoding.</p>
+<p><code class="docutils literal notranslate"><span class="pre">FTM</span></code> denotes Fourier Transform Method and is deployed
+if <code class="docutils literal notranslate"><span class="pre">K</span></code> = <code class="docutils literal notranslate"><span class="pre">H</span></code> = <code class="docutils literal notranslate"><span class="pre">N</span></code> = 1, i.e. <code class="docutils literal notranslate"><span class="pre">T</span></code> = 1.
+and the <a class="reference internal" href="#coordinate-system">coordinate system</a> is eighter <code class="docutils literal notranslate"><span class="pre">'image'</span></code> or <code class="docutils literal notranslate"><span class="pre">'Cartesian'</span></code>.</p>
+</section>
+<section id="quality-metrics">
+<h2>Quality Metrics<a class="headerlink" href="#quality-metrics" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">UMR</span></code> denotes the unambiguous measurement range.
+The coding is only unique within the interval [0, <code class="docutils literal notranslate"><span class="pre">UMR</span></code>); after that it repeats itself.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">UMR</span></code> is derived from <code class="docutils literal notranslate"><span class="pre">l</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code>:</p>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">l</span></code> <img class="math" src="../../_images/math/8dc81b8e5e027bbd3f039246480dab0b2e673568.png" alt="\in \mathbb{N}"/>, <code class="docutils literal notranslate"><span class="pre">UMR</span></code> = <img class="math" src="../../_images/math/9de18b646d5e6a9d9cc8670f8be0675b90d41425.png" alt="lcm("/> <code class="docutils literal notranslate"><span class="pre">l</span></code> <img class="math" src="../../_images/math/cbab1ec94bbe87773ec4f2267433e29a335ea105.png" alt=")"/> with <img class="math" src="../../_images/math/8de6cff8658e90f94de6462b37e5cd6ce8343f72.png" alt="lcm"/> being the least common multiple.</p></li>
+<li><p>Else, if <code class="docutils literal notranslate"><span class="pre">v</span></code> <img class="math" src="../../_images/math/8dc81b8e5e027bbd3f039246480dab0b2e673568.png" alt="\in \mathbb{N}"/>, <code class="docutils literal notranslate"><span class="pre">UMR</span></code> = <code class="docutils literal notranslate"><span class="pre">L</span></code> / <img class="math" src="../../_images/math/15d8cadd0243b429cf3ce79b3611b14792c54b18.png" alt="gcd("/> <code class="docutils literal notranslate"><span class="pre">v</span></code> <img class="math" src="../../_images/math/cbab1ec94bbe87773ec4f2267433e29a335ea105.png" alt=")"/> with <img class="math" src="../../_images/math/4de8336b2ef135fa332ba22df4beac8b38cc38e1.png" alt="gcd"/> being the greatest common divisor.</p></li>
+<li><p>Else, if <code class="docutils literal notranslate"><span class="pre">v</span></code> <img class="math" src="../../_images/math/e24aec858112a75c8ebaf9d12ea9b94ac472851a.png" alt="\land"/> <code class="docutils literal notranslate"><span class="pre">l</span></code> <img class="math" src="../../_images/math/0a19b75a7548b7864cde0aaee0914be4ae5a78c6.png" alt="\in \mathbb{Q}"/>, <img class="math" src="../../_images/math/8de6cff8658e90f94de6462b37e5cd6ce8343f72.png" alt="lcm"/> resp. <img class="math" src="../../_images/math/4de8336b2ef135fa332ba22df4beac8b38cc38e1.png" alt="gcd"/> are extended to rational numbers.</p></li>
+<li><p>Else, if <code class="docutils literal notranslate"><span class="pre">v</span></code> <img class="math" src="../../_images/math/e24aec858112a75c8ebaf9d12ea9b94ac472851a.png" alt="\land"/> <code class="docutils literal notranslate"><span class="pre">l</span></code> <img class="math" src="../../_images/math/5542239a2eb4e6011a6341b072bf176f26beadb3.png" alt="\in \mathbb{R} \setminus \mathbb{Q}"/>, <code class="docutils literal notranslate"><span class="pre">l</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> are approximated by rational numbers
+with a fixed length of decimal digits.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">eta</span></code> denotes the coding efficiency <code class="docutils literal notranslate"><span class="pre">L</span></code> / <code class="docutils literal notranslate"><span class="pre">UMR</span></code>.
+It makes no sense to choose <code class="docutils literal notranslate"><span class="pre">UMR</span></code> much larger than <code class="docutils literal notranslate"><span class="pre">L</span></code>,
+because then a significant part of the coding range is not used.</p>
+<p><code class="docutils literal notranslate"><span class="pre">u</span></code> denotes the minimum possible uncertainty of the measurement in pixels.
+It is based on the phase noise model from <a class="footnote-reference brackets" href="#id16" id="id7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a>
+and propagated through the unwrapping process and the phase fusion.
+It is influenced by the parameters</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">M</span></code>: number of averaged intensity samples,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">N</span></code>: number of phase shifts,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">l</span></code>: wavelengths of the fringes,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">B</span></code>: measured amplitude</p></li>
+</ul>
+<p>and the measurement hardware-specific noise sources <a class="footnote-reference brackets" href="#id17" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a>, <a class="footnote-reference brackets" href="#id18" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>9<span class="fn-bracket">]</span></a></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">quant</span></code>: quantization noise of the light source or camera,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dark</span></code>: dark noise of the used camera,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shot</span></code>: photon noise of light itself,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gain</span></code>: system gain of the used camera.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">DR</span></code> = <code class="docutils literal notranslate"><span class="pre">UMR</span></code> / <code class="docutils literal notranslate"><span class="pre">u</span></code> is the dynamic range of the phase shift coding
+and is a measure of how many points can be distinguished within the unambiguous measurement range [0, <code class="docutils literal notranslate"><span class="pre">UMR</span></code>).
+It remains constant if <code class="docutils literal notranslate"><span class="pre">L</span></code> and hence <code class="docutils literal notranslate"><span class="pre">l</span></code> is scaled (the scaling factor cancels out).</p>
+<p><code class="docutils literal notranslate"><span class="pre">SNR</span></code> = <code class="docutils literal notranslate"><span class="pre">L</span></code> / <code class="docutils literal notranslate"><span class="pre">u</span></code> is the signal-to-noise ratio of the phase shift coding
+and is a masure of how many points can be distinguished within the screen length [0, <code class="docutils literal notranslate"><span class="pre">L</span></code>).
+Again, it remains constant if <code class="docutils literal notranslate"><span class="pre">L</span></code> and hence <code class="docutils literal notranslate"><span class="pre">l</span></code> is scaled (the scaling factor cancels out).</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id10" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1117/12.816472">Park,
+“A twodimensional phase-shifting method for deflectometry”,
+International Symposium on Optomechatronic Technologies,
+2008.</a></p>
+</aside>
+<aside class="footnote brackets" id="id11" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1117/1.602151">Huang,
+“Color-encoded digital fringe projection technique for high-speed three-dimensional surface contouring”,
+Optical Engineering,
+1999.</a></p>
+</aside>
+<aside class="footnote brackets" id="id12" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1364/OE.18.005229">Liu et al.,
+“Dual-frequency pattern scheme for high-speed 3-D shape measurement”,
+Optics Express,
+2010.</a></p>
+</aside>
+<aside class="footnote brackets" id="id13" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">4</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1515/aot-2014-0032">Liu et al.,
+“Fast and accurate deflectometry with crossed fringes”,
+Advanced Optical Technologies,
+2014.</a></p>
+</aside>
+<aside class="footnote brackets" id="id14" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">5</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://publikationen.bibliothek.kit.edu/1000088264">Kludt and Burke,
+“Coding strategies for static patterns suitable for UV deflectometry”,
+Forum Bildverarbeitung 2018,
+2018.</a></p>
+</aside>
+<aside class="footnote brackets" id="id15" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">6</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1364/OE.24.027993">Trumper et al.,
+“Instantaneous phase shifting deflectometry”,
+Optics Express,
+2016.</a></p>
+</aside>
+<aside class="footnote brackets" id="id16" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">7</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://doi.org/10.1364/AO.36.000271">Surrel,
+“Additive noise effect in digital phase detection”,
+Applied Optics,
+1997.</a></p>
+</aside>
+<aside class="footnote brackets" id="id17" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id8">8</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://www.emva.org/standards-technology/emva-1288/emva-standard-1288-downloads-2/">EMVA,
+“Standard for Characterization of Image Sensors and Cameras Release 4.0 Linear”,
+European Machine Vision Association,
+2021.</a></p>
+</aside>
+<aside class="footnote brackets" id="id18" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id9">9</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&amp;refinements=p_27%3AThorsten+B%C3%B6th&amp;s=books&amp;sr=1-2">Bothe,
+“Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera”,
+Dissertation,
+ISBN 978-3-933762-24-5,
+BIAS Bremen,</a></p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Christian Kludt.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

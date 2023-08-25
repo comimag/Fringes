@@ -13,6 +13,18 @@ files = [
 ]
 
 [[package]]
+name = "argparse"
+version = "1.4.0"
+description = "Python command-line parsing library"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "argparse-1.4.0-py2.py3-none-any.whl", hash = "sha256:c31647edb69fd3d465a847ea3157d37bed1f95f19760b11a47aa91c04b666314"},
+    {file = "argparse-1.4.0.tar.gz", hash = "sha256:62b089a55be1d8949cd2bc7e0df0bddb9e028faefc8c32038cc84862aefdd6e4"},
+]
+
+[[package]]
 name = "asdf"
 version = "2.15.1"
 description = "Python implementation of the ASDF Standard"
@@ -1891,4 +1903,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9,<3.13"
-content-hash = "a8f86bc38614b7d6a1e665c6669b736d0a27910fa41db7a4bc06e622e8f8f90f"
+content-hash = "4af38b45386e42770bf51f38a5831020f0abb2cf9b79c4a00d444bfe91c6dbff"

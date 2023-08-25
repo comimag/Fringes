@@ -20,6 +20,7 @@ opencv-contrib-python = "^4.7.0"
 pyyaml = "^6.0"
 toml = "^0.10.2"
 asdf = "^2.14.3"
+argparse = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

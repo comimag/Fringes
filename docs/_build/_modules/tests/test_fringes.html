@@ -42,11 +42,8 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Fringes</a></li>
-</ul>
-
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
         </div>
       </div>
     </nav>
@@ -153,9 +150,10 @@
                     <span class="sa">f</span><span class="s2">&quot;Attribute &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39; in file &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39; differs from its corresponding instance attribute.&quot;</span>
 
             <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="k">assert</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">params_loaded</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;File &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39; has no attribute &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
-                <span class="k">assert</span> <span class="n">params</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="n">params_loaded</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> \
-                    <span class="sa">f</span><span class="s2">&quot;Instance attribute &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39; differs from its corresponding attribute in file &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39;.&quot;</span></div>
+                <span class="k">assert</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">params_loaded</span> <span class="ow">or</span> <span class="n">ext</span> <span class="o">==</span> <span class="s2">&quot;.toml&quot;</span> <span class="ow">and</span> <span class="n">params</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;File &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39; has no attribute &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39;&quot;</span>  <span class="c1"># in toml there exists no None</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">params_loaded</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="n">params</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="n">params_loaded</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> \
+                        <span class="sa">f</span><span class="s2">&quot;Instance attribute &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39; differs from its corresponding attribute in file &#39;</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&#39;.&quot;</span></div>
 
 
 <div class="viewcode-block" id="test_coordinates"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_coordinates">[docs]</a><span class="k">def</span> <span class="nf">test_coordinates</span><span class="p">():</span>
@@ -244,8 +242,8 @@
     <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">),</span> <span class="s2">&quot;Registration is off more than 0.1.&quot;</span></div>
 
 
-<div class="viewcode-block" id="test_encoding_frames"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_encoding_frames">[docs]</a><span class="k">def</span> <span class="nf">test_encoding_frames</span><span class="p">():</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">(</span><span class="n">Y</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<div class="viewcode-block" id="test_encoding_frames"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_encoding_frames">[docs]</a><span class="k">def</span> <span class="nf">test_encoding_frames</span><span class="p">(</span><span class="n">fringes</span><span class="o">=</span><span class="n">Fringes</span><span class="p">(</span><span class="n">Y</span><span class="o">=</span><span class="mi">100</span><span class="p">)):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">fringes</span>
     
     <span class="n">I</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">t</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">T</span><span class="p">)])</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span> <span class="s2">&quot;Return value isn&#39;t a &#39;Numpy array&#39;.&quot;</span>
@@ -418,17 +416,11 @@
     <span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
     <span class="n">dec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
 
-    <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">remap</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">remap</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">source</span> <span class="o">==</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only ones.&quot;</span>
 
-    <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">remap</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">,</span> <span class="n">dec</span><span class="o">.</span><span class="n">modulation</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only values close to one.&quot;</span>
-
-    <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">remap</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only ones at &#39;unscaled&#39; coordinates.&quot;</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only zeros at &#39;added&#39; coordinates.&quot;</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only zeros at &#39;added&#39; coordinates.&quot;</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only zeros at &#39;added&#39; coordinates.&quot;</span></div>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">remap</span><span class="p">(</span><span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">,</span> <span class="n">dec</span><span class="o">.</span><span class="n">modulation</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">),</span> <span class="s2">&quot;Source doesn&#39;t contain only values close to one.&quot;</span></div>
 
 
 <div class="viewcode-block" id="test_curvature_height"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_curvature_height">[docs]</a><span class="k">def</span> <span class="nf">test_curvature_height</span><span class="p">():</span>
@@ -538,54 +530,38 @@
 
 
 <div class="viewcode-block" id="test_simulation"><a class="viewcode-back" href="../../tests.html#tests.test_fringes.test_simulation">[docs]</a><span class="k">def</span> <span class="nf">test_simulation</span><span class="p">():</span>
-    <span class="c1"># no low pass from PSF causing decrease in modulation</span>
-    <span class="c1"># no clipping</span>
-    <span class="c1"># no hit pixels -&gt; add salt and pepper noise?</span>
+    <span class="c1"># todo:</span>
+    <span class="c1">#  no low pass from PSF causing decrease in modulation</span>
+    <span class="c1">#  no clipping</span>
+    <span class="c1">#  no hit pixels -&gt; add salt and pepper noise?</span>
 
     <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;precise&quot;</span>
     <span class="n">f</span><span class="o">.</span><span class="n">V</span> <span class="o">=</span> <span class="mf">0.8</span>
     <span class="n">f</span><span class="o">.</span><span class="n">D</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">2003</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">832</span>
     <span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">2003</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="mi">8</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="mi">2003</span><span class="p">,</span> <span class="mi">668</span><span class="p">,</span> <span class="mi">401</span>  <span class="c1"># Uhlig 1</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="mi">331</span><span class="p">,</span> <span class="mi">223</span><span class="p">,</span> <span class="mi">181</span>  <span class="c1"># Uhlig 2</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;close&quot;</span>  <span class="c1"># 13, 14, 15</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;small&quot;</span>  <span class="c1"># 11, 13, 15</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1920</span><span class="c1">#1920</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1080</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">lmin</span> <span class="o">=</span> <span class="mi">8</span><span class="c1">#f.L / 100</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;optimal&quot;</span>
-    <span class="c1">#f.l = 8, 9, 29</span>
-    <span class="c1">#f.l = 8, 8, 251</span>
-    <span class="c1">#f.v = 7, 13, 89</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span>
 
     <span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-    <span class="n">Imin</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-    <span class="n">Imax</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-
     <span class="n">In</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">_simulate</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
-    <span class="n">Inmin</span> <span class="o">=</span> <span class="n">In</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-    <span class="n">Inmax</span> <span class="o">=</span> <span class="n">In</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-
     <span class="n">dec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">In</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">registration</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">f</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span>  <span class="c1"># todo: boarder</span>
-    <span class="nb">min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
-    <span class="nb">max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
-    <span class="n">avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
-    <span class="n">med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
-    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span> <span class="s2">&quot;Registration is off more than 0.5.&quot;</span>  <span class="c1"># todo: 0.1?</span></div>
+    <span class="c1"># d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">registration</span> <span class="o">-</span> <span class="n">f</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
+    <span class="n">dmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+    <span class="n">davg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+    <span class="n">dmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">dmed</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">),</span> <span class="s2">&quot;Median of Registration is off more than 0.1.&quot;</span></div>
+    <span class="c1"># assert np.allclose(d, 0, atol=0.5), &quot;Registration is off more than 0.5.&quot;  # todo: 0.1?</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">f</span> <span class="o">=</span> <span class="n">Fringes</span><span class="p">()</span>
-    <span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-    <span class="n">dec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;1, 2, 3&quot;</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="c1"># pytest.main()</span>
-    <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s1">&#39;pytest&#39;</span><span class="p">,</span> <span class="s1">&#39;--tb=short&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)])</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+    <span class="c1"># subprocess.run([&#39;pytest&#39;, &#39;--tb=short&#39;, str(__file__)])</span>
 </pre></div>
 
            </div>

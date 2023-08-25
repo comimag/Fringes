@@ -7,10 +7,12 @@ Welcome to Fringes's documentation!
 ===================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :maxdepth: 2
 
-   modules
+    getting_started/index
+    user_guide/index
+    developer_guide/index
+    api_reference/index
 
 Indices and tables
 ==================

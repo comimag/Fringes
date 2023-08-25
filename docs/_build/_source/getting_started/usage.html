@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage &mdash; Fringes 0.2.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Fringes
+          </a>
+              <div class="version">
+                0.2.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Usage</a><ul>
+<li><a class="reference internal" href="#command-line-use">Command-line use</a></li>
+<li><a class="reference internal" href="#graphical-user-interface">Graphical User Interface</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Fringes</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/_source/getting_started/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h1>
+<p>This package provides the handy Fringes` class,
+which handles all the required parameters
+for configuring fringe pattern sequences
+and provides methods for fringe analysis.</p>
+<section id="command-line-use">
+<h2>Command-line use<a class="headerlink" href="#command-line-use" title="Permalink to this heading"></a></h2>
+<p>You instantiate, parameterize and deploy the <cite>Fringes</cite> class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">fringes</span> <span class="k">as</span> <span class="nn">frng</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">frng</span><span class="o">.</span><span class="n">Fringes</span><span class="p">()</span>
+
+<span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1920</span>                  <span class="c1"># set width of the fringe patterns</span>
+<span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1080</span>                  <span class="c1"># set height of the fringe patterns</span>
+<span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">2</span>                     <span class="c1"># set number of sets</span>
+<span class="n">f</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="mi">4</span>                     <span class="c1"># set number of shifts</span>
+<span class="n">f</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>               <span class="c1"># set spatial frequencies</span>
+<span class="n">f</span><span class="o">.</span><span class="n">T</span>                         <span class="c1"># get number of frames</span>
+</pre></div>
+</div>
+<p>You can change the <a class="reference external" href="https://docs.python.org/3/library/logging.html#levels">logging level</a> of a <cite>Fringes</cite> instance.
+For example, changing it to <cite>‘DEBUG’</cite> gives you verbose feedback on which parameters are changed
+and how long functions take to execute.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>All parameters are accesible by the respective attributes of the <cite>Fringes</cite> instance
+(a glossary of them is obtained by the class attribute <cite>glossary</cite>).
+They are implemented as class properties (managed attributes),
+which are parsed when setting,
+so usually several input types are accepted
+(e.g. <cite>bool</cite>, <cite>int</cite>, <cite>float</cite> for scalars
+and additionally <cite>list</cite>, <cite>tuple</cite>, <cite>ndarray</cite> for <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html">arrays</a>).
+Note that some attributes have subdependencies (cf. next Figure),
+hence dependent attributes might change as well.
+Circular dependencies are resolved automatically.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="mi">1920</span>                  <span class="c1"># set width of the fringe patterns</span>
+<span class="n">f</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="mi">1080</span>                  <span class="c1"># set height of the fringe patterns</span>
+<span class="n">f</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="mi">2</span>                     <span class="c1"># set number of sets</span>
+<span class="n">f</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="mi">4</span>                     <span class="c1"># set number of shifts</span>
+<span class="n">f</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>               <span class="c1"># set spatial frequencies</span>
+
+<span class="n">f</span><span class="o">.</span><span class="n">T</span>                         <span class="c1"># get number of frames</span>
+</pre></div>
+</div>
+<p>For generating the fringe pattern sequence <cite>I</cite>, use the method <cite>encode()</cite>.
+It returns a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html">Numpy array</a>
+in videoshape (frames <cite>T</cite>, width <cite>X</cite>, height <cite>Y</cite>, color channels <cite>C</cite>).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">I</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>              <span class="c1"># encode fringe patterns</span>
+</pre></div>
+</div>
+<p>For analyzing (recorded) fringe patterns, use the method <cite>decode()</cite>.
+It returns the Numpy arrays brightness <cite>A</cite>, modulation <cite>B</cite> and coordinate <cite>x</cite>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>       <span class="c1"># decode fringe patterns</span>
+</pre></div>
+</div>
+</section>
+<section id="graphical-user-interface">
+<h2>Graphical User Interface<a class="headerlink" href="#graphical-user-interface" title="Permalink to this heading"></a></h2>
+<p>Do you prefer to interact with a GUI?
+Fringes has a sister project which is called Fringes-GUI: <a class="reference external" href="https://pypi.org/project/fringes-gui/">https://pypi.org/project/fringes-gui/</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Christian Kludt.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

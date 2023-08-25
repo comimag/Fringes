@@ -5,5 +5,5 @@ in docs within package
 
 configure conf.py
 poetry run sphinx-quickstart
-poetry run sphinx-apidoc -f -o . ../fringes /*decoder*
+poetry run sphinx-apidoc -f -o ./api_reference ../fringes /*decoder*
 poetry run sphinx-build . _build

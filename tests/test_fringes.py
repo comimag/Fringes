@@ -478,10 +478,16 @@ def test_simulation():
     # d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
     d = dec.registration - f.coordinates()
     dmed = np.nanmedian(np.abs(d))
+    davg = np.nanmean(np.abs(d))
+    dmed = np.nanmax(np.abs(d))
     assert np.allclose(dmed, 0, atol=0.1), "Median of Registration is off more than 0.1."
     # assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1?
 
 
 if __name__ == "__main__":
-    # pytest.main()
-    subprocess.run(['pytest', '--tb=short', str(__file__)])
+    f = Fringes()
+    f.l = "1, 2, 3"
+    f.l = None
+
+    pytest.main()
+    # subprocess.run(['pytest', '--tb=short', str(__file__)])
