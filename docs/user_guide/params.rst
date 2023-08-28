@@ -28,11 +28,7 @@ Standardized ``shape`` (``T``, ``Y``, ``X``, ``C``) of fringe pattern sequence, 
 - ``X``: width (in pixel units)
 - ``C``: number of color channels
 
-``T`` depends on the paremeters ``M``, ``H``, ``D``, ``K``, ``N`` and the `multiplexing`_ schemes activated:
-
-If all ``N`` are identical, then ``T`` = ``M`` * ``H`` * ``D`` * ``K`` * ``N``, with ``N`` as a scalar,
-else ``T`` = ``M`` * ``H`` `\sum` ``N``, with ``N`` as an array.
-
+``T`` = ``H`` `\cdot \sum` ``N``.
 If a `multiplexing`_ scheme is activated, ``T`` reduces further.
 
 The length ``L`` is the maximum of ``X`` and ``Y`` and denotes the length (in pixel units) to be ancoded.
@@ -92,7 +88,7 @@ e.g. let the fringe patterns start (at the origin) with a gray value of zero.
 Coloring and Averaging
 ----------------------
 
-The fringe patterns can be colorized by setting the hue ``h`` to any RGB color tuple in the interval [0, 255].
+The fringe patterns can be colorized by setting the hue ``h`` to any RGB color triple within the interval [0, 255].
 However, black (0, 0, 0) is not allowed.
 ``h`` must be in shape (``H``, 3)`:
 
@@ -100,13 +96,13 @@ However, black (0, 0, 0) is not allowed.
 
 The hues ``h`` can also be set by assigning any combination of the following characters as a string:
 
-- ``r``: red
-- ``g``: green
-- ``b``: blue
-- ``c``: cyan
-- ``m``: magenta
-- ``y``: yellow
-- ``w``: white
+- ``'r'``: red
+- ``'g'``: green
+- ``'b'``: blue
+- ``'c'``: cyan
+- ``'m'``: magenta
+- ``'y'``: yellow
+- ``'w'``: white
 
 ``C`` is the number of color channels required for either the set of hues ``h``
 or `wavelength division multiplexing`_.
@@ -147,8 +143,8 @@ The following multiplexing methods can be activated by setting them to ``True``:
 
 ``SDM`` and ``WDM`` can be used together [6]_ (reducing ``T`` by a factor of 2 * 3 = 6), ``FDM`` with neighter.
 
-By default, the aforementioned multiplexing methods are deactivated,
-so we then only have ``TDM``: Time Divison Multiplexing.
+``TDM``: By default, the aforementioned multiplexing methods are deactivated,
+so we then only have Time Divison Multiplexing.
 
 Data Type
 ---------
@@ -162,16 +158,27 @@ Possible values are:
 - ``float32``
 - ``float64``
 
-The total number of bytes ``nbytes`` consumed by the fringe pattern sequence
-as well as its maximum gray value ``Imax`` are derived directly from it:
+``nbytes`` is the total bytes consumed by fringe pattern sequence.
 
-``Imax`` = 1 for ``float`` and ``bool``, and ``Imax`` = `2^r - 1` for ``unsigned integers`` with r bits.
-It limits the offset ``A`` and the amplitude ``B``.
-The fringe visibility (also called fringe contrast) is ``V`` = ``A`` / ``B``, where ``V`` is within the range [0, 1].
-
-The quantization step size ``q`` is also derived from ``dtype``:
+``q`` is the quantization step size.
 ``q`` = 1 for ``bool`` and `2^r` for r-bit ``unsigned integers``,
-and for ``float`` its corresponding `resolution <https://doi.org/10.1364/AO.41.007437>`_.
+and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
+
+``Imax`` is the maximum gray value.
+``Imax`` = 1 for ``float`` and ``bool``, and ``Imax`` = `2^r - 1` for ``unsigned integers`` with r bits.
+
+``A`` is the offset, also called brightness (of the background).
+It is limited by ``Imax``.
+
+``B`` is the amplitude of the cosinusoidal fringes.
+It is limited by ``Imax``.
+
+``V`` is the fringe visibility (also called fringe contrast).
+``V`` = ``A`` / ``B``, where ``V`` and is the range [0, 1].
+
+``beta`` is the relative brightness (exposure) and is within the range [0, 1].
+
+``gamma`` denotes the gamma correction factor and can be used to compensate nonlinearities of the display response curve.
 
 Unwrapping
 ----------
@@ -189,8 +196,7 @@ Choose either ``'fast'`` (the default) or ``'precise'``.
 ``verbose`` can be set to ``True`` to also receive
 the wrapped phase maps `\varphi_i`, the fringe orders `k` and the residuals `R` from decoding.
 
-``FTM`` denotes Fourier Transform Method and is deployed
-if ``K`` = ``H`` = ``N`` = 1, i.e. ``T`` = 1.
+``FTM`` denotes Fourier Transform Method and is deployed if ``T`` = 1
 and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.
 
 Quality Metrics
@@ -203,8 +209,8 @@ The ``UMR`` is derived from ``l`` and ``v``:
 
 - If ``l`` `\in \mathbb{N}`, ``UMR`` = `lcm(` ``l`` `)` with `lcm` being the least common multiple.
 - Else, if ``v`` `\in \mathbb{N}`, ``UMR`` = ``L`` / `gcd(` ``v`` `)` with `gcd` being the greatest common divisor.
-- Else, if ``v`` `\land` ``l`` `\in \mathbb{Q}`, `lcm` resp. `gcd` are extended to rational numbers.
-- Else, if ``v`` `\land` ``l`` `\in \mathbb{R} \setminus \mathbb{Q}`, ``l`` and ``v`` are approximated by rational numbers
+- Else, if ``v`` `\lor` ``l`` `\in \mathbb{Q}` , `lcm` resp. `gcd` are extended to rational numbers.
+- Else, if ``v`` `\land` ``l`` `\in \mathbb{R} \setminus \mathbb{Q}` , ``l`` and ``v`` are approximated by rational numbers
   with a fixed length of decimal digits.
 
 ``eta`` denotes the coding efficiency ``L`` / ``UMR``.

@@ -1,7 +1,7 @@
 Usage
 =====
 
-This package provides the handy Fringes` class,
+This package provides the handy Fringes class,
 which handles all the required parameters
 for configuring fringe pattern sequences
 and provides methods for fringe analysis.

@@ -132,7 +132,7 @@ def circular_distance(a: np.ndarray, b: np.ndarray, c: float) -> np.ndarray:
     return d
 
 
-def curvature(s: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: test
+def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.ndarray:  # todo: test
     """Curvature map.
 
     Combuted by differentiating a slope map.
@@ -142,18 +142,20 @@ def curvature(s: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: t
     s : np.ndarray
         Slope map.
         It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-
     calibrated : bool, optional
         Flag indicating whether the input data 's' originates from a calibrated measurement.
         Default is False.
         If this is False, the median value of the computed curvature map is added as an offset,
         so the median value of the final curvature map becomes zero.
+    map : bool
+        Flag indicating whether to use the acrtangent function
+        to nonlinearly map the codomain from [-inf, inf] to [-1, 1].
+        Default is True.
 
     Returns
     -------
     c : np.ndarray
-        Curvature map with codomain [-1, 1].
-        The acrtangent function is used to nonlinearly map the codomain from [-inf, inf] to [-1, 1].
+        Curvature map.
     """
 
     T, Y, X, C = vshape(s).shape
@@ -173,7 +175,8 @@ def curvature(s: np.ndarray, calibrated: bool = False) -> np.ndarray:  # todo: t
         # c -= np.mean(c, axis=(0, 1))
         c -= np.median(c, axis=(0, 1))  # Median is a robust estimator for the mean.
 
-    c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
+    if map:
+        c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
 
     return c
 
@@ -387,7 +390,7 @@ def coprime(n: list[int] | tuple[int] | np.ndarray) -> bool:  # n: iterable  # t
     n : list, tuple, np.ndarray
         Integer numbers.
 
-    Retunrs
+    Returns
     -------
     iscoprime : bool
         True if numbers are pairwise co-prime, else False.

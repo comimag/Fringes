@@ -188,7 +188,7 @@ class Fringes:
         Examples
         --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser('~'), '.fringes.yaml')
+        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         >>> import fringes as frng
         >>> f = frng.Fringes()
@@ -246,7 +246,7 @@ class Fringes:
         Examples
         --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser('~'), '.fringes.yaml')
+        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         >>> import fringes as frng
         >>> f = frng.Fringes()
@@ -292,7 +292,7 @@ class Fringes:
          T : int, optional
             Number of frames.
             If 'T' is not provided, the number of frames from the 'Fringes' instance is used.
-            Then, the 'Fringes' instance's number of shifts 'N' is distributed optimally over the
+            Then, the 'Fringes instance's number of shifts 'N' is distributed optimally over the directions and sets.
 
          umax : float, optional
             Maximum allowable uncertainty.
@@ -303,6 +303,9 @@ class Fringes:
         If 'umax' is specified, the parameters are determined
         that allow a maximal uncertainty of 'umax'
         with a minimum number of frames.
+
+        Else, the parameters of the 'Fringes' instance are optimized to yield the minimal uncertainty
+        using the given number of frames 'T'.
         """
 
         K = np.log(self.L) / np.log(self.lopt)  # lopt ** K = L
@@ -2474,9 +2477,9 @@ class Fringes:
         The coding is only unique within the interval [0, UMR); after that it repeats itself.
 
         The UMR is derived from l and v:\n
-        - If l ∈ ℕ, UMR = lcm(li) with lcm being the least common multiple.\n
-        - Else, if v ∈ ℕ, UMR = L/ gcd(vi) with gcd being the greatest common divisor.\n
-        - Else, if l ∧ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.\n
+        - If l ∈ ℕ, UMR = lcm(l) with lcm being the least common multiple.\n
+        - Else, if v ∈ ℕ, UMR = L/ gcd(v) with gcd being the greatest common divisor.\n
+        - Else, if l ∨ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.\n
         - Else, if l ∧ v ∈ ℝ \ ℚ, l and v are approximated by rational numbers with a fixed length of decimal digits.
         """
 
@@ -3316,7 +3319,7 @@ class Fringes:
 
     @property
     def FTM(self) -> bool:
-        """True if the Fourier-transform method deployed."""
+        """True if the Fourier-transform method if deployed."""
         # todo: allow H > 1 and use decolorizing, then conduct FTM for each color
         return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]
 
@@ -3338,7 +3341,7 @@ class Fringes:
 
     @property
     def gamma(self) -> float:
-        """Gamma correction factor used to compensate the display response curve."""
+        """Gamma correction factor used to compensate nonlinearities of the display response curve."""
         return self._gamma
 
     @gamma.setter
