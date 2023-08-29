@@ -21,7 +21,7 @@ hence dependent parameters might change as well.
 Video Shape
 -----------
 
-Standardized ``shape`` (``T``, ``Y``, ``X``, ``C``) of fringe pattern sequence, with
+``shape`` is the standardized shape (T, Y, X, C) of the fringe pattern sequence, where
 
 - ``T``: number of frames
 - ``Y``: height (in pixel units)
@@ -31,7 +31,7 @@ Standardized ``shape`` (``T``, ``Y``, ``X``, ``C``) of fringe pattern sequence, 
 ``T`` = ``H`` `\cdot \sum` ``N``.
 If a `multiplexing`_ scheme is activated, ``T`` reduces further.
 
-The length ``L`` is the maximum of ``X`` and ``Y`` and denotes the length (in pixel units) to be ancoded.
+``L`` is the maximum of ``X`` and ``Y`` and denotes the length (in pixel units) to be ancoded.
 It can be extended by the factor ``alpha``.
 
 ``C`` depends on the `coloring`_ and `multiplexing`_ schemes activated`.
@@ -53,7 +53,7 @@ The following coordinate systems can be used by setting ``grid`` to:
 ``axis`` is used to define along which axis of the coordinate system (index 0 or 1)
 the fringe pattern is shifted if ``D`` = 1.
 
-``angle`` can be used to tilt the coordinate system. The origin stays the same.
+``angle`` can be used to tilt the coordinate system. The origin remains the same.
 
 Set
 ---
@@ -84,6 +84,40 @@ Usually ``f`` = 1 and is essentially only changed if `frequency division multipl
 
 ``o`` denotes the phase offset, which can be used to
 e.g. let the fringe patterns start (at the origin) with a gray value of zero.
+
+Intensity Values
+----------------
+
+``dtype`` denotes the data type of the fringe pattern sequence.
+Possible values are:
+
+- ``bool``
+- ``uint8`` (default)
+- ``uint16``
+- ``float32``
+- ``float64``
+
+``nbytes`` is the total bytes consumed by fringe pattern sequence.
+
+``q`` is the quantization step size.
+``q`` = 1 for ``bool`` and `2^r` for r-bit ``unsigned integers``,
+and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
+
+``Imax`` is the maximum gray value.
+``Imax`` = 1 for ``float`` and ``bool``, and ``Imax`` = `2^r - 1` for ``unsigned integers`` with r bits.
+
+``A`` is the offset, also called brightness (of the background).
+It is limited by ``Imax``.
+
+``B`` is the amplitude of the cosinusoidal fringes.
+It is limited by ``Imax``.
+
+``V`` is the fringe visibility (also called fringe contrast).
+``V`` = ``A`` / ``B``, where ``V`` and is within the range [0, 1].
+
+``beta`` is the relative brightness (exposure) and is within the range [0, 1].
+
+``gamma`` denotes the gamma correction factor and can be used to compensate nonlinearities of the display response curve.
 
 Coloring and Averaging
 ----------------------
@@ -146,44 +180,10 @@ The following multiplexing methods can be activated by setting them to ``True``:
 ``TDM``: By default, the aforementioned multiplexing methods are deactivated,
 so we then only have Time Divison Multiplexing.
 
-Data Type
----------
-
-``dtype`` denotes the data type of the fringe pattern sequence.
-Possible values are:
-
-- ``bool``
-- ``uint8`` (default)
-- ``uint16``
-- ``float32``
-- ``float64``
-
-``nbytes`` is the total bytes consumed by fringe pattern sequence.
-
-``q`` is the quantization step size.
-``q`` = 1 for ``bool`` and `2^r` for r-bit ``unsigned integers``,
-and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
-
-``Imax`` is the maximum gray value.
-``Imax`` = 1 for ``float`` and ``bool``, and ``Imax`` = `2^r - 1` for ``unsigned integers`` with r bits.
-
-``A`` is the offset, also called brightness (of the background).
-It is limited by ``Imax``.
-
-``B`` is the amplitude of the cosinusoidal fringes.
-It is limited by ``Imax``.
-
-``V`` is the fringe visibility (also called fringe contrast).
-``V`` = ``A`` / ``B``, where ``V`` and is the range [0, 1].
-
-``beta`` is the relative brightness (exposure) and is within the range [0, 1].
-
-``gamma`` denotes the gamma correction factor and can be used to compensate nonlinearities of the display response curve.
-
 Unwrapping
 ----------
 
-``PU`` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
+``uwr`` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
 See [spatial demodulation](#spatial-demodulation--phase-unwrapping--pu-) for more details.
 
 ``mode`` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
@@ -227,19 +227,19 @@ It is influenced by the parameters
 - ``l``: wavelengths of the fringes,
 - ``B``: measured amplitude
 
-and the measurement hardware-specific noise sources [8]_, [9]_
+and the measurement hardware [8]_, [9]_
 
 - ``quant``: quantization noise of the light source or camera,
 - ``dark``: dark noise of the used camera,
 - ``shot``: photon noise of light itself,
 - ``gain``: system gain of the used camera.
 
-``DR`` = ``UMR`` / ``u`` is the dynamic range of the phase shift coding
-and is a measure of how many points can be distinguished within the unambiguous measurement range [0, ``UMR``).
-It remains constant if ``L`` and hence ``l`` is scaled (the scaling factor cancels out).
-
 ``SNR`` = ``L`` / ``u`` is the signal-to-noise ratio of the phase shift coding
 and is a masure of how many points can be distinguished within the screen length [0, ``L``).
+It remains constant if ``L`` and hence ``l`` is scaled (the scaling factor cancels out).
+
+``DR`` = ``UMR`` / ``u`` is the dynamic range of the phase shift coding
+and is a measure of how many points can be distinguished within the unambiguous measurement range [0, ``UMR``).
 Again, it remains constant if ``L`` and hence ``l`` is scaled (the scaling factor cancels out).
 
 .. [1] `Park,

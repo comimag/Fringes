@@ -19,8 +19,7 @@ from si_prefix import si_format as si
 from .util import vshape, bilateral, median, remap, circular_distance
 from . import grid
 
-# from .decoder import decode  # todo: fast_decode i.e. fast_unwrap
-from .decoder4 import decode  # todo: fast_decode i.e. fast_unwrap
+from .decoder import decode  # todo: fast_decode (only N>= 3) i.e. fast_unwrap(CRT + ssdlim)
 
 
 class Fringes:
@@ -86,6 +85,7 @@ class Fringes:
         B: float = 255 / 2,  # i.e. Imax / 2 @ uint8; inferred from Imax and beta and V
         beta: float = 0.5,
         V: float = 1.0,  # V is inferred from A and B
+        Vmin: float = 1,
         alpha: float = 1.0,
         dtype: str | np.dtype = "uint8",
         grid: str = "image",
@@ -99,7 +99,7 @@ class Fringes:
         reverse: bool = False,
         verbose: bool = False,
         mode: str = "fast",
-        umin: float = 0.0,
+        umax: float = 0.0,
         Bv: tuple | np.ndarray = None,
         magnification: float = 1,
         PSF: float = 0.0,
@@ -284,7 +284,7 @@ class Fringes:
         self.params = self.defaults
         self.logger.info("Reset parameters to defaults.")
 
-    def optimize(self, T: int = None, umax: float = None) -> None:
+    def optimize(self, T: int = None, umax: float = None) -> None:  # todo: self.umax
         """Optimize the parameters of the 'Fringes' instance.
 
          Parameters
@@ -432,9 +432,7 @@ class Fringes:
         Returns
         -------
         k : np.ndarray
-            Fringe orders of the encoded fringe pattern sequence,
-            in shape (D, K, Y, X), where
-            D is number of dimensions, K is number of sets i.e. number of spatial frequencies, Y is height, X is width.
+            Fringe orders of the encoded fringe pattern sequence.
         """
 
         if self.mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
@@ -631,7 +629,7 @@ class Fringes:
         #    # i = np.argsort(a[1:], axis=0)[::-1]  # indices of frequencies, sorted by their magnitude
         #    phi = -np.angle(c * np.exp(-1j * (self.o - np.pi)))[_f.flatten().astype(int, copy=False)]  # todo: why offset - PI???
 
-        if self.FTM:
+        if self.uwr == "FTM":
             # todo: make passband symmetrical around carrier frequency?
             if self.D == 2:
                 fx = np.fft.fftshift(np.fft.fftfreq(X))  # todo: hfft
@@ -891,7 +889,7 @@ class Fringes:
             #
             #         q = 1
 
-            phi, bri, mod, reg, res, fid = decode(
+            phi, bri, mod, reg, res, fid, unc = decode(
                 I,
                 self._N,
                 self._v,
@@ -901,13 +899,15 @@ class Fringes:
                 self.o,
                 r,
                 self.mode,
-                self.umin,
+                self.Vmin,
+                self.umax,
+                self.ui,
                 self.verbose or verbose,
             )
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
-        return bri, mod, reg, phi, fid, res
+        return bri, mod, reg, phi, fid, res, unc
 
     def _multiplex(self, I: np.ndarray, rint: bool = True) -> np.ndarray:
         """Multiplex fringe patterns.
@@ -1341,7 +1341,7 @@ class Fringes:
         verbose : bool, optional
             If this or the argument 'verbose' of the Fringes instance is set to True,
             additional infomation is computed and retuned.
-            This includes: phase, residuals, orders, visibility and exposure.
+            This includes: phase, residuals, orders, uncertainty, visibility and exposure.
 
         despike: bool, optional
             If this is set to true, single pixel outliers in the unwrapped phase map are replaced
@@ -1375,6 +1375,9 @@ class Fringes:
         residuals : np.ndarray, optional
             Residuals from the optimization-based unwrapping process.
 
+        uncertainty : np.ndarray, optional
+            uncertainty of positional decoding in pixel units
+
         visibility : np.ndarray, optional
             Local visibility (fringe contrast).
 
@@ -1394,7 +1397,7 @@ class Fringes:
 
         >>> A, B, x = f.decode(I)
 
-        >>> A, B, x, p, k, e, V, H = f.decode(I, verbose=True)
+        >>> A, B, x, p, k, e, u, V, H = f.decode(I, verbose=True)
         """
 
         t0 = time.perf_counter()
@@ -1422,7 +1425,7 @@ class Fringes:
             I = self._demultiplex(I)
 
         # demodulate
-        bri, mod, reg, phi, fid, res = self._demodulate(I, verbose)
+        bri, mod, reg, phi, fid, res, unc = self._demodulate(I, verbose)
 
         if self.verbose or verbose:
             V = (mod.reshape(self.D, self.K, Y, X, C) / bri[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
@@ -1517,8 +1520,8 @@ class Fringes:
         if self.verbose or verbose:
             dec = namedtuple(
                 "decoded",
-                "brightness modulation registration phase orders residuals visibility exposure",
-            )(bri, mod, reg, phi, fid, res, V, beta)
+                "brightness modulation registration phase orders residuals uncertainty visibility exposure",
+            )(bri, mod, reg, phi, fid, res, unc, V, beta)
         else:
             dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
@@ -2115,134 +2118,6 @@ class Fringes:
         return B
 
     @property
-    def Bv(self) -> np.ndarray:
-        """Modulation at spatial frequencies 'v'.
-
-        The modulation values are determined from a measurement."""
-        return self._Bv
-
-    @Bv.setter
-    def Bv(self, B: np.ndarray):
-        if B is None:
-            self._Bv = None
-            self.logger.debug(f"self.Bv = {self._Bv}")
-            return
-
-        _B = np.array(np.maximum(0, B), float)
-
-        _B.shape = T, Y, X, C = vshape(_B).shape
-
-        assert T == self.D * self.K
-
-        _B = _B.reshape(self.D, self.K, self.Y, self.X, self.C)
-
-        # filter
-        _B = np.nanmedian(_B, axis=-1)  # filter along color axis
-        # _B = np.nanmedian(_B, axis=(2, 3))  # filter along spatial axes
-        _B = np.nanquantile(_B, 0.9, axis=(2, 3))  # filter along spatial axes
-
-        #  normalize (only relative weights are important)
-        Bmax = np.iinfo(_B.dtype).max if _B.dtype.kind in "ui" else 1
-        _B /= Bmax
-        _B[np.isnan(_B)] = 0
-
-        _Bv = np.vstack(_B, self._v)
-
-        if not np.array_equal(self._Bv, _Bv):
-            self._Bv = _B
-            self.logger.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
-
-    @property
-    def grid(self) -> str:
-        """Coordinate system of the fringe patterns.
-
-        The following values can be set:\n
-        'image':     The top left corner pixel of the grid is the origin and positive directions are right- resp. downwards.\n
-        'Cartesian': The center of grid is the origin and positive directions are right- resp. upwards.\n
-        'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.\n
-        'log-polar': The center of grid is the origin and positive directions are clockwise resp. outwards.
-        """
-        return self._grid
-
-    @grid.setter
-    def grid(self, grid: str):
-        _grid = str(grid)
-
-        if (self.SDM or self.FTM) and self.grid not in self._grids[:2]:
-            self.logger.error(f"Couldn't set 'grid': grid not in {self._grids[:2]}'.")
-            return
-
-        if self._grid != _grid and _grid in self._grids:
-            self._grid = _grid
-            self.logger.debug(f"{self._grid = }")
-            self.SDM = self.SDM
-
-    @property
-    def angle(self) -> float:
-        """Angle of coordinate system's principal axis."""
-        return self._angle
-
-    @angle.setter
-    def angle(self, angle: float):
-        _angle = float(np.remainder(angle, 360))  # todo: +- 45
-
-        if self._angle != _angle:
-            self._angle = _angle
-            self.logger.debug(f"{self._angle = }")
-
-    @property
-    def D(self) -> int:
-        """Number of directions."""
-        return self._D
-
-    @D.setter
-    def D(self, D: int):
-        _D = int(min(max(1, D), self._Dmax))
-
-        if self._D > _D:
-            self._D = _D
-            self.logger.debug(f"{self._D = }")
-
-            self.N = self._N[: self.D, :]
-            self.v = self._v[: self.D, :]
-            self.f = self._f[: self.D, :]
-
-            if self._D == self._K == 1:
-                self.FDM = False
-
-            self.SDM = False
-        elif self._D < _D:
-            self._D = _D
-            self.logger.debug(f"{self._D = }")
-
-            self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._N.shape[0], 1)), axis=0)
-            self.v = np.append(self._v, np.tile(self._v[-1, :], (_D - self._v.shape[0], 1)), axis=0)
-            self.f = np.append(self._f, np.tile(self._f[-1, :], (_D - self._f.shape[0], 1)), axis=0)
-
-            self.B = self.B
-
-    @property
-    def axis(self) -> int:
-        """Axis along which to shift if number of directions equals one."""
-        return self._axis
-
-    @axis.setter
-    def axis(self, axis: int | str):
-        if isinstance(axis, str):
-            if axis.lower() in ["x", "u"]:
-                axis = 0
-            elif axis.lower() in ["y", "v"]:
-                axis = 1
-            else:
-                return
-
-        _axis = int(min(max(0, axis), 1))
-
-        if self._axis != _axis:
-            self._axis = _axis
-            self.logger.debug(f"{self._axis = }")
-
-    @property
     def T(self) -> int:
         """Number of frames."""
 
@@ -2365,7 +2240,7 @@ class Fringes:
                 dT = _T - np.sum(N)
                 if dT != 0:
                     k = int(dT // self.D)
-                    N[:, 1 : k + 1] += 1
+                    N[:, 1: k + 1] += 1
                     if dT % self.D != 0:
                         N[0, k + 1] += 1
             else:
@@ -2392,6 +2267,7 @@ class Fringes:
         if self._Y != _Y:
             self._Y = _Y
             self.logger.debug(f"{self._Y = }")
+            self._UMR = None
 
             if self._X == self._Y == 1:
                 self.D = 1
@@ -2416,6 +2292,7 @@ class Fringes:
         if self._X != _X:
             self._X = _X
             self.logger.debug(f"{self._X = }")
+            self._UMR = None
 
             if self._X == self._Y == 1:
                 self.D = 1
@@ -2433,9 +2310,17 @@ class Fringes:
         return 3 if self.WDM or not self._ismono else 1
 
     @property
-    def P(self) -> int:
-        """Number of pixels per color channel and frame."""
-        return self.Y * self.X
+    def R(self) -> np.ndarray:
+        """Lengths of fringe patterns for each direction.
+        [R] = px."""
+        if self.D == 2:
+            R = np.array([self.X, self.Y])
+        else:
+            if self.axis == 0:
+                R = np.array([self.X])
+            else:
+                R = np.array([self.Y])
+        return R
 
     @property
     def alpha(self) -> float:
@@ -2452,122 +2337,100 @@ class Fringes:
             self._UMR = None
 
     @property
-    def R(self) -> np.ndarray:
-        """Lengths of fringe patterns for each direction.
-        [R] = px."""
-        if self.D == 2:
-            R = np.array([self.X, self.Y])
-        else:
-            if self.axis == 0:
-                R = np.array([self.X])
-            else:
-                R = np.array([self.Y])
-        return R
-
-    @property
     def L(self) -> int | float:
         """Length to be encoded.
         [L] = px."""
         return float(self.R.max() * self.alpha)
 
     @property
-    def UMR(self) -> np.ndarray:
-        """Unambiguous measurement range.
+    def grid(self) -> str:
+        """Coordinate system of the fringe patterns.
 
-        The coding is only unique within the interval [0, UMR); after that it repeats itself.
-
-        The UMR is derived from l and v:\n
-        - If l ∈ ℕ, UMR = lcm(l) with lcm being the least common multiple.\n
-        - Else, if v ∈ ℕ, UMR = L/ gcd(v) with gcd being the greatest common divisor.\n
-        - Else, if l ∨ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.\n
-        - Else, if l ∧ v ∈ ℝ \ ℚ, l and v are approximated by rational numbers with a fixed length of decimal digits.
+        The following values can be set:\n
+        'image':     The top left corner pixel of the grid is the origin and positive directions are right- resp. downwards.\n
+        'Cartesian': The center of grid is the origin and positive directions are right- resp. upwards.\n
+        'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.\n
+        'log-polar': The center of grid is the origin and positive directions are clockwise resp. outwards.
         """
+        return self._grid
 
-        if self._UMR is not None:  # cache
-            return self._UMR  # todo: resetting cache doesn't work for some reasons...
+    @grid.setter
+    def grid(self, grid: str):
+        _grid = str(grid)
 
-        # precision = np.finfo("float64").precision - 1
-        precision = 10
+        if (self.SDM or self.uwr == "FTM") and self.grid not in self._grids[:2]:
+            self.logger.error(f"Couldn't set 'grid': grid not in {self._grids[:2]}'.")
+            return
 
-        UMR = np.empty(self.D)
-        for d in range(self.D):
-            l = self._l[d]  # .copy()
-            v = self._v[d].copy()
-
-            if 1 in self._N[d]:  # here, in TPU twice the combinations have to be tried
-                # todo: test if valid
-                l[self._N[d] == 1] /= 2
-                v[self._N[d] == 1] *= 2
-
-            if 0 in v:  # equivalently: np.inf in l
-                l = l[v != 0]
-                v = v[v != 0]
-
-            if len(l) == 0 or len(v) == 0:
-                UMR[d] = 1  # one since we can only control discrete pixels
-                break
-
-            if all(i % 1 == 0 for i in l):  # all l are integers
-                UMR[d] = np.lcm.reduce([int(i) for i in l])
-            elif all(i % 1 == 0 for i in v):  # all v are integers
-                UMR[d] = self.L / np.gcd.reduce([int(i) for i in v])
-            elif all(np.isclose(l, np.rint(l), rtol=0, atol=10**-precision)):
-                UMR[d] = np.lcm.reduce([int(i) for i in np.rint(l)])  # all l are approximately integers
-            elif all(np.isclose(v, np.rint(v), rtol=0, atol=10**-precision)):
-                UMR[d] = self.L / np.gcd.reduce([int(i) for i in np.rint(v)])  # all v are approximately integers
-            else:  # l and v both are not integers, not even approximately
-                lcopy = l.copy()
-
-                # mutual factorial test for integers i.e. mutual divisibility test
-                for i in range(self.K - 1):
-                    for j in range(i + 1, self.K - 1):
-                        if l[i] % l[j] < 10**-precision:
-                            lcopy[j] = 1
-                        elif l[j] % l[i] < 10**-precision:
-                            lcopy[i] = 1
-
-                l = l[lcopy != 1]
-
-                # estimate whether elements are rational or irrational
-                decimals = [len(str(i)) - len(str(int(i))) - 1 for i in l]  # -1: dot
-                Dl = max(decimals)
-                decimals = [len(str(i)) - len(str(int(i))) - 1 for i in v]  # -1: dot
-                Dv = max(decimals)
-
-                if min(Dl, Dv) < precision:  # rational numbers without integers (i.e. not covered by isclose(atol))
-                    # extend lcm/gcd to rational numbers
-
-                    if Dl <= Dv:
-                        ls = l * 10**Dl  # wavelengths scaled
-                        UMR[d] = np.lcm.reduce([int(i) for i in ls]) / 10**Dl
-                        self.logger.debug("Extended lcm to rational numbers.")
-                    else:
-                        vs = v * (10**Dv)  # wavelengths scaled
-                        UMR[d] = self.L / np.gcd.reduce([int(i) for i in vs]) / (10**Dv)
-                        self.logger.debug("Extended gcd to rational numbers.")
-                else:  # irrational numbers or rational numbers with more digits than "precision"
-                    # round and extend lcm to rational numbers
-                    ls = np.round(l * 10**precision, decimals=precision).astype("uint64")
-                    UMR[d] = np.lcm.reduce(ls) / 10**precision
-
-        # self._UMR = float(np.min(UMR))  # cast type frm "numpy.core.multiarray.scalar" to "int" or "float"
-
-        self._UMR = UMR
-        self.logger.debug(f"self.UMR = {str(self._UMR)}")
-
-        if np.any(UMR < self.R * self.alpha):  # self._isambiguous:
-            self.logger.warning(
-                "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
-            )
-
-        return self._UMR
+        if self._grid != _grid and _grid in self._grids:
+            self._grid = _grid
+            self.logger.debug(f"{self._grid = }")
+            self.SDM = self.SDM
 
     @property
-    def eta(self) -> float:
-        """Coding efficiency."""
-        eta = self.R / self.UMR
-        eta[self.UMR < self.R] = 0
-        return eta
+    def angle(self) -> float:
+        """Angle of coordinate system's principal axis."""
+        return self._angle
+
+    @angle.setter
+    def angle(self, angle: float):
+        _angle = float(np.remainder(angle, 360))  # todo: +- 45
+
+        if self._angle != _angle:
+            self._angle = _angle
+            self.logger.debug(f"{self._angle = }")
+
+    @property
+    def D(self) -> int:
+        """Number of directions."""
+        return self._D
+
+    @D.setter
+    def D(self, D: int):
+        _D = int(min(max(1, D), self._Dmax))
+
+        if self._D > _D:
+            self._D = _D
+            self.logger.debug(f"{self._D = }")
+
+            self.N = self._N[: self.D, :]
+            self.v = self._v[: self.D, :]
+            self.f = self._f[: self.D, :]
+
+            if self._D == self._K == 1:
+                self.FDM = False
+
+            self.SDM = False
+        elif self._D < _D:
+            self._D = _D
+            self.logger.debug(f"{self._D = }")
+
+            self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._N.shape[0], 1)), axis=0)
+            self.v = np.append(self._v, np.tile(self._v[-1, :], (_D - self._v.shape[0], 1)), axis=0)
+            self.f = np.append(self._f, np.tile(self._f[-1, :], (_D - self._f.shape[0], 1)), axis=0)
+
+            self.B = self.B
+
+    @property
+    def axis(self) -> int:
+        """Axis along which to shift if number of directions equals one."""
+        return self._axis
+
+    @axis.setter
+    def axis(self, axis: int | str):
+        if isinstance(axis, str):
+            if axis.lower() in ["x", "u"]:
+                axis = 0
+            elif axis.lower() in ["y", "v"]:
+                axis = 1
+            else:
+                return
+
+        _axis = int(min(max(0, axis), 1))
+
+        if self._axis != _axis:
+            self._axis = _axis
+            self.logger.debug(f"{self._axis = }")
 
     @property
     def M(self) -> float | np.ndarray:
@@ -2965,8 +2828,7 @@ class Fringes:
     def l(self, l: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
         if isinstance(l, str):
             if "," in l:
-                l = np.array([float(i) for i in l.split(",")])
-                q = 1
+                l = np.fromstring(l, sep=",")  # todo: N, v, f
             elif l == "optimal":
                 lmin = int(np.ceil(self.lmin))
                 lmax = int(
@@ -3098,7 +2960,7 @@ class Fringes:
                 return
 
         self._UMR = None  # to be safe
-        self.v = self.L / l
+        self.v = self.L / np.array(l, float)
 
     @property
     def _l(self) -> np.ndarray:  # kept for backwards compatibility with fringes-GUI
@@ -3257,6 +3119,44 @@ class Fringes:
             self.logger.debug(f"self._o = {self._o / np.pi} PI")
 
     @property
+    def Bv(self) -> np.ndarray:
+        """Modulation at spatial frequencies 'v'.
+
+        The modulation values are determined from a measurement."""
+        return self._Bv
+
+    @Bv.setter
+    def Bv(self, B: np.ndarray):
+        if B is None:
+            self._Bv = None
+            self.logger.debug(f"self.Bv = {self._Bv}")
+            return
+
+        _B = np.array(np.maximum(0, B), float)
+
+        _B.shape = T, Y, X, C = vshape(_B).shape
+
+        assert T == self.D * self.K
+
+        _B = _B.reshape(self.D, self.K, self.Y, self.X, self.C)
+
+        # filter
+        _B = np.nanmedian(_B, axis=-1)  # filter along color axis
+        # _B = np.nanmedian(_B, axis=(2, 3))  # filter along spatial axes
+        _B = np.nanquantile(_B, 0.9, axis=(2, 3))  # filter along spatial axes
+
+        #  normalize (only relative weights are important)
+        Bmax = np.iinfo(_B.dtype).max if _B.dtype.kind in "ui" else 1
+        _B /= Bmax
+        _B[np.isnan(_B)] = 0
+
+        _Bv = np.vstack(_B, self._v)
+
+        if not np.array_equal(self._Bv, _Bv):
+            self._Bv = _B
+            self.logger.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
+
+    @property
     def _ismono(self) -> bool:
         """True if all hues are monochromatic, i.e. RGB values are identical for each hue."""
         return all(len(set(h)) == 1 for h in self.h)
@@ -3318,26 +3218,20 @@ class Fringes:
             self.logger.debug(f"{self._verbose = }")
 
     @property
-    def FTM(self) -> bool:
-        """True if the Fourier-transform method if deployed."""
-        # todo: allow H > 1 and use decolorizing, then conduct FTM for each color
-        return self.H == self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]
-
-    @property
-    def PU(self) -> str:
+    def uwr(self) -> str:
         """Phase unwrapping method."""
 
-        if self.FTM:
+        if self.K == 1 and np.all(self._N == 1) and self.grid in self._grids[:2]:
             # todo: v >> 1, i.e. l ~ 8
-            PU = "FTM"  # Fourier-transform method
+            uwr = "FTM"  # Fourier-transform method
         elif self.K == np.all(self.v <= 1):
-            PU = "none"
+            uwr = "none"
         elif self._isambiguous:
-            PU = "spatial"
+            uwr = "spatial"
         else:
-            PU = "temporal"
+            uwr = "temporal"
 
-        return PU
+        return uwr
 
     @property
     def gamma(self) -> float:
@@ -3368,7 +3262,8 @@ class Fringes:
 
         Does not include memory consumed by non-element attributes of the array object.
         """
-        return self.size * self.dtype.itemsize
+        # return self.size * self.dtype.itemsize
+        return self.T * self.Y * self.X * self.C * self.dtype.itemsize
 
     @property
     def dtype(self) -> np.dtype:
@@ -3482,18 +3377,32 @@ class Fringes:
             self.logger.debug(f"{self.V = }")
 
     @property
-    def umin(self) -> float:
-        """Standard deviation of minimum uncertainty for measurement to be valid.
-        [umin] = px."""
-        return self._umin
+    def Vmin(self) -> float:
+        """Minimum visibility for measurement to be valid."""
+        return self._Vmin
 
-    @umin.setter
-    def umin(self, umin: float):
-        _umin = float(min(max(0, umin), self.L / 2))  # L / 2 due to circular distribution
+    @Vmin.setter
+    def Vmin(self, Vmin: float):
+        _Vmin = float(min(max(0, Vmin), 1))
 
-        if self._umin != _umin:
-            self._umin = _umin
-            self.logger.debug(f"{self._umin = }")
+        if self._Vmin != _Vmin:
+            self._Vmin = _Vmin
+            self.logger.debug(f"{self._Vmin = }")
+
+
+    @property
+    def umax(self) -> float:
+        """Standard deviation of maximum uncertainty for measurement to be valid.
+        [umax] = px."""
+        return self._umax
+
+    @umax.setter
+    def umax(self, umax: float):
+        _umax = float(min(max(0, umax), self.L / 2))  # L / 2 due to circular distribution  # todo: R.max() / 2
+
+        if self._umax != _umax:
+            self._umax = _umax
+            self.logger.debug(f"{self._umax = }")
 
     # @property
     # def r(self) -> int:
@@ -3539,7 +3448,7 @@ class Fringes:
     def shot(self) -> float:
         """Shot noise of digital camera (standard deviation).
         [shot] = DN."""
-        return np.sqrt((self.A - self.y0) / self.gain) if self.gain != 0 else 0  # average intensity is bias
+        return np.sqrt(self.gain * (self.A - self.y0)) if self.gain != 0 else 0  # average intensity is bias
 
     @property
     def gain(self) -> float:
@@ -3564,7 +3473,7 @@ class Fringes:
 
     @magnification.setter
     def magnification(self, magnification):
-        _magnification = float(max(0, magnification))
+        _magnification = float(max(0, magnification))  # todo: max = self.R.max()
 
         if self._magnification != _magnification:
             self._magnification = _magnification
@@ -3578,7 +3487,7 @@ class Fringes:
 
     @PSF.setter
     def PSF(self, PSF):
-        _PSF = float(max(0, PSF))
+        _PSF = float(max(0, PSF))  # todo: max = self.R.max()
 
         if self._PSF != _PSF:
             self._PSF = _PSF
@@ -3599,10 +3508,110 @@ class Fringes:
             self.logger.debug(f"{self._y0 = }")
 
     @property
+    def UMR(self) -> np.ndarray:
+        """Unambiguous measurement range.
+        [UMR] = px
+
+        The coding is only unique within the interval [0, UMR); after that it repeats itself.
+
+        The UMR is derived from l and v:\n
+        - If l ∈ ℕ, UMR = lcm(l) with lcm being the least common multiple.\n
+        - Else, if v ∈ ℕ, UMR = L/ gcd(v) with gcd being the greatest common divisor.\n
+        - Else, if l ∨ v ∈ ℚ, lcm resp. gcd are extended to rational numbers.\n
+        - Else, if l ∧ v ∈ ℝ \ ℚ, l and v are approximated by rational numbers with a fixed length of decimal digits.
+        """
+
+        if self._UMR is not None:  # cache
+            return self._UMR  # todo: resetting cache doesn't work for some reasons...
+
+        # precision = np.finfo("float64").precision - 1
+        precision = 10
+
+        UMR = np.empty(self.D)
+        for d in range(self.D):
+            l = self._l[d]  # .copy()
+            v = self._v[d].copy()
+
+            if 1 in self._N[d]:  # here, in TPU twice the combinations have to be tried
+                # todo: test if valid
+                l[self._N[d] == 1] /= 2
+                v[self._N[d] == 1] *= 2
+
+            if 0 in v:  # equivalently: np.inf in l
+                l = l[v != 0]
+                v = v[v != 0]
+
+            if len(l) == 0 or len(v) == 0:
+                UMR[d] = 1  # one since we can only control discrete pixels
+                break
+
+            if all(i % 1 == 0 for i in l):  # all l are integers
+                UMR[d] = np.lcm.reduce([int(i) for i in l])
+            elif all(i % 1 == 0 for i in v):  # all v are integers
+                UMR[d] = self.L / np.gcd.reduce([int(i) for i in v])
+            elif all(np.isclose(l, np.rint(l), rtol=0, atol=10 ** -precision)):
+                UMR[d] = np.lcm.reduce([int(i) for i in np.rint(l)])  # all l are approximately integers
+            elif all(np.isclose(v, np.rint(v), rtol=0, atol=10 ** -precision)):
+                UMR[d] = self.L / np.gcd.reduce([int(i) for i in np.rint(v)])  # all v are approximately integers
+            else:  # l and v both are not integers, not even approximately
+                lcopy = l.copy()
+
+                # mutual factorial test for integers i.e. mutual divisibility test
+                for i in range(self.K - 1):
+                    for j in range(i + 1, self.K - 1):
+                        if l[i] % l[j] < 10 ** -precision:
+                            lcopy[j] = 1
+                        elif l[j] % l[i] < 10 ** -precision:
+                            lcopy[i] = 1
+
+                l = l[lcopy != 1]
+
+                # estimate whether elements are rational or irrational
+                decimals = [len(str(i)) - len(str(int(i))) - 1 for i in l]  # -1: dot
+                Dl = max(decimals)
+                decimals = [len(str(i)) - len(str(int(i))) - 1 for i in v]  # -1: dot
+                Dv = max(decimals)
+
+                if min(Dl, Dv) < precision:  # rational numbers without integers (i.e. not covered by isclose(atol))
+                    # extend lcm/gcd to rational numbers
+
+                    if Dl <= Dv:
+                        ls = l * 10 ** Dl  # wavelengths scaled
+                        UMR[d] = np.lcm.reduce([int(i) for i in ls]) / 10 ** Dl
+                        self.logger.debug("Extended lcm to rational numbers.")
+                    else:
+                        vs = v * (10 ** Dv)  # wavelengths scaled
+                        UMR[d] = self.L / np.gcd.reduce([int(i) for i in vs]) / (10 ** Dv)
+                        self.logger.debug("Extended gcd to rational numbers.")
+                else:  # irrational numbers or rational numbers with more digits than "precision"
+                    # round and extend lcm to rational numbers
+                    ls = np.round(l * 10 ** precision, decimals=precision).astype("uint64")
+                    UMR[d] = np.lcm.reduce(ls) / 10 ** precision
+
+        # self._UMR = float(np.min(UMR))  # cast type frm "numpy.core.multiarray.scalar" to "int" or "float"
+
+        self._UMR = UMR
+        self.logger.debug(f"self.UMR = {str(self._UMR)}")
+
+        if np.any(UMR < self.R * self.alpha):  # self._isambiguous:
+            self.logger.warning(
+                "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
+            )
+
+        return self._UMR
+
+    @property
+    def eta(self) -> float:
+        """Coding efficiency."""
+        eta = self.R / self.UMR
+        eta[self.UMR < self.R] = 0
+        return eta
+
+    @property
     def ui(self) -> float:
         """Intensity noise."""
         quant = 0 if self.dark > 0 else self.quant
-        ui = np.sqrt(self.gain**2 * self.dark**2 + quant**2 + self.gain**2 * self.shot**2)
+        ui = np.sqrt(self.gain ** 2 * self.dark ** 2 + quant ** 2 + self.shot ** 2)
         return ui
 
     @property
@@ -3622,8 +3631,8 @@ class Fringes:
         It is based on the phase noise model from [Surrel 1997]
         and propagated through the unwrapping process and the phase fusion."""
 
-        upin = self.upi / (2 * np.pi)  # normalized local phase uncertainty
-        uxi = upin * self._l  # local positional uncertainties
+        upni = self.upi / (2 * np.pi)  # normalized local phase uncertainty
+        uxi = upni * self._l  # local positional uncertainties
         ux = np.sqrt(1 / np.sum(1 / uxi**2, axis=1))  # global positional uncertainty (by inverse variance weighting)
         # todo: factor out L ?!
         return ux
@@ -3712,6 +3721,7 @@ class Fringes:
 
     # glossary
     glossary = {}
+    """Glossary."""
     for __k, __v in sorted(vars().items()):
         if not __k.startswith("_"):
             if isinstance(__v, property) and __v.__doc__ is not None:

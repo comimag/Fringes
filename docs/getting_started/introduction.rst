@@ -26,8 +26,8 @@ require the ability to encode positional data.
 To do this, sinusoidal fringe patterns are used to encode the position on the screen (in pixel coordinates)
 at which the camera pixels were looking at during acquisition.
 
-In the following, the coding is discussed for the horizontal direction only.
-However, the procedure is analogous in the vertical direction.
+In the following, the coding is considered for the horizontal direction only.
+The procedure is analogous in the vertical direction.
 
 .. figure:: coding-scheme.gif
     :align: center
@@ -69,7 +69,7 @@ However, the procedure is analogous in the vertical direction.
 
        From these shifts, the phase maps `\varphi_i` are determined [3]_.
        Due to the trigonometric functions used, the global phase `\varPhi = 2 \pi \nu_i x - \varphi_0`
-       is wrapped into the interval `[0, 2 pi]` with `\nu_i` periods:
+       is wrapped into the interval `[0, 2 \pi]` with `\nu_i` periods:
        `\varPhi \equiv \varphi_i \enspace mod \enspace 2 \pi`
 
        .. ξ ≡ λiϕi/(2π) mod λi
@@ -84,7 +84,8 @@ However, the procedure is analogous in the vertical direction.
            The global phase is then estimated to be `\varPhi_i = k_i 2 \pi + \varphi_i`.
        ii  Recover the common independent variable `\xi_i`
            by linearly rescaling the global phase map:
-           `\xi_i = L \, \varPhi_i / (2 \pi)`, with `L` being the pattern length (in pixels).
+           `\xi_i = \lambda_i \, \varPhi_i / (2 \pi)`,
+           with `\lambda_i` being the spatial wavelength of the fringes (in pixels).
        iii Fuse the `K` coordinate maps
            by weighted averaging:
            `\xi = \sum_i w_i \xi_i \, / \, \sum_i w_i`.
@@ -116,7 +117,7 @@ However, the procedure is analogous in the vertical direction.
           the ambiguous phase `\varphi` is unwrapped by analyzing phase values in the spatial neighbourhood [5]_, [6]_.
           This only yields a relative phase map, therefore absolute positions are unknown.
 
-       d) Fourier-transform method (FTM)
+       d) Fourier-transform Method (FTM)
 
           If only a single frame is recorded, the phase signal introduced by the object's distortion of the fringe pattern
           can be extracted with a purely spatial analysis by virtue of the Fourier-transform method [7]_, [8]_:
@@ -162,7 +163,7 @@ The two parameters `\beta` and `V` describe the phase shifting signal `I`
 independently of the value range of the light source or camera.
 Both lie within the interval `[0, 1]` with the additional condition `\beta \le 1 / (1 + V)`;
 else, the radiance of the light source would be higher than the maximal possible value `I_{max}`.
-Therefore, the valid values are limited for `\beta > 0.5`.
+Therefore, the valid values of `V` are limited for `\beta > 0.5`.
 The optimal fringe contrast is achieved for `\beta = 0.5` and `V = 1`.
 
 .. figure:: codomain.png
@@ -184,7 +185,7 @@ The exposure `\beta` is affected by additional, constant light (not modulating t
 The visibility `V` of the fringes is influenced by:
 
 - the maximum contrast of the light source,
-- the modulation transfer function of the optical elements (e.g. the scattering characteristics of the test object),
+- the modulation transfer function of the optical elements,
 - the depth of field and defocus,
 - the resolution of the camera
   (the camera pixel size projected onto the light source acts as a low pass filter,

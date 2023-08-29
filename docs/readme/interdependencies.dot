@@ -8,7 +8,7 @@ digraph G {
     {rank=same; h -> C -> T -> D -> K -> reverse[style=invis][group=2]}
     {rank=same; size -> shape -> P -> N -> l -> v -> f -> o[style=invis][group=3]}
     {rank=same; X -> axis -> Y -> UMR -> static[style=invis][group=4]}
-    {rank=same; dtype -> M -> alpha -> L -> eta -> PU[style=invis][group=5]}
+    {rank=same; dtype -> M -> alpha -> L -> eta -> uwr[style=invis][group=5]}
     //{rank=same; dtype -> M -> angle[style=invis][group=6]}
     {rank=same; nbytes -> Imax -> q -> u -> DR[style=invis][group=7]}
     {rank=same; A -> B -> QN -> DN -> PN[style=invis][group=8]}
@@ -44,7 +44,7 @@ digraph G {
     D -> {FDM SDM grid L B}
     D -> {N l v f}[dir=both][color=blue]
     K -> {N l v f}[dir=both][color=red]
-    K -> {FDM B PU}
+    K -> {FDM B uwr}
     K -> FTM [weight=5]
     reverse -> f [style=dashed]
 
@@ -52,7 +52,7 @@ digraph G {
     l -> UMR [weight=13]
     l:e -> v [dir=both]
     v:e -> f
-    v -> {UMR PU}
+    v -> {UMR uwr}
     f -> N:s
 
     P -> X [dir=both]
@@ -70,7 +70,7 @@ digraph G {
     angle -> L
     L:e -> eta
     L -> l
-    eta:e -> PU
+    eta:e -> uwr
 
     u -> DR:sw [constraint=false]
 
@@ -115,5 +115,5 @@ digraph G {
     TDM[shape=box][fillcolor=white]
     //L[shape=box]
     DR[shape=box][fillcolor=white]
-    PU[shape=box][fillcolor=white]
+    uwr[shape=box][fillcolor=white]
 }
