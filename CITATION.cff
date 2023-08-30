@@ -1,0 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Fringes
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Christian
+    family-names: Kludt
+    orcid: 'https://orcid.org/0000-0003-1190-8973'
+repository-code: 'https://github.com/comimag/fringes'
+repository: 'https://pypi.org/project/fringes/'
+abstract: >-
+  Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns.
+keywords:
+  - phase shifting
+  - phase unwrapping
+  - fringe analysis
+  - fringe projection
+  - deflectometry
+  - computational imaging
+license: CC-BY-NC-SA-4.0
+commit: 0.2.1
+version: 0.2.1
+date-released: '2023-08-30'

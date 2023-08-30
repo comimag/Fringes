@@ -85,7 +85,8 @@ class Fringes:
         B: float = 255 / 2,  # i.e. Imax / 2 @ uint8; inferred from Imax and beta and V
         beta: float = 0.5,
         V: float = 1.0,  # V is inferred from A and B
-        Vmin: float = 1,
+        Vmin: float = 0.0,
+        umax: float = 0.5,
         alpha: float = 1.0,
         dtype: str | np.dtype = "uint8",
         grid: str = "image",
@@ -99,7 +100,6 @@ class Fringes:
         reverse: bool = False,
         verbose: bool = False,
         mode: str = "fast",
-        umax: float = 0.0,
         Bv: tuple | np.ndarray = None,
         magnification: float = 1,
         PSF: float = 0.0,
@@ -435,22 +435,9 @@ class Fringes:
             Fringe orders of the encoded fringe pattern sequence.
         """
 
-        if self.mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
-            w = (
-                self._N * self._v**2
-            )  # weights of phase measurements are their inverse variances (must be multiplied with m later on)
-            idx = [
-                np.argmax(w[d] * (self._N[d] > 2) * (self._v[d] > 0)) for d in range(f.D)
-            ]  # the set with most precise phases
-        # elif mode == "robust":  # todo: "exhaustive"?
-        #     NotImplemented  # todo: try neighboring fringe orders / all permutations = exhaustive search?
-        else:  # fast (fallback)
-            w = np.ones((self.D, self.K), dtype=np.int_)
-            idx = [
-                np.argmax(1 / self._v[d] * (self._N[d] > 2) * (self._v[d] > 0)) for d in range(self.D)
-            ]  # the set with the least number of periods
+        k = self.coordinates()[:, None, :, :, :] // self._l[:, :, None, None, None]
 
-        k = self.coordinates() // np.array([self.L / self._v[d, idx[d]] for d in range(self.D)])[:, None, None, None]
+        return k.reshape(self.D * self.K, self.Y, self.X, self.C)
 
     def _modulate(self, frames: int | tuple = None, rint: bool = True) -> np.ndarray:
         """Encode base fringe patterns by spatio-temporal modulation.
@@ -3735,10 +3722,10 @@ class Fringes:
     #             __doc__ += f"    {__k}: {__v.__doc__}\n"
 
     # docstring for __init__
-    __init__.__doc__ = "Parameter:\n"
+    __init__.__doc__ = "Parameters:\n"
     for __k, __v in sorted(vars().items()):
         if __k in defaults:
             if isinstance(__v, property) and __v.__doc__ is not None:
-                __init__.__doc__ += f"    {__k} ({__init__.__annotations__[__k]}): {__v.__doc__}\n"
+                __init__.__doc__ += f"    {__k} ({__init__.__annotations__[__k]}) : {__v.__doc__}\n"
 
     del __k, __v

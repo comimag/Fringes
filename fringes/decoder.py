@@ -91,7 +91,8 @@ def decode(
     ]  # EN1 plus one, since we compare all shifts with N == 1 to one with N >= 3
     EN3 = [np.sum(Nd[Nd >= 3]) for Nd in N]  # number of sets where N >= 3
 
-    u = ui / np.sqrt(2) / np.pi / N * v
+    if umax > 0 or verbose:
+        u = ui / np.sqrt(2) / np.pi / N * v
 
     w = N * v**2  # weights of phase measurements are their inverse variances (must be multiplied with B later on)
     # choose that v from which the other fringe orders of the remaining sets are derived
@@ -173,9 +174,21 @@ def decode(
 
                     bri[d, y, x, c] = A
                     mod[d, :, y, x, c] = B
+
+                    if umax > 0 or verbose:
+                        ux = np.sqrt(1 / np.sum(1 / (u[d] / B) ** 2))  # inverse variance weighting
+
                     if verbose:
                         phi[d, :, y, x, c] = p
-                        unc[d, y, x, c] = np.sqrt(1 / np.sum(1 / (u[d] / B) ** 2))  # global positional uncertainty (by inverse variance weighting) in pixel units
+                        unc[d, y, x, c] = ux  # global positional uncertainty in pixel units
+
+                    if Vmin > 0 and np.any(B / A < Vmin) or ux > umax:
+                        reg[d, y, x, c] = np.nan
+                        if verbose:
+                            res[d, y, x, c] = np.nan
+                            fid[d, :, y, x, c] = np.nan
+
+                        continue
 
                     # spatial demodulation i.e. unwrapping
                     if K == 1:
@@ -185,23 +198,23 @@ def decode(
                                 reg[d, y, x, c] = 0
                                 if verbose:
                                     res[d, y, x, c] = 0
-                                    fid[d, 0, y, x, c] = 0
+                                    fid[d, :, y, x, c] = 0
                             else:
                                 reg[d, y, x, c] = np.nan  # no spatial modulation, therefore we can't compute value
                                 if verbose:
                                     res[d, y, x, c] = np.nan
-                                    fid[d, 0, y, x, c] = np.nan
+                                    fid[d, :, y, x, c] = np.nan
                         elif v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
                             pn = (p[0] + o) / PI2 % 1  # revert offset and change codomain from [-PI, PI] to [0, 1)
                             reg[d, y, x, c] = pn * l[d, 0]
                             if verbose:
                                 res[d, y, x, c] = 0
-                                fid[d, 0, y, x, c] = 0
+                                fid[d, :, y, x, c] = 0
                         else:  # spatial phase unwrapping (to be done in a later step)
                             reg[d, y, x, c] = p[0]
                             if verbose:
                                 # residuals are to be received from SPU (spatial phase unwrapping)
-                                fid[d, 0, y, x, c] = np.nan  # unknown
+                                fid[d, :, y, x, c] = np.nan  # unknown
                     else:
                         wi = w[d] * B
                         wi /= np.sum(wi)

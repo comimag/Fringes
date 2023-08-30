@@ -18,15 +18,17 @@ def test_version():
 
 def test_property_docs():
     f = Fringes()
+
     for p in dir(f):
         if isinstance(getattr(type(f), p, None), property) and getattr(type(f), p, None).fset is not None:
             assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring defined."
 
 
-# def test_init_doc():
-#     f = Fringes()
-#     assert f.__init__.__doc__.count("\n") == len(f.defaults),\
-#         "Not all init parameters have an associated property with a defined docstring."
+def test_init_doc():  # todo
+    f = Fringes()
+
+    assert f.__init__.__doc__.count(" : ") == len(f.defaults),\
+        "Not all init parameters have an associated property with a defined docstring."
 
 
 def test_init():
@@ -88,15 +90,13 @@ def test_save_load():
 def test_coordinates():
     f = Fringes()
     uv = f.coordinates()
-    assert np.array_equal(uv, np.indices((f.Y, f.X))[::-1, :, :, None]), "XY-coordinates are wrong."
+    assert np.array_equal(f.coordinates(), np.indices((f.Y, f.X))[::-1, :, :, None]), "XY-coordinates are wrong."
 
     f = Fringes(Y=1)
-    uv = f.coordinates()
-    assert np.array_equal(uv[0], np.arange(f.X)[None, :, None]), "X-coordinates are wrong."
+    assert np.array_equal(f.coordinates()[0], np.arange(f.X)[None, :, None]), "X-coordinates are wrong."
 
     f = Fringes(X=1)
-    uv = f.coordinates()
-    assert np.array_equal(uv[0], np.arange(f.Y)[:, None, None]), "Y-coordinates are wrong."
+    assert np.array_equal(f.coordinates()[0], np.arange(f.Y)[:, None, None]), "Y-coordinates are wrong."
 
 
 def test_encoding():
@@ -107,12 +107,10 @@ def test_encoding():
     assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
 
     dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
-def test_encoding_one_direction():
+def test_encoding_unidirectional():
     f = Fringes(Y=100)
     f.axis = 0
     f.D = 1
@@ -122,9 +120,7 @@ def test_encoding_one_direction():
     assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
 
     dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
     f = Fringes(X=100, Y=1920)
     f.axis = 1
@@ -135,9 +131,41 @@ def test_encoding_one_direction():
     assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
 
     dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+
+def test_encoding_getitem():
+    f = Fringes(Y=100)
+
+    I = f[0]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+
+    I = f[-1]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+
+    I = f[range(f.T)]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+    dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+    I = f[np.arange(f.T)]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+    dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+    I = f[:2]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+
+    I = f[::]
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
+    dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_encoding_call():
@@ -148,9 +176,7 @@ def test_encoding_call():
     assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
 
     dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_encoding_iter():
@@ -166,9 +192,7 @@ def test_encoding_iter():
     assert I.ndim == 4, "Fringe pattern sequence isn't 4-dimensional."
 
     dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_encoding_frames(fringes=Fringes(Y=100)):
@@ -177,60 +201,85 @@ def test_encoding_frames(fringes=Fringes(Y=100)):
     I = np.array([f.encode(t)[0] for t in range(f.T)])
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.ndim == 4, "Fringe pattern sequence isn't 4-dimensional."
-
     dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    I = f.encode(tuple(range(f.T)))
+    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
+    assert I.ndim == 4, "Fringe pattern sequence isn't 4-dimensional."
+    dec = f.decode(I)
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
-def test_decoding(rm: bool = False):  # todo: rm = True i.e. test decoding time
+# def test_decoding_numba():
+#     f = Fringes(Y=100)
+#     f.verbose = True
+#
+#     I = f.encode()
+#     # test numba compile time
+#     flist = glob.glob(os.path.join(os.path.dirname(__file__), "..", "fringes", "__pycache__", "decoder*decode*.nbc"))
+#     for file in flist:
+#         os.remove(file)
+#
+#     t0 = time.perf_counter()
+#     dec = f.decode(I)
+#     t1 = time.perf_counter()
+#     assert t1 - t0 < 10 * 60, f"Numba compilation took longer than 10 minutes: {(t1 - t0) / 60} minutes."
+
+
+def test_decoding():
     f = Fringes(Y=100)
-    f.verbose = True
 
-    I = f.encode()
-
-    # test numba compile time
-    if rm:
-        flist = glob.glob(os.path.join(os.path.dirname(__file__), "..", "fringes", "__pycache__", "decoder*decode*.nbc"))
-        for file in flist:
-            os.remove(file)
-        t0 = time.perf_counter()
-        dec = f.decode(I)
-        t1 = time.perf_counter()
-        assert t1 - t0 < 10 * 60, f"Numba compilation takes longer than 10 minutes: {(t1 - t0) / 60} minutes."
-
-    dec = f.decode(I)
-
+    dec = f.decode(f.encode())
     # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert len(dec) == 3, f"Decode retuned {len(dec)} instead of 3 values."
+    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
+    assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 1."
+    assert np.allclose(dec.modulation, f.B, atol=1), "Modulation is off more than 1."  # todo: more precise?
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+
+def test_decoding_verbose():
+    f = Fringes(Y=100)
+
+    dec = f.decode(f.encode(), verbose=True)
+    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
 
-    # assert np.max(dec.residuals) < 1, "Residuals are larger than 1."  # todo
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
-
-    if f.mode == "precise":  # todo: decide for each pixel individually i.e. multiply with B later on
-        w = f._N * f._v ** 2  # weights of phase measurements are their inverse variances (must be multiplied with m later on)
-        idx = [np.argmax(w[d] * (f._N[d] > 2) * (f._v[d] > 0)) for d in range(f.D)]  # the set with most precise phases
-    # elif mode == "robust":  # todo: "exhaustive"?
-    #     NotImplemented  # todo: try neighboring fringe orders / all permutations = exhaustive search?
-    else:  # fast (fallback)
-        w = np.ones((f.D, f.K), dtype=np.int_)
-        idx = [np.argmax(1 / f._v[d] * (f._N[d] > 2) * (f._v[d] > 0)) for d in range(f.D)]  # the set with the least number of periods
-    fid = f.coordinates() // np.array([f.L / f._v[d, idx[d]] for d in range(f.D)])[:, None, None, None]
-    #assert np.allclose(dec.orders[[d * f.K + idx[d] for d in range(f.D)]], fid, atol=0), "Errors in fringe orders."
+    f.verbose = True
+    dec = f.decode(f.encode())
+    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
+    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
+    assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 0.1."
+    assert np.allclose(dec.modulation, f.B, atol=1), "Modulation is off more than 1."  # todo: more precise?
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.phase, 0, atol=np.pi), "Phase values are not within [-PI, +PI]."
+    assert np.allclose(dec.orders, f._orders(), atol=0), "Fringe orders are off."
+    # assert np.allclose(dec.residuals, 0, atol=0.5), "Residuals are larger than 0.5."  # todo
+    assert np.allclose(dec.uncertainty, 0, atol=0.5), "Uncertainty is larger than 0.5."
+    assert np.allclose(dec.visibility, 1, atol=0.1), "Visibility is off more than 0.1."
+    assert np.allclose(dec.exposure, 0.5, atol=0.1), "Visibility is off more than 0.1."
 
 
 def test_decoding_despike():
     f = Fringes(Y=100)
     I = f.encode()
-    I[:, 10, 5, :] = I[:, -5, -10, :]
+    I[:, 10, 5, :] += 128  #  = I[:, -5, -10, :]
 
     dec = f.decode(I, despike=True)
-    d = dec.registration - f.coordinates()
-    print(d.max())
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+
+# todo
+# def test_decoding_denoise():
+#     f = Fringes(Y=100)
+#     I = f.encode()
+#     I[:, 10, 5, :]
+#
+#     dec = f.decode(I, denoise=True)
+#     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_deinterlacing():
@@ -238,23 +287,19 @@ def test_deinterlacing():
 
     I = f.encode()
     I = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace
+
     I = f.deinterlace(I)
     dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_alpha():
     f = Fringes(Y=100)
     f.alpha = 1.1
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.2), "Registration is off more than 0.2."  # todo: 0.1
-    assert all([dec.registration[d].max() <= f.R[d] for d in range(f.D)]), "Registration values are larger than R."
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."  # todo: 0.1
+    assert np.all(dec.registration < f.R[:, None, None, None]), "Registration values are larger than screen size."
 
 
 def test_dtypes():
@@ -291,9 +336,7 @@ def test_modes():
         f.mode = mode
 
         dec = f.decode(I)
-
-        d = dec.registration - f.coordinates()
-        assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+        assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 # def test_scaling():
@@ -315,26 +358,28 @@ def test_unwrapping():
     f.K = 1
     f.v = 13
 
-    I = f.encode()
-    dec = f.decode(I)
-
+    dec = f.decode(f.encode())
     for d in range(f.D):
         grad = np.gradient(dec.registration[d, :, :, 0], axis=1 - d)
-        assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 0.1."
+        assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
 
 
 def test_unwrapping_class_method():
-    f = Fringes(Y=100)
+    f = Fringes()
     f.K = 1
     f.v = 13
 
-    I = f.encode()
-    dec = f.decode(I, verbose=True)
-    x = Fringes.unwrap(dec.phase)
-
+    dec = f.decode(f.encode())
+    Phi = Fringes.unwrap(dec.registration)  # todo: verbose -> reliability
     for d in range(f.D):
-        grad = np.gradient(x[d, :, :, 0], axis=1 - d)
-        assert np.allclose(grad, 0, atol=0.1), "Gradient of unwrapped phase map isn't close to 0.1."
+        grad = np.gradient(Phi[d, :, :, 0], axis=1 - d)
+        assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
+
+    # todo: cv2
+    # Phi = Fringes.unwrap(dec.registration, func="cv2")  # todo: verbose -> reliability
+    # for d in range(f.D):
+    #     grad = np.gradient(Phi[d, :, :, 0], axis=1 - d)
+    #     assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
 
 
 def test_remapping():
@@ -342,57 +387,44 @@ def test_remapping():
     f.Y /= 2
     f.verbose = True
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    source = f.remap(dec.registration)
-    assert np.all(source == 1), "Source doesn't contain only ones."
-
-    source = f.remap(dec.registration, dec.modulation)
-    assert np.allclose(source, 1, atol=0.1), "Source doesn't contain only values close to one."
+    dec = f.decode(f.encode())
+    assert np.allclose(f.remap(dec.registration), 1, atol=0), "Source doesn't contain only ones."
+    assert np.allclose(f.remap(dec.registration, dec.modulation), 1, atol=0.1), "Source doesn't contain only values close to one."
 
 
-def test_curvature_height():
+def test_curvature():
     f = Fringes(Y=100)
 
-    I = f.encode()
-    dec = f.decode(I)
+    dec = f.decode(f.encode())
+    assert np.allclose(curvature(dec.registration)[1:, 1:], 0, atol=0.1), "Curvature if off more than 0.1."
 
-    c = curvature(dec.registration)
-    assert np.allclose(c[1:, 1:], 0, atol=0.1), "Curvature if off more than 0.1."  # todo: boarder
 
-    h = height(c)
-    assert np.allclose(h[:, 1:], 0, atol=0.1), "Height if off more than 0.1."  # todo: boarder
+def test_height():
+    f = Fringes(Y=100)
+
+    dec = f.decode(f.encode())
+    assert np.allclose(height(curvature(dec.registration)), 0, atol=0.1), "Height if off more than 0.1."
 
 
 def test_hues():
     f = Fringes(Y=100)
     f.h = "rggb"
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
     f.H = 3  # todo: 2 and take care of M not being a scalar
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_averaging():
     f = Fringes(Y=100)
     f.M = 2
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 def test_WDM():
@@ -400,11 +432,8 @@ def test_WDM():
     f.N = 3
     f.WDM = True
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration - f.coordinates()
-    assert np.allclose(d, 0, atol=0.1), "Registration is off more than 0.1."
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
 # def test_SDM():
@@ -443,19 +472,14 @@ def test_FDM():
     f = Fringes(Y=100)
     f.FDM = True
 
-    I = f.encode()
-    dec = f.decode(I)
-
-    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
-    assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, :], atol=0.1), "Registration is off more than 0.5."  # todo: boarder
 
     f.static = True
     f.N = 1
-    I = f.encode()
-    dec = f.decode(I)
 
-    d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
-    assert np.allclose(d, 0, atol=0.2), "Registration is off more than 0.2."  # todo: 0.1
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, :], atol=0.1), "Registration is off more than 0.5."  # todo: boarder
 
 
 def test_simulation():
@@ -475,8 +499,8 @@ def test_simulation():
     I = f.encode()
     In = f._simulate(I)
     dec = f.decode(In)
-    # d = dec.registration[:, 1:, 1:, :] - f.coordinates()[:, 1:, 1:, :]  # todo: boarder
-    dabs = np.abs(dec.registration - f.coordinates())
+    d = dec.registration - f.coordinates()
+    dabs = np.abs(d)
     dmed = np.nanmedian(dabs)
     davg = np.nanmean(dabs)
     dmax = np.nanmax(dabs)
