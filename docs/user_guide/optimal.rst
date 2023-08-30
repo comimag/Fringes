@@ -9,7 +9,8 @@ sets a practical upper limit to the feasible number of shifts.
 
 Generally, shorter wavelengths ``l`` (or equivalently more periods ``v``) reduce the uncertainty ``u``,
 but the resolution of the camera and the display must resolve the fringe pattern spatially.
-Hence, the used hardware imposes a lower bound for the wavelength ``lmin`` (or upper bound for the number of periods ``vmax``).
+Hence, the used hardware imposes a lower bound for the wavelength ``lmin``
+(or upper bound for the number of periods ``vmax``).
 
 Also, small wavelengths might result in a smaller unambiguous measurement range ``UMR``.
 If two or more sets ``K`` are used and their wavelengths ``l`` resp. number of periods ``v`` are relative primes,

@@ -7,7 +7,7 @@ for configuring fringe pattern sequences
 and provides methods for fringe analysis.
 
 Command-line use
----------------
+----------------
 
 You instantiate, parameterize and deploy the `Fringes` class:
 

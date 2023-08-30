@@ -62,6 +62,9 @@ It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `x`.
 ## Graphical User Interface
 Do you need a GUI? `Fringes` has a sister project which is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
 
+## Documentation
+The documentation can be found here: https://fringes.readthedocs.io
+
 ## Troubleshooting
 <!---
 - __`poetry install` does not work__  

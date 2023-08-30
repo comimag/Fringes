@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Fringes"
-version = "0.2.1"
+version = "0.2.2"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 license = "CC BY-NC-S 4.0A"
 authors = ["Christian Kludt"]

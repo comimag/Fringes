@@ -91,7 +91,7 @@ The procedure is analogous in the vertical direction.
            `\xi = \sum_i w_i \xi_i \, / \, \sum_i w_i`.
            To obtain an optimal estimate, use inverse variance weighting,
            i.e. use the inverse variances of the coordinate maps as the weights for averaging:
-           `w_i = 1 / \sigma_\xi^2`, with `\sigma_\xi \propto B_i / \nu_i / \sqrt{N_i}` [4]_.
+           `w_i = 1 / \sigma_{\xi_i}^2`, with `\sigma_{\xi_i} \propto B_i / \nu_i / \sqrt{N_i}` [4]_.
 
            .. `\xi = \sum_{i=1}^K \xi_i w_i \enspace / \enspace \sum_{i=1}^K w_i`.
 
