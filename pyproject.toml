@@ -6,6 +6,7 @@ license = "CC BY-NC-S 4.0A"
 authors = ["Christian Kludt"]
 readme = "README.md"
 repository = "https://github.com/comimag/fringes"
+documentation = "https://fringes.readthedocs.io"
 keywords = ["phase shifting", "phase unwarpping", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
 
 [tool.poetry.dependencies]
