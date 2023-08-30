@@ -24,9 +24,9 @@ To get access to the very latest features and bugfixes you have three choices:
 
 2. Directly install from GitHub repo with ``pip``::
 
-    pip install git+git://github.com/comimag/fringes.git@master
+    pip install git+git://github.com/comimag/fringes.git@main
 
-   You can change ``master`` of the above command to the branch name or the
+   You can change ``main`` of the above command to the branch name or the
    commit you prefer.
 
 3. You can simply place the `fringes` folder someplace importable, such as
