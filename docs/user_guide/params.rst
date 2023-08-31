@@ -124,9 +124,9 @@ Coloring and Averaging
 
 The fringe patterns can be colorized by setting the hue ``h`` to any RGB color triple within the interval [0, 255].
 However, black (0, 0, 0) is not allowed.
-``h`` must be in shape (``H``, 3)`:
+``h`` must be in shape (``H``, 3):
 
-``H`` is the number of hues and can be set directly; 3 is the length of the RGB color tuple.
+``H`` is the number of hues and can be set directly; 3 is the length of the RGB color triple.
 
 The hues ``h`` can also be set by assigning any combination of the following characters as a string:
 
@@ -189,12 +189,14 @@ See [spatial demodulation](#spatial-demodulation--phase-unwrapping--pu-) for mor
 ``mode`` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
 Choose either ``'fast'`` (the default) or ``'precise'``.
 
-..
-    ``umin`` denotes the minimal unvertainty required for the measurement to be valid
-    and is in the interval `[0, 1]`. During decoding, pixels with less are discarded, which can speed up the computation.
+``Vmin`` dnotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
+During decoding, pixels with less are discarded, which can speed up the computation.
 
-``verbose`` can be set to ``True`` to also receive
-the wrapped phase maps `\varphi_i`, the fringe orders `k` and the residuals `R` from decoding.
+``umax`` denotes the maximal unvertainty required for the measurement to be valid and is in the interval [0, 1].
+During decoding, pixels with less are discarded, which can speed up the computation.
+
+``verbose`` can be set to ``True`` to also receive from decoding
+the wrapped phase maps `\varphi_i`, the fringe orders `k`, the residuals `r` and the uncertainty `u`.
 
 ``FTM`` denotes Fourier Transform Method and is deployed if ``T`` = 1
 and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.

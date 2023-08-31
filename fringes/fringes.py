@@ -816,7 +816,7 @@ class Fringes:
             #                         upi = (
             #                             np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR
             #                         )  # local phase uncertainties
-            #                         upin = upi / (2 * np.pi)  # normalized local phase uncertainty
+            #                         upin = upi / (2 * np.pi)  # normalized local phase uncertainties
             #                         uxi = upin * self._l  # local positional uncertainties
             #                         ux = np.sqrt(1 / np.sum(1 / uxi**2))
             #                         mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
@@ -1214,7 +1214,7 @@ class Fringes:
             and intensity noise added by the camera.
             The required parameters for this are the instance's attributes
             'magnification', 'PSF', 'system_gain', 'dark_current' and 'dark_noise'.
-            Default. False.
+            Default is False.
 
         Returns
         -------
@@ -1384,7 +1384,7 @@ class Fringes:
 
         >>> A, B, x = f.decode(I)
 
-        >>> A, B, x, p, k, e, u, V, H = f.decode(I, verbose=True)
+        >>> A, B, x, p, k, r, u, V, H = f.decode(I, verbose=True)
         """
 
         t0 = time.perf_counter()
@@ -1517,7 +1517,7 @@ class Fringes:
         return dec
 
     def _unwrap(
-        self, phi: np.ndarray, mask: np.ndarray = None, func: str = "ski"
+        self, phi: np.ndarray, B: np.ndarray, func: str = "ski"
     ) -> namedtuple:  # todo: use B for quality guidance
         """Unwrap phase maps spacially.
 
@@ -1529,8 +1529,9 @@ class Fringes:
             The frames (along first dimension) as well the color channels (along last dimension)
             are unwrapped separately.
 
-        mask : np.ndarray, optional
-            Mask image with dtype 'np.uint8' used when some pixels do not hold any phase information.
+        B : np.ndarray, optional
+            Modulation of the decoded phase.
+            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
 
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
@@ -1581,15 +1582,12 @@ class Fringes:
                 else:
                     if func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
                         # dtype must be np.float32  # todo: test this
-                        if isinstance(mask, np.ndarray) and vshape(mask).shape == phi.shape:
-                            ui = self.quant
-                            SNR = self.B[d, :, :, c] / ui
+                        if isinstance(B, np.ndarray) and vshape(B).shape == phi.shape:
+                            SNR = self.B[d, :, :, c] / self.ui
                             upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
-                            upin = upi / (2 * np.pi)  # normalized local phase uncertainty
+                            upin = upi / (2 * np.pi)  # normalized local phase uncertainties
                             uxi = upin * self._l  # local positional uncertainties
-                            ux = np.sqrt(
-                                1 / np.sum(1 / uxi**2)
-                            )  # global phase uncertainty (by inverse variance weighting of uxi)
+                            ux = np.sqrt(1 / np.sum(1 / uxi**2))  # global phase uncertainty (by inverse variance weighting of uxi)
                             mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
 
                             reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
@@ -2420,9 +2418,15 @@ class Fringes:
             self.logger.debug(f"{self._axis = }")
 
     @property
-    def M(self) -> float | np.ndarray:
+    def _M(self) -> np.ndarray:
         """Number of averaged intensity samples."""
         M = np.sum(self.h, axis=0) / 255
+        return M
+
+    @property
+    def M(self) -> float | np.ndarray:
+        """Number of averaged intensity samples."""
+        M = self._M
         if len(set(M)) == 1:
             M = M[0]
         else:
@@ -3618,7 +3622,7 @@ class Fringes:
         It is based on the phase noise model from [Surrel 1997]
         and propagated through the unwrapping process and the phase fusion."""
 
-        upni = self.upi / (2 * np.pi)  # normalized local phase uncertainty
+        upni = self.upi / (2 * np.pi)  # normalized local phase uncertainties
         uxi = upni * self._l  # local positional uncertainties
         ux = np.sqrt(1 / np.sum(1 / uxi**2, axis=1))  # global positional uncertainty (by inverse variance weighting)
         # todo: factor out L ?!

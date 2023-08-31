@@ -77,7 +77,7 @@ The documentation can be found here: https://fringes.readthedocs.io
 
 - __Decoding takes a long time__  
   This is most likely due to the just-in-time compiler [Numba](https://numba.pydata.org/), 
-  which is used for this computationally expensive :
+  which is used for this computationally expensive function:
   During the first execution, an initial compilation is executed. 
   This can take several tens of seconds up to single digit minutes, depending on your CPU.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster, 

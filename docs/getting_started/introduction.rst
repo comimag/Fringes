@@ -125,7 +125,7 @@ The procedure is analogous in the vertical direction.
           (note that `\nu_r` denotes the spatial frequency in the recorded camera frame,
           therefore `\nu` and `\nu_r` are related by the imaging of the optical system but not identical):
           `\varPhi_r = \varPhi_c + \varPhi_s = 2 \pi \nu_r + \varPhi_s`.
-          If the offset `A`, the amplitude `B` anf the signal phase `\varPhi_s` vary slowly
+          If the offset `A`, the amplitude `B` and the signal phase `\varPhi_s` vary slowly
           compared with the variation introduced by the spatial-carrier frequency `\nu_r`,
           i.e. the surface is rather smooth and has no sharp edges,
           and the spatial carrier frequency is high enough, i.e. `\nu_r >> 1`,
@@ -154,8 +154,8 @@ The procedure is analogous in the vertical direction.
               From [7]_.
 
 In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
-are replaced by the maximal possible gray value `I_{max}`
-and the relative quantities exposure (relative average intensity) `\beta` and visibilty (relative fringe contrast) `V` [9]_:
+are replaced by the maximal possible gray value `I_{max}`,
+the relative quantities exposure (relative average intensity) `\beta` and visibilty (relative fringe contrast) `V` [9]_:
 
 `I = A + B \cos(\varPhi) = I_{max} \beta (1 + V \cos(\varPhi)`
 

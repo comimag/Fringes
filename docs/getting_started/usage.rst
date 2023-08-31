@@ -99,41 +99,41 @@ Attributes
 """"""""""
 
 In the top left corner the attribute widget is located.
-It contains the parameter tree with which all the properties of the `Fringes` class.
+It contains the parameter tree which contains all the attributes of the `Fringes` class.
 If you select a parameter and hover over it, a tool tip will appear,
-containing the docstring of the respective property of the `Fringes` class.
+containing the docstring of the respective attribute of the `Fringes` class.
 
-The visibility does not affect the functionality of the features
-but is used by the GUI to decide which features to display based on the current user level.
+The visibility does not affect the functionality of the parameters
+but is used by the GUI to decide which parameters to display based on the current visibility level.
 The purpose is mainly to ensure that the GUI is not cluttered with information that is not
 intended at the current visibility level. The following criteria have been used
 for the assignment of the recommended visibility level:
 
 - ``Beginner`` (default):
 
-  Features that should be visible in all levels via the GUI.
-  The number of features with ``Beginner`` level should be limited to all basic features
+  Parameters that should be visible in all levels via the GUI.
+  The number of parameters with ``Beginner`` level should be limited to all basic parameters
   so the GUI display is well-organized and easy to use.
 
 - ``Expert``:
 
-  Features that require a more in-depth knowledge of the system functionality.
-  This is the preferred visibility level for all advanced features.
+  Parameters that require a more in-depth knowledge of the system functionality.
+  This is the preferred visibility level for all advanced parameters.
 
 - ``Guru``:
 
-  Advanced features that usually only people with a sound background in phase shifting can make good use of.
+  Advanced parameters that usually only people with a sound background in phase shifting can make good use of.
 
 - ``Experimental``:
 
   New features that have not been tested yet.
   The system might crash at some point.
 
-Upon every parameter change, the complete parameter set of the `Fringes` instance is saved
+Upon every parameter change, all parameters of the `Fringes` instance are saved
 to the file `.fringes.yaml` in the user home directory.
-When the GUI starts again, the previous parameter set is loaded.
+When the GUI starts again, the previous parameters are loaded.
 To avoid this, just delete the config file
-or press the ``reset`` button in the `Methods`_ widget to restore the default parameter set.
+or press the ``reset`` button in the `Methods`_ widget to restore the default parameters.
 
 Methods
 """""""
@@ -166,8 +166,8 @@ the first element of its videoshape has to match the parameter ``Frames`` in ord
 
 To display any datum listed in the table in the `Viewer`_, simly select the name of it in the table.
 
-Klick the ``Load`` button to choose data or a parameter set to load.
-With the ``Save`` button, all data including the parameter set are saved to the selected directory.
+Klick the ``Load`` button to choose data or config file to load.
+With the ``Save`` button, all data including the parameters are saved to the selected directory.
 Use the ``Clear all`` button to delete all data.
 
 Please note: By default, the datum ``fringes`` is decoded.

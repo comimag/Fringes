@@ -509,8 +509,6 @@ def test_simulation():
 
 
 if __name__ == "__main__":
-    # todo: test verbose output
-
     # f = Fringes()
     # f.l = "1, 2, 3"
 

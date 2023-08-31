@@ -1,7 +1,7 @@
 Optimal Coding Strategy
 =======================
 
-As makes sense intuitively, more sets ``K`` as well as more shifts vN`` per set reduce the uncertainty ``u`` after decoding.
+As makes sense intuitively, more sets ``K`` as well as more shifts ``N`` per set reduce the uncertainty ``u`` after decoding.
 A minimum of 3 shifts is needed to solve for the 3 unknowns brightness ``A``, modulation ``B`` and coordinates ``x``.
 Any additional 2 shifts compensate for one harmonic of the recorded fringe pattern.
 Therefore, higher accuracy can be achieved using more shifts ``N``, but the time required to capture them
@@ -37,9 +37,9 @@ To simplify finding and setting the optimal parameters, one can choose from the 
 - Instead of the options above, one can simply use the function ``optimize()``
   to automatically set the optimal ``v``, ``l``, ``T`` and multiplexing methods.
 
-However, those methods only perform optimally
+However, these methods only perform optimally
 if the recorded modulation ``B`` is known (or can be estimated)
-for each certain spatial frequencies ``v``.
+for certain spatial frequencies ``v``.
 
 a) Measure the **modulation transfer function (MTF)** at a given number of sample points:
 
@@ -55,5 +55,5 @@ a) Measure the **modulation transfer function (MTF)** at a given number of sampl
 b) Estimate the **magnification** and the **Point Spread Function (PSF)** of the imaging system:
 
    1. Set the attributes ``magnification`` and ``PSF``.
-   2. Finlly, to get the modulation ``B`` at certain spatial frequencies ``v``, simply call ``MTF(v)``.
+   2. Finally, to get the modulation ``B`` at certain spatial frequencies ``v``, simply call ``MTF(v)``.
       Now, this method computes the modulation from the specified attributes ``magnifiction`` and ``PSF`` directly.
