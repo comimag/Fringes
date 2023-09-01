@@ -740,7 +740,7 @@ class Fringes:
                         # todo: I - J
         else:
             if self.mode == "fast":
-                SQNR = self.B / self.quant
+                SQNR = self.B / self.ui
                 r = min(self.u.max(), 1.0)  # todo: 0.5 or self.u
                 # todo: r[d] for d in range(self.D)
             else:
@@ -888,7 +888,7 @@ class Fringes:
                 self.mode,
                 self.Vmin,
                 self.umax,
-                self.ui,
+                self.ui,  # todo: / np.sqrt(self._M[None, None, :]),
                 self.verbose or verbose,
             )
 
@@ -1624,7 +1624,7 @@ class Fringes:
     @staticmethod
     def unwrap(
         phi: np.ndarray, mask: np.ndarray = None, func: str = "ski"
-    ) -> np.array:  # todo: use B for quality guidance
+    ) -> np.array:
         """Unwrap phase maps spacially.
 
         Parameters
@@ -1668,6 +1668,7 @@ class Fringes:
                 if func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
                     # dtype must be np.float32  # todo: test this
                     if isinstance(mask, np.ndarray) and vshape(mask).shape == phi.shape:
+                        mask = vshape(mask)
                         mask = np.astype(mask[t, :, :, c], copy=False)
                         uwr[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(phi[t, :, :, c], mask)
                     else:
@@ -2042,7 +2043,6 @@ class Fringes:
         dcabs = np.abs(dc)
         dcavg = np.mean(dcabs)
         dcmed = np.median(dcabs)
-        dcmin = np.min(dcabs)
         dcmin = np.min(dcabs)
         dcmax = np.max(dcabs)
 

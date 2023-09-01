@@ -9,8 +9,8 @@ Parameters
 All parameters are parsed when setting, so usually several input formats are accepted, e.g.
 ``bool``, ``int``, ``float``, ``str`` for scalars and additionally ``list``, ``tuple``, ``ndarray`` for arrays.
 
-Note that parameters might have circular dependencies which are resolved automatically,
-hence dependent parameters might change as well.
+Note that some attributes have subdependencies, hence dependent attributes might change as well.
+Circular dependencies are resolved automatically.
 
 .. figure:: interdependencies.svg
     :align: center
@@ -189,7 +189,7 @@ See [spatial demodulation](#spatial-demodulation--phase-unwrapping--pu-) for mor
 ``mode`` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
 Choose either ``'fast'`` (the default) or ``'precise'``.
 
-``Vmin`` dnotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
+``Vmin`` denotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
 During decoding, pixels with less are discarded, which can speed up the computation.
 
 ``umax`` denotes the maximal unvertainty required for the measurement to be valid and is in the interval [0, 1].
@@ -198,7 +198,7 @@ During decoding, pixels with less are discarded, which can speed up the computat
 ``verbose`` can be set to ``True`` to also receive from decoding
 the wrapped phase maps `\varphi_i`, the fringe orders `k`, the residuals `r` and the uncertainty `u`.
 
-``FTM`` denotes Fourier Transform Method and is deployed if ``T`` = 1
+``FTM`` denotes Fourier-transform method and is deployed if ``T`` = 1
 and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.
 
 Quality Metrics
@@ -297,4 +297,5 @@ Again, it remains constant if ``L`` and hence ``l`` is scaled (the scaling facto
         Dissertation,
         ISBN 978-3-933762-24-5,
         BIAS Bremen,
+        2008.
         <https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2>`_

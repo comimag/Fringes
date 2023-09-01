@@ -92,7 +92,7 @@ def decode(
     EN3 = [np.sum(Nd[Nd >= 3]) for Nd in N]  # number of sets where N >= 3
 
     if umax > 0 or verbose:
-        u = ui / np.sqrt(2) / np.pi / N * v
+        u = ui / np.sqrt(2) / np.pi / np.sqrt(N) * l  # todo: M
 
     w = N * v**2  # weights of phase measurements are their inverse variances (must be multiplied with B later on)
     # choose that v from which the other fringe orders of the remaining sets are derived
@@ -176,7 +176,7 @@ def decode(
                     mod[d, :, y, x, c] = B
 
                     if umax > 0 or verbose:
-                        ux = np.sqrt(1 / np.sum(1 / (u[d] / B) ** 2))  # inverse variance weighting
+                        ux = np.sqrt(1 / np.sum(1 / (u[d, c] / B) ** 2))  # inverse variance weighting
 
                     if verbose:
                         phi[d, :, y, x, c] = p

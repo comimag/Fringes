@@ -496,16 +496,14 @@ def test_simulation():
     f.N = 4
     f.l = 9, 10, 11
 
-    I = f.encode()
-    In = f._simulate(I)
-    dec = f.decode(In)
+    dec = f.decode(f.encode(simulate=True))
     d = dec.registration - f.coordinates()
     dabs = np.abs(d)
     dmed = np.nanmedian(dabs)
     davg = np.nanmean(dabs)
     dmax = np.nanmax(dabs)
     assert np.allclose(dmed, 0, atol=0.1), "Median of Registration is off more than 0.1."
-    # assert np.allclose(d, 0, atol=0.5), "Registration is off more than 0.5."  # todo: 0.1?
+    # assert np.allclose(dec.registration, f.coordinates(), atol=0.5), "Registration is off more than 0.5."  # todo: 0.1
 
 
 if __name__ == "__main__":

@@ -8,6 +8,14 @@ You can install `Fringes` directly from `Pypi <https://pypi.org/>`_ with ``pip``
 
     pip install fringes
 
+..
+    ``poetry install`` does not work
+    First, ensure that poetry is installed correctly as descibed on the [Poetry Website](https://python-poetry.org/docs/).\
+    Secondly, ensure the correct python version is installed on your system, as specified in the file `pyproject.toml`\
+    Third, this can be caused by a proxy which `pip` does not handle correctly.
+    Manually setting the proxy in the Windows settings
+    or even adding a system variable `https_proxy = http://YOUR_PROXY:PORT` can resolve this.
+
 From Source
 -----------
 

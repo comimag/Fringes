@@ -43,7 +43,7 @@ for certain spatial frequencies ``v``.
 
 a) Measure the **modulation transfer function (MTF)** at a given number of sample points:
 
-   1. Set ``K`` to the required number of sample ponts (usually > 10 is a good value).
+   1. Set ``K`` to the required number of sample points (usually > 10 is a good value).
    2. Set ``v`` to ``'exponential'``.
       This will create spatial frequencies ``v`` spaced evenly on a log scale (a geometric progression),
       starting from 0 up to ``vmax``.
