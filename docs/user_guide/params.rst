@@ -196,7 +196,7 @@ During decoding, pixels with less are discarded, which can speed up the computat
 During decoding, pixels with less are discarded, which can speed up the computation.
 
 ``verbose`` can be set to ``True`` to also receive from decoding
-the wrapped phase maps `\varphi_i`, the fringe orders `k`, the residuals `r` and the uncertainty `u`.
+the wrapped phase maps `\varphi_i`, the fringe order `k`, the residuals `r` and the uncertainty `u`.
 
 ``FTM`` denotes Fourier-transform method and is deployed if ``T`` = 1
 and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.

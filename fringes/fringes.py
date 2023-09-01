@@ -64,6 +64,18 @@ class Fringes:
         ".asdf": asdf.open,
     }
 
+    _verbose_output = (
+        "brightness",
+        "modulation",
+        "registration",
+        "phase",
+        "order",
+        "residuals",
+        "uncertainty",
+        "exposure",
+        "visibility",
+    )
+
     # default values are defined here; take care to only use immutable types!
     def __init__(
         self,
