@@ -2,7 +2,7 @@
 name = "Fringes"
 version = "0.2.2"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
-license = "CC BY-NC-S 4.0A"
+license = "CC-BY-NC-SA-4.0"
 authors = ["Christian Kludt"]
 readme = "README.md"
 repository = "https://github.com/comimag/fringes"
@@ -33,6 +33,7 @@ pytest = "^7.4.0"
 [tool.poetry.group.docs.dependencies]
 sphinx = "6.2.1"
 sphinx-rtd-theme = "^1.2.2"
+sphinx-design = "^0.5.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

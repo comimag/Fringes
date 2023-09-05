@@ -750,6 +750,138 @@ class Fringes:
                         phi[0, ..., c] = reg[0, ..., c]
                         res[0, ..., c] = np.log(np.abs(I_FFT))  # J
                         # todo: I - J
+        elif func == "classic":
+            # time/frame indices for when decoding shifts of each set
+            Nacc = np.cumsum(self._N.ravel()).reshape(self.D, self.K)
+            N0 = np.array([[0], [Nacc[0, -1]]])[: self.D]
+            ti = np.concatenate((N0, Nacc), axis=1).astype(np.int_)  # indices for traversing t
+
+            dt = np.float32
+            A = np.empty((self.D, Y, X, C), dt)
+            B = np.empty((self.D, self.K, Y, X, C), dt)
+            x = np.empty((self.D, Y, X, C), dt)
+            p = np.empty((self.D, self.K, Y, X, C), dt)
+            if self.verbose or verbose:
+                k = np.empty((self.D, self.K, Y, X, C), dt)
+                r = np.empty((self.D, Y, X, C), dt)
+            for d in range(self.D):
+                A[d] = np.mean(I[ti[d, 0]:ti[d, -1]])
+                for i in range(self.K):
+                    t = np.arange(self._N[d, i]) / self._N[d, i]  # sampling points i.e. normalized time coordinates
+                    # t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen
+                    c = np.exp(1j * 2 * np.pi * self._f[d, i] * t)
+                    z = np.sum(c[:, None, None, None] * I[ti[d, i]: ti[d, i + 1]], axis=0)
+                    B[d] = np.abs(z) / self._N[d, i] * 2
+                    p[d] = np.angle(z)
+
+            if self.verbose or verbose:
+                u = np.sqrt(1 / np.sum(1 / (self.ui / np.pi / np.sqrt(2 * self._M * self._N[:, :, None, None, None]) * self._l[:, :, None, None, None] / B) ** 2, axis=1))
+
+                if self.K == 1:
+                    if self._v[d, 0] == 0:  # no spatial modulation
+                        if self.R[d] == 1:
+                            x[
+                                d
+                            ] = 0  # the only possible value; however this is obsolete as it makes no senso to encode only one single coordinate
+                            if self.verbose or verbose:
+                                r[d] = 0
+                                k[d] = 0
+                        else:
+                            x[d] = np.nan  # no spatial modulation, therefore we can't compute value
+                            if self.verbose or verbose:
+                                r[d] = np.nan
+                                k[d] = np.nan
+                    elif self._v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
+                        x[d] = (
+                            (p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0]
+                        )  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
+                        if self.verbose or verbose:
+                            r[d] = 0  # todo: uncertainty
+                            k[d] = 0
+                    else:  # spatial phase unwrapping
+                        if func in "cv2":  # OpenCV unwrapping
+                            # params = cv2.phase_unwrapping_HistogramPhaseUnwrapping_Params()
+                            params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
+                            params.height = Y
+                            params.width = X
+                            # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)
+                            unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
+
+                        #     if self.K == 1:  # todo: self.K[d] == 1
+                        #         self.logger.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
+                        #     else:
+                        #         self.logger.info(f"Spatial phase unwrapping in 3D{' for each color indepently' if C > 1 else ''}.")
+                        #         func = "ski"  # todo: 3D SPU with OpenCV?
+
+                        for c in range(C):
+                            if (
+                                func in "cv2"
+                            ):  # OpenCV algorithm is usually faster, but can be much slower in noisy images
+                                # dtype of p must be np.float32  # todo: test this
+                                if mask:
+                                    SNR = self.B[d, :, :, c] / self.ui
+                                    upi = (
+                                        np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR
+                                    )  # local phase uncertainties
+                                    upin = upi / (2 * np.pi)  # normalized local phase uncertainties
+                                    uxi = upin * self._l  # local positional uncertainties
+                                    ux = np.sqrt(1 / np.sum(1 / uxi**2))
+                                    mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
+                                    x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
+                                        p[d, 0, :, :, c], mask
+                                    )  # todo: test this
+
+                                    xmin = np.min(x[d, :, :, c])
+                                    if xmin < 0:
+                                        x[d, :, :, c] -= xmin
+                                else:
+                                    x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c])
+
+                                    xmin = np.min(x[d, :, :, c])
+                                    if xmin < 0:
+                                        x[d, :, :, c] -= xmin
+
+                                if self.verbose or verbose:
+                                    r[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: test this
+                                    # todo: res vs. rel
+                            else:  # Scikit-image algorithm is usually slower, but delivers better results on edges
+                                x[d, :, :, c] = ski.restoration.unwrap_phase(p[d, 0, :, :, c])  # todo: res
+
+                        x[d] *= 1 / (2 * np.pi) * self._l[d, 0]
+
+                        if self.verbose or verbose:
+                            k[d, 0] = np.nan  # unknown
+                else:  # K > 1: temporal phase unwrapping
+                    if self.mode == "fast":
+                        w = np.ones(self.K, np.uint8)
+                        i0 = np.argmin(self._v[d])
+                    else:
+                        w = 1 / self._v[d] / np.sqrt(self._N[d])  # todo: M, B
+                        i0 = np.argmin(w, axis=0)
+                    w = w / np.sum(w, axis=0)
+                    vmax = np.ceil(self._v[d, i0] / self.alpha).astype(int)
+
+                    # C = sp.special.comb(n, self.K, exact=True)  # number of unique combinations
+                    # combos = it.combinations(range(lmin, lmax + 1), self.K)
+                    mn = np.inf
+                    pn = (p[d] % (2 * np.pi) + self.o) / (2 * np.pi) % 1  # shape = (K, Y, X, C)
+
+                    for k in range(vmax):
+                        xi0 = (k + pn[i0]) * self._l[d, i0]
+                        s = xi0
+                        ssd = xi0**2
+
+                        for i in it.chain(range(0, i0), range(i0 + 1, 1)):
+                            j = (xi0 / self._d[d, i]).astype(int)
+                            xj = (j + pn[i]) * self._l[d]
+                            s += xj
+                            ssd += xj**2
+
+                        ssd -= s**2 / self.K
+
+                        np.minimum(mn, ssd, out=mn)
+
+                    q = 1
         else:
             if self.mode == "fast":
                 SQNR = self.B / self.ui
@@ -758,135 +890,6 @@ class Fringes:
             else:
                 r = 0.0
             r = 0.0  # todo
-
-            # # time/frame indices for when decoding shifts of each set
-            # Nacc = np.cumsum(self._N.ravel()).reshape(self.D, self.K)
-            # N0 = np.array([[0], [Nacc[0, -1]]])[: self.D]
-            # ti = np.concatenate((N0, Nacc), axis=1).astype(np.int_)  # indices for traversing t
-            #
-            # dt = np.float32
-            # A = np.empty((self.D, Y, X, C), dt)
-            # B = np.empty((self.D, self.K, Y, X, C), dt)
-            # x = np.empty((self.D, Y, X, C), dt)
-            # p = np.empty((self.D, self.K, Y, X, C), dt)
-            # if self.verbose or verbose:
-            #     r = np.empty((self.D, Y, X, C), dt)
-            #     k = np.empty((self.D, self.K, Y, X, C), dt)
-            # for d in range(self.D):
-            #     A[d] = np.mean(I[: np.sum(self._N[d])])
-            #     for i in range(self.K):
-            #         t = np.arange(self._N[d, i]) / self._N[d, i]  # sampling points i.e. normalized time coordinates
-            #         # t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen
-            #         c = np.exp(1j * 2 * np.pi * self._f[d, i] * t)
-            #         z = np.sum(c[:, None, None, None] * I[ti[d, i] : ti[d, i + 1]], axis=0)
-            #         B[d] = np.abs(z) / self._N[d, i] * 2
-            #         p[d] = np.angle(z)
-            #
-            #     if self.K == 1:
-            #         if self._v[d, 0] == 0:  # no spatial modulation
-            #             if self.R[d] == 1:
-            #                 x[
-            #                     d
-            #                 ] = 0  # the only possible value; however this is obsolete as it makes no senso to encode only one single coordinate
-            #                 if self.verbose or verbose:
-            #                     r[d] = 0
-            #                     k[d] = 0
-            #             else:
-            #                 x[d] = np.nan  # no spatial modulation, therefore we can't compute value
-            #                 if self.verbose or verbose:
-            #                     r[d] = np.nan
-            #                     k[d] = np.nan
-            #         elif self._v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
-            #             x[d] = (
-            #                 (p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0]
-            #             )  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
-            #             if self.verbose or verbose:
-            #                 r[d] = 0  # todo: uncertainty
-            #                 k[d] = 0
-            #         else:  # spatial phase unwrapping
-            #             if func in "cv2":  # OpenCV unwrapping
-            #                 # params = cv2.phase_unwrapping_HistogramPhaseUnwrapping_Params()
-            #                 params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
-            #                 params.height = Y
-            #                 params.width = X
-            #                 # unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping_create(params)
-            #                 unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
-            #
-            #             #     if self.K == 1:  # todo: self.K[d] == 1
-            #             #         self.logger.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
-            #             #     else:
-            #             #         self.logger.info(f"Spatial phase unwrapping in 3D{' for each color indepently' if C > 1 else ''}.")
-            #             #         func = "ski"  # todo: 3D SPU with OpenCV?
-            #
-            #             for c in range(C):
-            #                 if (
-            #                     func in "cv2"
-            #                 ):  # OpenCV algorithm is usually faster, but can be much slower in noisy images
-            #                     # dtype of p must be np.float32  # todo: test this
-            #                     if mask:
-            #                         SNR = self.B[d, :, :, c] / self.ui
-            #                         upi = (
-            #                             np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR
-            #                         )  # local phase uncertainties
-            #                         upin = upi / (2 * np.pi)  # normalized local phase uncertainties
-            #                         uxi = upin * self._l  # local positional uncertainties
-            #                         ux = np.sqrt(1 / np.sum(1 / uxi**2))
-            #                         mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
-            #                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
-            #                             p[d, 0, :, :, c], mask
-            #                         )  # todo: test this
-            #
-            #                         xmin = np.min(x[d, :, :, c])
-            #                         if xmin < 0:
-            #                             x[d, :, :, c] -= xmin
-            #                     else:
-            #                         x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c])
-            #
-            #                         xmin = np.min(x[d, :, :, c])
-            #                         if xmin < 0:
-            #                             x[d, :, :, c] -= xmin
-            #
-            #                     if self.verbose or verbose:
-            #                         r[d, :, :, c] = unwrapping_instance.getInverseReliabilityMap()  # todo: test this
-            #                         # todo: res vs. rel
-            #                 else:  # Scikit-image algorithm is usually slower, but delivers better results on edges
-            #                     x[d, :, :, c] = ski.restoration.unwrap_phase(p[d, 0, :, :, c])  # todo: res
-            #
-            #             x[d] *= 1 / (2 * np.pi) * self._l[d, 0]
-            #
-            #             if self.verbose or verbose:
-            #                 k[d, 0] = np.nan  # unknown
-            #     else:  # K > 1: temporal phase unwrapping
-            #         if self.mode == "fast":
-            #             w = np.ones(self.K, np.uint8)
-            #             i0 = np.argmin(self._v[d])
-            #         else:
-            #             w = 1 / self._v[d] / np.sqrt(self._N[d])  # todo: M, B
-            #             i0 = np.argmin(w, axis=0)
-            #         w = w / np.sum(w, axis=0)
-            #         vmax = np.ceil(self._v[d, i0] / self.alpha).astype(int)
-            #
-            #         # C = sp.special.comb(n, self.K, exact=True)  # number of unique combinations
-            #         # combos = it.combinations(range(lmin, lmax + 1), self.K)
-            #         mn = np.inf
-            #         pn = (p[d] % (2 * np.pi) + self.o) / (2 * np.pi) % 1  # shape = (K, Y, X, C)
-            #
-            #         for k in range(vmax):
-            #             xi0 = (k + pn[i0]) * self._l[d, i0]
-            #             s = xi0
-            #             ssd = xi0**2
-            #
-            #             for i in it.chain(range(0, i0), range(i0 + 1, 1)):
-            #                 j = (xi0 / self._d[d, i]).astype(int)
-            #                 xj = (j + pn[i]) * self._l[d]
-            #                 s += xj
-            #                 ssd += xj**2
-            #
-            #             ssd -= s**2 / self.K
-            #
-            #             np.minimum(mn, ssd, out=mn)
-            #
-            #         q = 1
 
             phi, bri, mod, reg, res, fid, unc = decode(
                 I,
@@ -931,7 +934,7 @@ class Fringes:
 
         if self.WDM:
             assert not self.FDM
-            assert self._ismono
+            assert self._monochrome
             assert np.all(self.N == 3)
 
             I = I.reshape((-1, 3, self.Y, self.X, 1))  # returns a view
@@ -1124,7 +1127,7 @@ class Fringes:
         return J
 
     def _decolorize(self, I: np.ndarray) -> np.ndarray:
-        """Decolorize fringe patterns i.e. fuse hues/colors.
+        """Decolorize fringe patterns by weighted averaging of hues.
 
         Parameters
         ----------
@@ -1141,22 +1144,19 @@ class Fringes:
         T, Y, X, C = vshape(I).shape
         I = I.reshape((self.H, T // self.H, Y, X, C))  # returns a view
 
-        is_base = all(np.sum(h != 0) == 1 for h in self.h)  # every hue consists of only one of the RGB base colors
-        is_single = all(np.sum(c != 0) <= 1 for c in self.h.T)  # each RGB color exists only once
-        is_single_and_value = all(
-            np.sum(c != 0) == 1 for c in self.h.T
-        )  # each RGB color exists only once and is natural
-        is_equal_or_zero = len(set(self.h[self.h != 0])) == 1  # all colors are equal or zero
-        # if is_base and is_single or is_single_and_value: no averaging necessary
-        # if is_equal_or_zero: no weights necessary
-        if self.H == 3 and C in [1, 3] and is_base and is_single and is_equal_or_zero:  # pure RGB colors
+        base = np.all(np.count_nonzero(self.h, axis=1) == 1)  # each hue consists of only one RGB base color
+        solo = np.all(np.count_nonzero(self.h, axis=0) == 1)  # each RGB component exists exactly once
+        same = len(set(self.h[self.h != 0])) == 1  # all colors are the same or zero
+
+        # if base and solo: no averaging necessary
+        # if same: all weights are the same
+
+        if self.H == 3 and C in [1, 3] and base and solo and same:
             I = np.moveaxis(I, 0, -2)  # returns a view
 
+            # basic slicing returns a view
             idx = np.argmax(self.h, axis=1)
-            if np.array_equal(idx, [0, 1, 2]):  # RGB
-                # I = I[..., :, :]
-                pass
-            elif np.array_equal(idx, [0, 2, 1]):  # RBG
+            if np.array_equal(idx, [0, 2, 1]):  # RBG
                 I = I[..., 0::-1, :]
             elif np.array_equal(idx, [1, 2, 0]):  # GBR
                 I = I[..., 1:1:, :]
@@ -1166,22 +1166,31 @@ class Fringes:
                 I = I[..., 2::-1, :]
             elif np.array_equal(idx, [2, 0, 1]):  # BRG
                 I = I[..., 2:2:-1, :]
+            # elif np.array_equal(idx, [0, 1, 2]):  # RGB
+            #     I = I[..., :, :]
 
             if C == 1:
-                I = I[..., 0]
+                I = I[..., 0]  # returns a view
             elif C == 3:
                 I = np.diagonal(I, axis1=-2, axis2=-1)  # returns a view
-        elif (
-            self.H == 2 and C == 3 and is_single_and_value and is_equal_or_zero
-        ):  # todo: C == 3 avoids CMY colors appearing twice as bright as RGB colors (as it is with mono cameras) assuming spectral bands don't overlap
-            I = np.moveaxis(I, 0, -2)  # returns a view
-            idx = self.h != 0
-            I = I[..., idx]  # advanced indexing doesn't return a view
-        else:  # fuse colors by weighted averaging
+        elif self.H == 2 and C in [1, 3] and solo and same:
+            # advanced indexing returns a copy, not a view
+            if C == 1:
+                I = np.squeeze(I, )  # returns a view
+                I = np.moveaxis(I, 0, -1)  # returns a view
+                idx = np.argmax(self.h, axis=0)
+                I = I[..., idx]
+            elif C == 3:
+                idx = self.h != 0
+                I = np.moveaxis(I, 0, -2)  # returns a view
+                I = I[..., idx]
+        else:
+            # fuse colors by weighted averaging
+
             w = self.h / np.sum(self.h, axis=0)  # normalized weights
             # w[np.isnan(w)] = 0
 
-            if np.all((w == 0) | (w == 1)):  # todo: when does this happen?
+            if np.all((w == 0) | (w == 1)):  # todo: does this ever happen?
                 w = w.astype(bool, copy=False)  # multiplying with bool preserves dtype
                 dtype = I.dtype  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
             else:
@@ -1196,11 +1205,10 @@ class Fringes:
     def encode(
         self,
         frames: int | tuple = None,
-        dtype: str | np.dtype = None,
         rint: bool = True,
         simulate: bool = False,
     ) -> np.ndarray:
-        r"""Encode fringe patterns.
+        """Encode fringe patterns.
 
         Parameters
         ----------
@@ -1275,7 +1283,7 @@ class Fringes:
         t0 = time.perf_counter()
 
         # check UMR
-        if self._isambiguous:
+        if self._ambiguous:
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
             )
@@ -1416,7 +1424,7 @@ class Fringes:
             I[I < self.y0] = 0
 
         # decolorize i.e. fuse hues/colors
-        if self.H > 1 or not self._ismono:  # for gray fringes, color fusion is not performed, but extended averaging is
+        if self.H > 1 or not self._monochrome:  # for gray fringes, color fusion is not performed, but extended averaging is
             I = self._decolorize(I)
 
         # demultiplex
@@ -1427,28 +1435,31 @@ class Fringes:
         bri, mod, reg, phi, fid, res, unc = self._demodulate(I, verbose)
 
         if self.verbose or verbose:
-            V = (mod.reshape(self.D, self.K, Y, X, C) / bri[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
+            vis = (mod.reshape(self.D, self.K, Y, X, C) / bri[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
             if I.dtype.kind in "ui":
-                if np.iinfo(I.dtype).bits > 8:  # data may hold less bits of information
-                    mx = I.max()
-
+                if np.iinfo(I.dtype).bits > 8:  # data may contain fewer bits of information
                     Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
                 else:
                     Imax = np.iinfo(I.dtype).max
             else:  # float
                 Imax = 1
-            beta = bri / Imax
+            exp = bri / Imax
 
-        if self.H > 1:
+        if self.H > 1 and C == 3:
             idx = np.sum(self.h, axis=0) == 0
-            if True in idx:  # blacken where color value of hue was black
+            if np.any(idx):  # blacken where color value of hue was black
+                bri[..., idx] = 0
+                mod[..., idx] = 0
                 reg[..., idx] = np.nan
                 if self.verbose:
-                    res[..., idx] = np.nan
-                    fid[..., idx] = -1  # np.nan
+                    phi[..., idx] = np.nan
+                    fid[..., idx] = np.nan
+                    unc[..., idx] = self.R / np.sqrt(12)  # todo: circular distribution
+                    vis[..., idx] = 0
+                    exp[..., idx] = 0
 
         # spatial unwrapping
-        if self._isambiguous:
+        if self._ambiguous:
             self.logger.warning("Unwrapping is not spatially independent and only yields a relative phase map.")
             uwr = self._unwrap(phi if self.verbose or verbose else reg)
 
@@ -1520,7 +1531,7 @@ class Fringes:
             dec = namedtuple(
                 "decoded",
                 "brightness modulation registration phase orders residuals uncertainty visibility exposure",
-            )(bri, mod, reg, phi, fid, res, unc, V, beta)
+            )(bri, mod, reg, phi, fid, res, unc, vis, exp)
         else:
             dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
@@ -2223,7 +2234,7 @@ class Fringes:
             self.K = min(K, Kmax)
 
             # ensure UMR >= R
-            if self._isambiguous:
+            if self._ambiguous:
                 imin = np.argmin(self._v, axis=0)
                 self._v[imin] = 1
 
@@ -2304,7 +2315,7 @@ class Fringes:
     @property
     def C(self) -> int:
         """Number of color channels."""
-        return 3 if self.WDM or not self._ismono else 1
+        return 3 if self.WDM or not self._monochrome else 1
 
     @property
     def R(self) -> np.ndarray:
@@ -2433,18 +2444,13 @@ class Fringes:
     def _M(self) -> np.ndarray:
         """Number of averaged intensity samples."""
         M = np.sum(self.h, axis=0) / 255
-        return M
+        return np.atleast_1d(M[0]) if self._monochrome else M
 
     @property
     def M(self) -> float | np.ndarray:
         """Number of averaged intensity samples."""
-        M = self._M
-        if len(set(M)) == 1:
-            M = M[0]
-        else:
-            # todo: M = M[None, None, :]
-            pass
-        return float(M.max())  # convert Numpy float64 to Python float  # todo: fix M.max()
+        M = max(1 / 255, np.rint(np.mean(self._M)))  # todo
+        return float(M)  # convert Numpy float64 to Python float
 
     @M.setter
     def M(self, M: float):
@@ -2517,8 +2523,8 @@ class Fringes:
                 "y": [255, 255, 0],
                 "w": [255, 255, 255],
             }
-            if set(h).intersection(LUT.keys()):
-                h = [LUT[c] for c in h]
+            if set(h.lower()).intersection(LUT.keys()):
+                h = [LUT[c] for c in h.lower()]
             elif h == "default":
                 h = self.defaults["h"]
             else:
@@ -2550,7 +2556,7 @@ class Fringes:
             self.logger.error("Didn't set 'h': Black color is not allowed.")
             return
 
-        if self.WDM and not self._ismono:
+        if self.WDM and not self._monochrome:
             self.logger.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
             return
 
@@ -2622,7 +2628,7 @@ class Fringes:
                 _WDM = False
                 self.logger.error("Couldn't set 'WDM': At least one Shift != 3.")
 
-            if not self._ismono:
+            if not self._monochrome:
                 _WDM = False
                 self.logger.error("Couldn't set 'WDM': Not all hues are monochromatic.")
 
@@ -3160,12 +3166,12 @@ class Fringes:
             self.logger.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
 
     @property
-    def _ismono(self) -> bool:
+    def _monochrome(self) -> bool:
         """True if all hues are monochromatic, i.e. RGB values are identical for each hue."""
         return all(len(set(h)) == 1 for h in self.h)
 
     @property
-    def _isambiguous(self) -> bool:
+    def _ambiguous(self) -> bool:
         """True if unambiguous measument range is larger than the screen length."""
         return np.any(self.UMR < self.R * self.alpha)
 
@@ -3229,7 +3235,7 @@ class Fringes:
             uwr = "FTM"  # Fourier-transform method
         elif self.K == np.all(self.v <= 1):
             uwr = "none"
-        elif self._isambiguous:
+        elif self._ambiguous:
             uwr = "spatial"
         else:
             uwr = "temporal"
@@ -3596,7 +3602,7 @@ class Fringes:
         self._UMR = UMR
         self.logger.debug(f"self.UMR = {str(self._UMR)}")
 
-        if np.any(UMR < self.R * self.alpha):  # self._isambiguous:
+        if np.any(UMR < self.R * self.alpha):  # self._ambiguous:
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
             )

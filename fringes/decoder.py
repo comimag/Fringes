@@ -128,9 +128,9 @@ def decode(
     dt = np.float32  # float32's precision is usually better than quantization noise in phase shifting sequence
     bri = np.empty((D, Y, X, C), dt)  # brightness must be identical for all sets, therefore we arverage over them
     mod = np.empty((D, K, Y, X, C), dt)
+    reg = np.empty((D, Y, X, C), dt)
     phi = np.empty((D, K, Y, X, C), dt)
     fid = np.empty((D, K, Y, X, C), dt)
-    reg = np.empty((D, Y, X, C), dt)
     res = np.empty((D, Y, X, C), dt)
     unc = np.ones((D, Y, X, C), dt)
 

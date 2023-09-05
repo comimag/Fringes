@@ -46,7 +46,8 @@ I = f.encode()          # encode fringe patterns
 A, B, x = f.decode(I)   # decode fringe patterns
 ```
 
-All parameters are accesible by the respective attributes of the `Fringes` instance
+All [parameters](https://fringes.readthedocs.io/en/latest/user_guide/params.html)
+are accesible by the respective attributes of the `Fringes` instance
 (a glossary of them is obtained by the attribute `glossary`).
 They are implemented as class properties (managed attributes).
 Note that some attributes have subdependencies, hence dependent attributes might change as well.

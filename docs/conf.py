@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.imgmath',
     'sphinx.ext.autosectionlabel',
+    'sphinx_design',
 ]
 
 templates_path = ['_templates']

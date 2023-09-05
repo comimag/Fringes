@@ -2,7 +2,7 @@ Introduction
 ============
 
 Fringes is an easy to use, pure-python tool.
-It provides functionality commonly which is required in fringe projection and deflectometry:
+It provides the key functionality which is required in both, fringe projection and deflectometry:
 positional coding by virtue of phase shifting.
 
 Features

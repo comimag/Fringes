@@ -13,16 +13,9 @@ You instantiate, parameterize and deploy the `Fringes` class:
 
 .. code-block:: python
 
-    import fringes as frng
+    import fringes as frng      # import the fringes package
 
-    f = frng.Fringes()
-
-    f.X = 1920                  # set width of the fringe patterns
-    f.Y = 1080                  # set height of the fringe patterns
-    f.K = 2                     # set number of sets
-    f.N = 4                     # set number of shifts
-    f.v = [9, 10]               # set spatial frequencies
-    f.T                         # get number of frames
+    f = frng.Fringes()          # instantiate the Fringes class
 
 You can change the `logging level <https://docs.python.org/3/library/logging.html#levels>`_ of a `Fringes` instance.
 For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
@@ -30,7 +23,7 @@ and how long functions take to execute.
 
 .. code-block:: python
 
-    f.logger.setLevel("DEBUG")
+    f.logger.setLevel("DEBUG")  # set the logging level
 
 All parameters are accesible by the respective attributes of the `Fringes` instance
 (a glossary of them is obtained by the class attribute `glossary`).

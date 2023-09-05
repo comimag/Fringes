@@ -231,7 +231,7 @@ def test_decoding():
     f = Fringes(Y=100)
 
     dec = f.decode(f.encode())
-    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
     assert len(dec) == 3, f"Decode retuned {len(dec)} instead of 3 values."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
     assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 1."
@@ -243,13 +243,13 @@ def test_decoding_verbose():
     f = Fringes(Y=100)
 
     dec = f.decode(f.encode(), verbose=True)
-    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
     assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
 
     f.verbose = True
     dec = f.decode(f.encode())
-    # assert isinstance(dec, namedtuple), "Return value isn't a 'namedtuple'."  # todo: check for named tuple
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
     assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
     assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 0.1."
@@ -266,7 +266,7 @@ def test_decoding_verbose():
 def test_decoding_despike():
     f = Fringes(Y=100)
     I = f.encode()
-    I[:, 10, 5, :] += 128  #  = I[:, -5, -10, :]
+    I[:, 10, 5, :] += 127  #  = I[:, -5, -10, :]
 
     dec = f.decode(I, despike=True)
     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
@@ -279,6 +279,31 @@ def test_decoding_despike():
 #     I[:, 10, 5, :]
 #
 #     dec = f.decode(I, denoise=True)
+#     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+
+# def test_decoloring():  # todo
+#     f = Fringes(Y=100)
+#
+#     f.h = "rgb"
+#     I = f.encode()
+#     dec = f.decode(I)
+#     assert dec.registration.shape[-1] == 3, "Registration hasn't 3 color channels."
+#     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+#     I = I.mean(axis=-1)
+#     dec = f.decode(I)
+#     assert dec.registration.shape[-1] == 3, "Registration hasn't 1 color channel."
+#     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+#
+#     f.h = "w"
+#     f.h = (100, 100, 100)
+#     I = f.encode()
+#     dec = f.decode(I)
+#     assert dec.registration.shape[-1] == 1, "Registration hasn't 3 color channels."
+#     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+#     I = I.mean(axis=-1)
+#     dec = f.decode(I)
+#     assert dec.registration.shape[-1] == 1, "Registration hasn't 1 color channel."
 #     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
 
