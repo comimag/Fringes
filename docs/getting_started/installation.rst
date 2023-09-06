@@ -21,7 +21,7 @@ From Source
 
 To get access to the very latest features and bugfixes you have three choices:
 
-1. Clone pyqtgraph from `GitHub <https://github.com/>`_ with ``git``::
+1. Clone Fringes from `GitHub <https://github.com/>`_ with ``git``::
 
     git clone https://github.com/comimag/fringes
     cd fringes

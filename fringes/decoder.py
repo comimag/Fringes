@@ -68,8 +68,8 @@ def decode(
     l = L / v  # lambda i.e. period lengths in [px]
 
     # precomputations for later use in for-loops
-    Nmax = np.max(N)
-    cf = np.empty((D, K, Nmax), np.complex_)  # discrete complex filter
+    _Nmax = np.max(N)
+    cf = np.empty((D, K, _Nmax), np.complex_)  # discrete complex filter
     for d in range(D):
         for i in range(K):
             for n in range(N[d, i]):

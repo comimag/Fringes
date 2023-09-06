@@ -1,7 +1,7 @@
 Usage
 =====
 
-This package provides the handy Fringes class,
+This package provides the handy ``Fringes`` class,
 which handles all the required parameters
 for configuring fringe pattern sequences
 and provides methods for fringe analysis.
@@ -9,7 +9,7 @@ and provides methods for fringe analysis.
 Command-line use
 ----------------
 
-You instantiate, parameterize and deploy the `Fringes` class:
+You instantiate, parameterize and deploy the ``Fringes`` class:
 
 .. code-block:: python
 
@@ -17,7 +17,7 @@ You instantiate, parameterize and deploy the `Fringes` class:
 
     f = frng.Fringes()          # instantiate the Fringes class
 
-You can change the `logging level <https://docs.python.org/3/library/logging.html#levels>`_ of a `Fringes` instance.
+You can change the `logging level <https://docs.python.org/3/library/logging.html#levels>`_ of a ``Fringes`` instance.
 For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
 and how long functions take to execute.
 
@@ -25,8 +25,8 @@ and how long functions take to execute.
 
     f.logger.setLevel("DEBUG")  # set the logging level
 
-All parameters are accesible by the respective attributes of the `Fringes` instance
-(a glossary of them is obtained by the class attribute `glossary`).
+All parameters are accesible by the respective attributes of the ``Fringes`` instance
+(a glossary of them is obtained by the class attribute ``glossary``).
 They are implemented as class properties (managed attributes),
 which are parsed when setting,
 so usually several input types are accepted
@@ -47,16 +47,16 @@ Circular dependencies are resolved automatically.
 
     f.T                         # get number of frames
 
-For generating the fringe pattern sequence `I`, use the method `encode()`.
+For generating the fringe pattern sequence ``I``, use the method ``encode()``.
 It returns a `Numpy array <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_
-in videoshape (frames `T`, width `X`, height `Y`, color channels `C`).
+in videoshape (frames ``T``, width ``X``, height ``Y``, color channels ``C``).
 
 .. code-block:: python
 
     I = f.encode()              # encode fringe patterns
 
-For analyzing (recorded) fringe patterns, use the method `decode()`.
-It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `x`.
+For analyzing (recorded) fringe patterns, use the method ``decode()``.
+It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``x``.
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ You can install ``Fringes-GUI`` directly from `PyPi <https://pypi.org/>`_ with `
     pip install fringes-gui
 
 
-Then you import the `fringes-gui` package and call the function `run()`.
+Then you import the `fringes-gui` package and call the function ``run()``.
 
 .. code-block:: python
 
@@ -102,22 +102,22 @@ The purpose is mainly to ensure that the GUI is not cluttered with information t
 intended at the current visibility level. The following criteria have been used
 for the assignment of the recommended visibility level:
 
-- ``Beginner`` (default):
+- `Beginner` (default):
 
   Parameters that should be visible in all levels via the GUI.
-  The number of parameters with ``Beginner`` level should be limited to all basic parameters
+  The number of parameters with `Beginner` level should be limited to all basic parameters
   so the GUI display is well-organized and easy to use.
 
-- ``Expert``:
+- `Expert`:
 
   Parameters that require a more in-depth knowledge of the system functionality.
   This is the preferred visibility level for all advanced parameters.
 
-- ``Guru``:
+- `Guru`:
 
   Advanced parameters that usually only people with a sound background in phase shifting can make good use of.
 
-- ``Experimental``:
+- `Experimental`:
 
   New features that have not been tested yet.
   The system might crash at some point.
@@ -139,7 +139,7 @@ Viewer
 """"""
 
 In the center resides the viewer.
-If float data is to be displayed, ``nan`` is replaced by zeros.
+If float data is to be displayed, `nan` is replaced by zeros.
 
 Data
 """"
@@ -155,7 +155,7 @@ once a parameter has changed, certain data will be removed
 and also certain `buttons`_ will be deactivated.
 Also, the data has to fit in order to be able to execute certain functions.
 As a consequence, if you load data - e.g. the acquired (distorted) fringe pattern sequence -
-the first element of its videoshape has to match the parameter ``Frames`` in order to be able to decode it.
+the first element of its videoshape has to match the parameter `Frames` in order to be able to decode it.
 
 To display any datum listed in the table in the `Viewer`_, simly select the name of it in the table.
 
@@ -163,7 +163,7 @@ Klick the ``Load`` button to choose data or config file to load.
 With the ``Save`` button, all data including the parameters are saved to the selected directory.
 Use the ``Clear all`` button to delete all data.
 
-Please note: By default, the datum ``fringes`` is decoded.
+Please note: By default, the datum `fringes` is decoded.
 If you want to decode a datum with a different name (e.g. one that you just loaded),
 select its name in the table and klick ``Set data (to be decoded)``.
 

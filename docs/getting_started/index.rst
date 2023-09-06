@@ -2,8 +2,8 @@ Getting started
 ===============
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    introduction
+    intro
     installation
     usage

@@ -18,7 +18,6 @@ from si_prefix import si_format as si
 
 from .util import vshape, bilateral, median, remap, circular_distance
 from . import grid
-
 from .decoder import decode  # todo: fast_decode (only N>= 3) i.e. fast_unwrap(CRT + ssdlim)
 
 
@@ -29,7 +28,7 @@ class Fringes:
     _Hmax = 101  # this is arbitrary
     _Dmax = 2  # max 2 dimensions
     _Kmax = 101  # this is arbitrary, but must be < 128 when deploying spatial or frequency multiplexing @ uint8
-    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(N); @FDM: > 2 * fmax + 1
+    _Nmax = 1001  # this is arbitrary; more is better but the improvement scales with sqrt(N); @FDM: > 2 * _fmax + 1
     _Mmax = 101  # this is arbitrary; more is better but the improvement scales with sqrt(M)
     # _Pmax: int = 35651584  # ~8K i.e. max luma picture size of h264, h265, h266 video codecs as of 2022; todo: update
     _Pmax = 2**30  # 2^30 = 1,073,741,824 i.e. default size   limit of imread() in OpenCV
@@ -51,8 +50,8 @@ class Fringes:
         "bool",
         "uint8",
         "uint16",
-        # 'uint32',  # integer overflow in pyqtgraph -> replace line 528 of ImageItem.py with:
-        # 'uint64',  # bins = self._xp.arange(mn, mx + 1.01 * step, step, dtype="uint64")
+        # "uint32",  # integer overflow in pyqtgraph -> replace line 528 of ImageItem.py with:
+        # "uint64",  # bins = self._xp.arange(mn, mx + 1.01 * step, step, dtype="uint64")
         # "float16",  # numba doesn't handle float16, also most algorithms convert float16 to float32 anyway
         "float32",
         "float64",
@@ -180,7 +179,7 @@ class Fringes:
         return f"{self.params}"
 
     def load(self, fname: str = None) -> dict:
-        """Load parameters from a config file to the 'Fringes' instance.
+        """Load parameters from a config file to the `Fringes` instance.
 
         .. warning:: The parameters are only loaded if the config file provides the section `fringes`.
 
@@ -189,13 +188,13 @@ class Fringes:
         fname : str, optional
             File name of the file to load.
             Supported file formats are: *.json, *.yaml, *.toml, *.asdf.
-            If `'fname'` is not provided, the file `.fringes.yaml` within the user home directory is loaded.
+            If `fname` is not provided, the file `.fringes.yaml` within the user home directory is loaded.
 
         Returns
         -------
         params : dict
             The loaded parameters as a dictionary.
-            'params' may be empty.
+            `params` may be empty.
 
         Examples
         --------
@@ -243,7 +242,7 @@ class Fringes:
             return {}
 
     def save(self, fname: str = None) -> None:
-        """Save the parameters of the 'Fringes' instance to a config file.
+        """Save the parameters of the `Fringes` instance to a config file.
 
         Within the file, the parameters are written to the section `fringes`
 
@@ -291,20 +290,20 @@ class Fringes:
         self.logger.debug(f"Saved parameters to {fname}.")  # todo: info?
 
     def reset(self) -> None:
-        """Reset parameters of the 'Fringes' instance to default values."""
+        """Reset parameters of the `Fringes` instance to default values."""
 
         self.params = self.defaults
         self.logger.info("Reset parameters to defaults.")
 
     def optimize(self, T: int = None, umax: float = None) -> None:  # todo: self.umax
-        """Optimize the parameters of the 'Fringes' instance.
+        """Optimize the parameters of the `Fringes` instance.
 
          Parameters
          ----------
          T : int, optional
             Number of frames.
-            If 'T' is not provided, the number of frames from the 'Fringes' instance is used.
-            Then, the 'Fringes instance's number of shifts 'N' is distributed optimally over the directions and sets.
+            If `T` is not provided, the number of frames from the `Fringes` instance is used.
+            Then, the `Fringes` instance's number of shifts `N` is distributed optimally over the directions and sets.
 
          umax : float, optional
             Maximum allowable uncertainty.
@@ -312,12 +311,12 @@ class Fringes:
 
         Notes
         -----
-        If 'umax' is specified, the parameters are determined
-        that allow a maximal uncertainty of 'umax'
+        If `umax` is specified, the parameters are determined
+        that allow a maximal uncertainty of `umax`
         with a minimum number of frames.
 
-        Else, the parameters of the 'Fringes' instance are optimized to yield the minimal uncertainty
-        using the given number of frames 'T'.
+        Else, the parameters of the `Fringes` instance are optimized to yield the minimal uncertainty
+        using the given number of frames `T`.
         """
 
         K = np.log(self.L) / np.log(self.lopt)  # lopt ** K = L
@@ -384,7 +383,7 @@ class Fringes:
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
         Returns
         -------
@@ -394,7 +393,7 @@ class Fringes:
         Raises
         ------
         AssertionError
-            If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
+            If the number of frames of `I` and the attribute `T` of the `Fringes` instance don't match.
 
         Examples
         --------
@@ -461,11 +460,11 @@ class Fringes:
             The default, frames=None, will encode all frames at once.
             If frames is negative, it counts from the last to the first frame.
             If frames contains numbers whose magnitude is larger than the total number of frames
-            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            (as specified by the attribute `T` of the Fringes instance), it is wrapped around.
             If frames is a tuple of ints, only the frames specified in the tuple are encoded.
         rint : bool, optional
             If this is set to True (the default)
-            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            and the used dtype (attribute `dtype` of the Fringes instance) is of type interger,
             the encoded patterns will be rounded to the nearest integer.
             If this is set False and the used dtype is of type interger,
             the fractional part of the encoded patterns will be discarded.
@@ -570,10 +569,10 @@ class Fringes:
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
         verbose : bool, optional
-            If this or the argument 'verbose' of the Fringes instance is set to True,
+            If this or the argument `verbose` of the Fringes instance is set to True,
             additional infomation is computed and retuned.
             This includes: phase maps, residuals, fringe orders, visibility and relative exposure.
 
@@ -920,7 +919,7 @@ class Fringes:
             Base fringe patterns.
         rint : bool, optional
             If this is set to True (the default)
-            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            and the used dtype (attribute `dtype` of the Fringes instance) is of type interger,
             the encoded patterns will be rounded to the nearest integer.
             If this is set False and the used dtype is of type interger,
             the fractional part of the encoded patterns will be discarded.
@@ -1075,7 +1074,7 @@ class Fringes:
             The default, frames=None, will encode all frames at once.
             If frames is negative, it counts from the last to the first frame.
             If frames contains numbers whose magnitude is larger than the total number of frames
-            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            (as specified by the attribute `T` of the Fringes instance), it is wrapped around.
             If frames is a tuple of ints, only the frames specified in the tuple are encoded.
 
         Returns
@@ -1217,12 +1216,12 @@ class Fringes:
             The default, frames=None, will encode all frames at once.
             If frames is negative, it counts from the last to the first frame.
             If frames contains numbers whose magnitude is larger than the total number of frames
-            (as specified by the attribute 'T' of the Fringes instance), it is wrapped around.
+            (as specified by the attribute `T` of the Fringes instance), it is wrapped around.
             If frames is a tuple of ints, only the frames specified in the tuple are encoded.
 
         rint : bool, optional
             If this is set to True (the default)
-            and the used dtype (attribute 'dtype' of the Fringes instance) is of type interger,
+            and the used dtype (attribute `dtype` of the Fringes instance) is of type interger,
             the encoded patterns will be rounded to the nearest integer.
             If this is set False and the used dtype is of type interger,
             the fractional part of the encoded patterns will be discarded.
@@ -1233,7 +1232,7 @@ class Fringes:
             (computed from the imaging system's point spread function)
             and intensity noise added by the camera.
             The required parameters for this are the instance's attributes
-            'magnification', 'PSF', 'system_gain', 'dark_current' and 'dark_noise'.
+            `magnification`, `PSF`, `system_gain`, `dark_current` and `dark_noise`.
             Default is False.
 
         Returns
@@ -1341,12 +1340,12 @@ class Fringes:
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
             .. note:: It must have been encoded with the same parameters set to the Fringes instance as the encoded one.
 
         verbose : bool, optional
-            If this or the argument 'verbose' of the Fringes instance is set to True,
+            If this or the argument `verbose` of the Fringes instance is set to True,
             additional infomation is computed and retuned.
             This includes: phase, residuals, orders, uncertainty, visibility and exposure.
 
@@ -1394,7 +1393,7 @@ class Fringes:
         Raises
         ------
         AssertionError
-            If the number of frames of 'I' and the attribute 'T' of the 'Fringes' instance don't match.
+            If the number of frames of `I` and the attribute `T` of the `Fringes` instance don't match.
 
         Examples
         --------
@@ -1548,13 +1547,13 @@ class Fringes:
         ----------
         phi : np.ndarray
             Phase maps to unwrap spatially, stacked along the first dimension.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
             The frames (along first dimension) as well the color channels (along last dimension)
             are unwrapped separately.
 
         B : np.ndarray, optional
             Modulation of the decoded phase.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
@@ -1654,7 +1653,7 @@ class Fringes:
         ----------
         phi : np.ndarray
             Phase maps to unwrap spatially, stacked along the first dimension.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
             The frames (along first dimension) as well the color channels (along last dimension)
             are unwrapped separately.
 
@@ -1725,18 +1724,18 @@ class Fringes:
         of how much a screen (light source) pixel contributed
         to the exposure of the camera sensor.
 
-        The dimensions of the screen are taken from the 'Fringes' instance.
+        The dimensions of the screen are taken from the `Fringes` instance.
 
         Parameters
         ----------
         xi : np.ndarray
             Registration, i.e. the decoded screen coordinates as seen by the camera.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
         B : np.ndarray, optional
             Modulation. Used for weighting.
-            It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-            If 'B' is not given, equal weights are used.
+            It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
+            If `B` is not given, equal weights are used.
 
         dx : float, optional
             Magnification: Size of one camera pixel, projected onto the screen, in units of screen pixels.
@@ -1987,7 +1986,7 @@ class Fringes:
         return I
 
     def _trim(self, a: np.ndarray) -> np.ndarray:
-        """Change 'ndim' to 2 and limit 'shape'."""
+        """Change `a`.ndim to 2 and limit `a`.shape."""
 
         if a.ndim == 0:
             a = np.full((self.D, self.K), a)
@@ -2087,7 +2086,7 @@ class Fringes:
     def MTF(self, v: float | np.ndarray) -> np.ndarray:
         """Modulation Transfer Function.
 
-        Returns the relative modulation at spatial frequencies 'v'.
+        Returns the relative modulation at spatial frequencies `v`.
 
         Parameters
         ----------
@@ -2097,12 +2096,12 @@ class Fringes:
         Returns
         ----------
         B : np.ndarray
-            Relative modulation, in the same shape as 'v'.
+            Relative modulation, in the same shape as `v`.
 
         Notes
         -----
-        - If the attribute 'Bv' of the Fringes instance is not None, the MTF is interpolated from previous measurements.\n
-        - Else, if the attribute 'PSF' of the Fringes instance is larger than zero, the MTF is computed from the optical transfer function of the optical system, i.e. as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).\n
+        - If the attribute `Bv` of the Fringes instance is not None, the MTF is interpolated from previous measurements.\n
+        - Else, if the attribute `PSF` of the Fringes instance is larger than zero, the MTF is computed from the optical transfer function of the optical system, i.e. as the magnitude of the Fourier-transformed 'Point Spread Function' (PSF).\n
         - Else, it returns ones.
         """
 
@@ -2332,7 +2331,7 @@ class Fringes:
 
     @property
     def alpha(self) -> float:
-        """Factor for extending the coding range 'L'."""
+        """Factor for extending the coding range `L`."""
         return self._alpha
 
     @alpha.setter
@@ -2650,7 +2649,7 @@ class Fringes:
         The amplitude B is reduced by the factor D * K.
         Usually f equals 1 and is essentially only changed if frequency division multiplexing (FDM) is activated:
         Each set per direction receives an individual temporal frequency f, which is used in temporal demodulation to distinguish the individual sets.
-        A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.
+        A minimal number of shifts _Nmin ≥ ⌈ 2 * _fmax + 1 ⌉ is required to satisfy the sampling theorem and N is updated automatically if necessary.
         If one wants a static pattern, i.e. one that remains congruent when shifted, set static to True.
         """
         return self._FDM
@@ -2747,7 +2746,7 @@ class Fringes:
             self.B = self.B
 
     @property
-    def Nmin(self) -> int:
+    def _Nmin(self) -> int:
         """Minimum number of shifts to (uniformly) sample temporal frequencies.
 
         Per direction at least one set with N ≥ 3 is necessary
@@ -2770,7 +2769,7 @@ class Fringes:
 
     @N.setter
     def N(self, N: int | tuple[int] | list[int] | np.ndarray):
-        _N = np.array(N, int).clip(self.Nmin, self._Nmax)  # make array, cast to dtype, clip
+        _N = np.array(N, int).clip(self._Nmin, self._Nmax)  # make array, cast to dtype, clip
 
         if not _N.size:  # empty array
             return
@@ -2790,7 +2789,7 @@ class Fringes:
             return
 
         if self.FDM and not np.all(_N == _N[0, 0]):
-            # _N = np.tile(self.Nmin, _N.shape)
+            # _N = np.tile(self._Nmin, _N.shape)
             _N = np.tile(_N[0, 0], _N.shape)
 
         if not np.array_equal(self._N, _N):
@@ -2805,8 +2804,8 @@ class Fringes:
         """Minimum resolvable wavelength.
         [lmin] = px."""
         fmax = (
-            min((self.Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self.Nmin - 1) / 2
-        )  # don't use self.fmax, else circular loop
+            min((self._Nmin - 1) / 2, self.L / self._lmin) if self.FDM and self.static else (self._Nmin - 1) / 2
+        )  # don't use self._fmax, else circular loop
         return min(self._lmin, self.L / fmax) if self.FDM and self.static else self._lmin
 
     @lmin.setter
@@ -3066,9 +3065,9 @@ class Fringes:
             a = 1
 
     @property
-    def fmax(self):
+    def _fmax(self):
         """Maximum temporal frequency (maximum number of periods to shift over)."""
-        return min((self.Nmin - 1) / 2, self.vmax) if self.FDM and self.static else (self.Nmin - 1) / 2
+        return min((self._Nmin - 1) / 2, self.vmax) if self.FDM and self.static else (self._Nmin - 1) / 2
 
     @property
     def f(self) -> np.ndarray:
@@ -3081,7 +3080,7 @@ class Fringes:
 
     @f.setter
     def f(self, f: int | float | tuple[int | float] | list[int | float] | np.ndarray | str):
-        _f = np.array(f, float).clip(-self.fmax, self.fmax)  # make array, cast to dtype, clip
+        _f = np.array(f, float).clip(-self._fmax, self._fmax)  # make array, cast to dtype, clip
 
         if not _f.size:  # empty array
             return
@@ -3129,7 +3128,7 @@ class Fringes:
 
     @property
     def Bv(self) -> np.ndarray:
-        """Modulation at spatial frequencies 'v'.
+        """Modulation at spatial frequencies `v`.
 
         The modulation values are determined from a measurement."""
         return self._Bv
@@ -3304,14 +3303,14 @@ class Fringes:
         return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
 
     @property
-    def Amin(self):
+    def _Amin(self):
         """Minimum bias."""
-        return self.B / self.Vmax
+        return self.B / self._Vmax
 
     @property
-    def Amax(self):
+    def _Amax(self):
         """Maximum bias."""
-        return self.Imax - self.Amin
+        return self.Imax - self._Amin
 
     @property
     def A(self) -> float:
@@ -3320,16 +3319,16 @@ class Fringes:
 
     @A.setter
     def A(self, A: float):
-        _A = float(min(max(self.Amin, A), self.Amax))
+        _A = float(min(max(self._Amin, A), self._Amax))
 
         if self.A != _A:
             self.beta = _A / self.Imax
             self.logger.debug(f"{self.A = }")
 
     @property
-    def Bmax(self):
+    def _Bmax(self):
         """Maximum amplitude."""
-        return min(self.A, self.Imax - self.A) * self.Vmax
+        return min(self.A, self.Imax - self.A) * self._Vmax
 
     @property
     def B(self) -> float:
@@ -3338,14 +3337,14 @@ class Fringes:
 
     @B.setter
     def B(self, B: float):
-        _B = float(min(max(0, B), self.Bmax))
+        _B = float(min(max(0, B), self._Bmax))
 
         if self.B != _B:  # and _B != 0:
             self.V = _B / self.A
             self.logger.debug(f"{self.B = }")
 
     @property
-    def betamax(self):
+    def _betamax(self):
         """Maximum relative bias (exposure)."""
         return 1 / (1 + self.V)
 
@@ -3356,14 +3355,14 @@ class Fringes:
 
     @beta.setter
     def beta(self, beta) -> float:
-        _beta = float(min(max(0, beta), self.betamax))
+        _beta = float(min(max(0, beta), self._betamax))
 
         if self._beta != _beta:
             self._beta = _beta
             self.logger.debug(f"{self.beta = }")
 
     @property
-    def Vmax(self):
+    def _Vmax(self):
         """Maximum visibility."""
         if self.FDM:
             return 1 / (self.D * self.K)
@@ -3379,7 +3378,7 @@ class Fringes:
 
     @V.setter
     def V(self, V: float):
-        _V = float(min(max(0, V), self.Vmax))
+        _V = float(min(max(0, V), self._Vmax))
 
         if self._V != _V:
             self._V = _V
@@ -3602,7 +3601,7 @@ class Fringes:
         self._UMR = UMR
         self.logger.debug(f"self.UMR = {str(self._UMR)}")
 
-        if np.any(UMR < self.R * self.alpha):  # self._ambiguous:
+        if self._ambiguous:
             self.logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
             )

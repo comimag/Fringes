@@ -2,4 +2,6 @@ Contributor's Guide
 ===================
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
+
+    contribute

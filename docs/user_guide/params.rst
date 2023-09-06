@@ -169,9 +169,9 @@ The following multiplexing methods can be activated by setting them to ``True``:
   Hence, the amplitude ``B`` is reduced by a factor of ``D`` * ``K``.
   It can only be activated if ``D`` > 1 or ``K`` > 1.
   This results in crossed fringe patterns if ``D`` = 2.
-  Each set per direction receives an individual temporal frequency ``f```,
+  Each set per direction receives an individual temporal frequency ``f``,
   which is used in [temporal demodulation](#temporal-demodulation) to distinguish the individual sets.
-  A minimal number of shifts ``Nmin`` `\ge \lceil` 2 * ``fmax`` `\rceil` + 1
+  A minimal number of shifts ``_Nmin`` `\ge \lceil` 2 * ``_fmax`` `\rceil` + 1
   is required to satisfy the sampling theorem and ``N`` is updated automatically if necessary.
   If one wants a static pattern, i.e. one that remains congruent when shifted, set ``static`` to ``True``.
 

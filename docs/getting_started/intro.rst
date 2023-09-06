@@ -1,5 +1,10 @@
+.. default-role:: math
+
 Introduction
 ============
+
+About
+-----
 
 Fringes is an easy to use, pure-python tool.
 It provides the key functionality which is required in both, fringe projection and deflectometry:
@@ -8,7 +13,7 @@ positional coding by virtue of phase shifting.
 Features
 --------
 
-- Generalized Temporal Phase Unwrappting (GTPU)
+- Generalized Temporal Phase Unwrapping (GTPU)
 - Noise model
 - Uncertainty Propagation
 - Optimal Coding Strategy
@@ -18,8 +23,6 @@ Features
 
 Background
 ----------
-
-.. default-role:: math
 
 Many applications, such as fringe projection [1]_ or fringe reflection (deflectometry) [2]_,
 require the ability to encode positional data.
@@ -149,7 +152,7 @@ The procedure is analogous in the vertical direction.
               :align: center
               :alt: mtf
 
-              In this image, the spatial frequency `\nu_r` is denoted as f.
+              In this image, the spatial frequency `\nu_r` is denoted as `f_0`.
               (A) Separated Fourier spectra; (B) single spectrum selected and translated to the origin.
               From [7]_.
 
