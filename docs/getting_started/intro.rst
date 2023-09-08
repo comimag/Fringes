@@ -14,7 +14,6 @@ Features
 --------
 
 - Generalized Temporal Phase Unwrapping (GTPU)
-- Noise model
 - Uncertainty Propagation
 - Optimal Coding Strategy
 - Multiplexing

@@ -164,12 +164,7 @@ def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.n
     assert T == 2, "More than 2 directions."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
-    c = (
-        np.gradient(s[0], axis=0)
-        + np.gradient(s[0], axis=1)
-        + np.gradient(s[1], axis=0)
-        + np.gradient(s[1], axis=1)
-    )
+    c = np.gradient(s[0], axis=0) + np.gradient(s[0], axis=1) + np.gradient(s[1], axis=0) + np.gradient(s[1], axis=1)
 
     if not calibrated:
         # c -= np.mean(c, axis=(0, 1))
@@ -297,7 +292,7 @@ def median(I: np.ndarray, k: int = 3) -> np.ndarray:  # todo: test
 
 
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-def remap(
+def _remap_legacy(
     reg: np.ndarray,
     mod: np.ndarray = np.ones(1),
     scale: float = 1,
@@ -305,7 +300,6 @@ def remap(
     X: int = 0,
     C: int = 0,
 ) -> np.ndarray:
-
     if mod.ndim > 1:
         assert reg.shape[1:] == mod.shape[1:]
 
@@ -368,6 +362,37 @@ def remap(
     if mx > 0:
         src /= mx
 
+    return src
+
+
+@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+def _remap(
+    src: np.ndarray,
+    reg: np.ndarray,
+    mod: np.ndarray = np.ones(1),
+) -> np.ndarray:
+    Ys, Xs, Cs = src.shape
+    Yc, Xc, Cc = reg.shape[1:]
+
+    for xc in nb.prange(Xc):
+        for yc in nb.prange(Yc):
+            for c in nb.prange(Cs):
+                if not np.isnan(reg[0, yc, xc, c]):
+                    xs = int(reg[0, yc, xc, c] + 0.5)  # i.e. rint()
+
+                    if not np.isnan(reg[1, yc, xc, c]):
+                        ys = int(reg[1, yc, xc, c] + 0.5)  # i.e. rint()
+
+                        # if mod.ndim > 1:
+                        #     m = mod[yc, xc, c]
+                        #     if not np.isnan(m):
+                        #         src[ys, xs, c] += m
+                        # else:
+                        #     src[ys, xs, c] += 1
+
+                        m = mod[yc, xc, c]
+                        if not np.isnan(m):
+                            src[ys, xs, c] += m
     return src
 
 

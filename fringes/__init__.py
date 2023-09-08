@@ -17,10 +17,13 @@ __version__ = version
 
 
 def main():
-    parser = argparse.ArgumentParser
+    parser = argparse.ArgumentParser  # todo: argparser
     for p in Fringes.params:
         -p,
-        parser.add_argument("-X", "--width", )
+        parser.add_argument(
+            "-X",
+            "--width",
+        )
 
     args = parser.parse_args()
 

@@ -286,12 +286,4 @@ def decode(
 
     # q = w[0] * B**2
 
-    return (
-        phi.reshape(-1, Y, X, C),
-        bri,
-        mod.reshape(-1, Y, X, C),
-        reg,
-        res,
-        fid.reshape(-1, Y, X, C),
-        unc
-    )
+    return (phi.reshape(-1, Y, X, C), bri, mod.reshape(-1, Y, X, C), reg, res, fid.reshape(-1, Y, X, C), unc)

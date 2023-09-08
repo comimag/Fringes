@@ -16,7 +16,7 @@ import asdf
 from si_prefix import si_format as si
 
 
-from .util import vshape, bilateral, median, remap, circular_distance
+from .util import vshape, bilateral, median, _remap, circular_distance
 from . import grid
 from .decoder import decode  # todo: fast_decode (only N>= 3) i.e. fast_unwrap(CRT + ssdlim)
 
@@ -764,17 +764,31 @@ class Fringes:
                 k = np.empty((self.D, self.K, Y, X, C), dt)
                 r = np.empty((self.D, Y, X, C), dt)
             for d in range(self.D):
-                A[d] = np.mean(I[ti[d, 0]:ti[d, -1]])
+                A[d] = np.mean(I[ti[d, 0] : ti[d, -1]])
                 for i in range(self.K):
                     t = np.arange(self._N[d, i]) / self._N[d, i]  # sampling points i.e. normalized time coordinates
                     # t = n / 4 if N[d, k] == 2 else n / N[d, k]  # todo: variable/individual t as in Uni-PSA-Gen
                     c = np.exp(1j * 2 * np.pi * self._f[d, i] * t)
-                    z = np.sum(c[:, None, None, None] * I[ti[d, i]: ti[d, i + 1]], axis=0)
+                    z = np.sum(c[:, None, None, None] * I[ti[d, i] : ti[d, i + 1]], axis=0)
                     B[d] = np.abs(z) / self._N[d, i] * 2
                     p[d] = np.angle(z)
 
             if self.verbose or verbose:
-                u = np.sqrt(1 / np.sum(1 / (self.ui / np.pi / np.sqrt(2 * self._M * self._N[:, :, None, None, None]) * self._l[:, :, None, None, None] / B) ** 2, axis=1))
+                u = np.sqrt(
+                    1
+                    / np.sum(
+                        1
+                        / (
+                            self.ui
+                            / np.pi
+                            / np.sqrt(2 * self._M * self._N[:, :, None, None, None])
+                            * self._l[:, :, None, None, None]
+                            / B
+                        )
+                        ** 2,
+                        axis=1,
+                    )
+                )
 
                 if self.K == 1:
                     if self._v[d, 0] == 0:  # no spatial modulation
@@ -1145,12 +1159,12 @@ class Fringes:
 
         base = np.all(np.count_nonzero(self.h, axis=1) == 1)  # each hue consists of only one RGB base color
         solo = np.all(np.count_nonzero(self.h, axis=0) == 1)  # each RGB component exists exactly once
-        same = len(set(self.h[self.h != 0])) == 1  # all colors are the same or zero
+        mono = len(set(self.h[self.h != 0])) == 1  # all colors are monochromatic, i.e. are the same or zero
 
         # if base and solo: no averaging necessary
-        # if same: all weights are the same
+        # if mono: all weights are the same
 
-        if self.H == 3 and C in [1, 3] and base and solo and same:
+        if self.H == 3 and C in [1, 3] and base and solo and mono:
             I = np.moveaxis(I, 0, -2)  # returns a view
 
             # basic slicing returns a view
@@ -1172,10 +1186,12 @@ class Fringes:
                 I = I[..., 0]  # returns a view
             elif C == 3:
                 I = np.diagonal(I, axis1=-2, axis2=-1)  # returns a view
-        elif self.H == 2 and C in [1, 3] and solo and same:
+        elif self.H == 2 and C in [1, 3] and solo and mono:
             # advanced indexing returns a copy, not a view
             if C == 1:
-                I = np.squeeze(I, )  # returns a view
+                I = np.squeeze(
+                    I,
+                )  # returns a view
                 I = np.moveaxis(I, 0, -1)  # returns a view
                 idx = np.argmax(self.h, axis=0)
                 I = I[..., idx]
@@ -1188,12 +1204,15 @@ class Fringes:
 
             w = self.h / np.sum(self.h, axis=0)  # normalized weights
             # w[np.isnan(w)] = 0
+            if C == 1 and mono:
+                w = w[:, 0][:, None]  # ensures that the result has only one color channel
 
-            if np.all((w == 0) | (w == 1)):  # todo: does this ever happen?
-                w = w.astype(bool, copy=False)  # multiplying with bool preserves dtype
-                dtype = I.dtype  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
-            else:
-                dtype = float  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
+            # if np.all((w == 0) | (w == 1)):
+            #     w = w.astype(bool, copy=False)  # multiplying with bool preserves dtype
+            #     dtype = I.dtype  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
+            # else:
+
+            dtype = float  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum
 
             I = np.sum(I * w[:, None, None, None, :], axis=0, dtype=dtype)
 
@@ -1423,7 +1442,9 @@ class Fringes:
             I[I < self.y0] = 0
 
         # decolorize i.e. fuse hues/colors
-        if self.H > 1 or not self._monochrome:  # for gray fringes, color fusion is not performed, but extended averaging is
+        if (
+            self.H > 1 or not self._monochrome
+        ):  # for gray fringes, color fusion is not performed, but extended averaging is
             I = self._decolorize(I)
 
         # demultiplex
@@ -1460,13 +1481,15 @@ class Fringes:
         # spatial unwrapping
         if self._ambiguous:
             self.logger.warning("Unwrapping is not spatially independent and only yields a relative phase map.")
-            uwr = self._unwrap(phi if self.verbose or verbose else reg)
+            uwr = self._unwrap(reg, bri)
 
             if self.verbose:
-                reg, res, fid = uwr
+                reg, res = uwr
             else:
-                reg = uwr[0]
+                reg = uwr
         else:  # coordiante retransformation
+            # todo: tests
+
             if self.D == 2:
                 if self.grid == "Cartesian":
                     if self.X >= self.Y:
@@ -1540,7 +1563,7 @@ class Fringes:
 
     def _unwrap(
         self, phi: np.ndarray, B: np.ndarray, func: str = "ski"
-    ) -> namedtuple:  # todo: use B for quality guidance
+    ) -> np.ndarray:  # todo: use B for quality guidance
         """Unwrap phase maps spacially.
 
         Parameters
@@ -1587,7 +1610,6 @@ class Fringes:
 
         if self.verbose:
             res = np.empty((self.D, Y, X, C), np.float32)
-            fid = np.empty((self.D, self.K, Y, X, C), np.int_)
 
         for d in range(self.D):
             if self.K == 1:  # todo: self.K[d] == 1
@@ -1609,7 +1631,9 @@ class Fringes:
                             upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
                             upin = upi / (2 * np.pi)  # normalized local phase uncertainties
                             uxi = upin * self._l  # local positional uncertainties
-                            ux = np.sqrt(1 / np.sum(1 / uxi**2))  # global phase uncertainty (by inverse variance weighting of uxi)
+                            ux = np.sqrt(
+                                1 / np.sum(1 / uxi**2)
+                            )  # global phase uncertainty (by inverse variance weighting of uxi)
                             mask = np.astype(ux < 0.5, copy=False)  # todo: which limit?
 
                             reg[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
@@ -1629,24 +1653,14 @@ class Fringes:
             if regmin < 0:
                 reg[d] -= regmin
 
-            reg[d] = reg[d] / (2 * np.pi) * self._l[d, 0]
-
-            if self.verbose:
-                fid[d, 0] = -1  # np.nan  # unknown
-
-        if self.verbose:
-            uwr = namedtuple("unwrapping", "registration residuals orders")(reg, res, fid)
-        else:
-            uwr = namedtuple("unwrapping", "registration")(reg)
+        reg *= self._l[:, 0, None, None, None] / (2 * np.pi)
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
-        return uwr
+        return reg
 
     @staticmethod
-    def unwrap(
-        phi: np.ndarray, mask: np.ndarray = None, func: str = "ski"
-    ) -> np.array:
+    def unwrap(phi: np.ndarray, mask: np.ndarray = None, func: str = "ski") -> np.array:
         """Unwrap phase maps spacially.
 
         Parameters
@@ -1709,7 +1723,7 @@ class Fringes:
         B: np.ndarray = None,
         dx: float = 1,
         p: int = 2,
-        fast: bool = True,
+        mode: str = "fast",
     ) -> np.ndarray:
         """Source activation heatmap.
 
@@ -1745,11 +1759,10 @@ class Fringes:
             Power parameter.
             Default is two.
 
-        fast : bool
-            If True, fast remapping is applied.
+        mode : str, optional
+            By default, fast remapping is applied.
             Else, inverse distance weighted remapping is applied,
             which is more precise but also more time-consuming.
-            Default is True.
 
         Returns
         -------
@@ -1767,90 +1780,20 @@ class Fringes:
         >>> src = f.remap(x, B)
         """
 
-        if fast:
-            if B is None:
-                return remap(xi, np.ones(1), Y=self.Y, X=self.X, C=self.C)  # fixme: without param B  # todo
-            else:
-                return remap(xi, B, Y=self.Y, X=self.X, C=self.C)
-            # return self._remap1(xi, B)
-        else:
-            return self._remap3(xi, B, dx, p)
-
-    def _remap1(
-        self,
-        xi: np.ndarray,
-        B: np.ndarray = None,
-        scale: float = 1,
-    ) -> np.ndarray:
-        t0 = time.perf_counter()
-
-        T, Y, X, C = vshape(xi).shape
-
-        if B is not None and B.ndim > 1:
-            assert xi.shape[1:] == B.shape[1:], "'xi' and 'B' have different width, height or number of color channels"
-
-            B = B.reshape((-1, Y, X, C))
-
-        xi = xi.reshape((-1, Y, X, C))
-
-        # todo
-        for d in range(self.D):
-            np.minimum(xi[d], self.R[d] - 1, out=xi[d])
-        # assert all(np.all(np.round(np.max(xi[d])) <= self.R[d] - 1 for d in range(self.D))), \
-        #     f"Coordinates contain values > {self.R - 1}; decoding might be erroneous."
-
-        if T == 1:
-            if self.axis == 0:
-                xi = np.vstack((xi, np.zeros_like(xi)))
-            else:  # self.axis == 1
-                xi = np.vstack((np.zeros_like(xi), xi))
-
-        src = np.zeros(
-            (int(np.round(self.Y * scale)), int(np.round(self.X * scale)), C),
-            np.float32,
-        )
-        idx = np.rint(xi.swapaxes(1, 2) * scale).astype(int, copy=False)
-        if B is not None:
-            val = np.mean(B.swapaxes(1, 2), axis=0)
-        else:
-            val = np.ones((Y, X, C), np.uint8)
-
-        for c in range(C):
-            src[idx[1].ravel(), idx[0].ravel(), c] += val[..., c].ravel()
-
-        mx = src.max()
-        if mx > 0:
-            src /= mx
-
-        self.logger.info(f"{si(time.perf_counter() - t0)}s")
-
-        return src
-
-    # todo: weight with uncertainy?
-    def _remap3(
-        self,
-        xi: np.ndarray,
-        B: np.ndarray = np.ones((1)),
-        dx: float = 0.5,
-        p: int = 2,
-    ) -> np.ndarray:
-        # inverse distance weighting using modified Shepard's method: https://en.wikipedia.org/wiki/Inverse_distance_weighting
-
         t0 = time.perf_counter()
 
         T, Y, X, C = vshape(xi).shape
 
         # trim B
-        if B.ndim > 1:
+        if isinstance(B, np.ndarray):
             assert xi.shape[1:] == B.shape[1:], "'xi' and 'B' have different width, height or number of color channels"
             B = B.reshape((-1, Y, X, C))
+            # B = np.max(B, axis=0)
             B = np.mean(B, axis=0)
-            B = B.reshape(Y * X, C)  # n data points of dimension m
 
         # trim Xi
         xi = xi.reshape((-1, Y, X, C))
-        # todo
-        np.minimum(xi, self.R[:, None, None, None] - 1, out=xi)
+        # np.minimum(xi, self.R[:, None, None, None] - 1, out=xi)  # circumvents assertion in next line
         assert all(
             np.all(np.round(np.max(xi[d])) <= self.R[d] - 1 for d in range(self.D))
         ), f"Coordinates contain values > {self.R - 1}; decoding might be erroneous."
@@ -1861,51 +1804,86 @@ class Fringes:
             else:
                 # xi = np.vstack((np.zeros_like(xi), xi))
                 xi = np.concatenate((np.zeros_like(xi), xi), axis=0)
-        xi = xi.reshape(-1, Y * X, C).swapaxes(0, 1)  # n data points of dimension m
 
-        # mapping area of square with edge length 'dx' to area of circle with radius 'R'
-        R = np.sqrt(dx**2 / np.pi)
+        if mode == "fast":  # todo: use self.mode
+            if not isinstance(B, np.ndarray):
+                B = np.ones((Y, X, C), np.uint8)
 
-        src = np.empty((self.Y, self.X, C), np.float32)
-        for c in range(C):
-            kdtree = sp.spatial.KDTree(xi[:, :, c])
-            for xs in range(self.X):
-                for ys in range(self.Y):
-                    d, i = kdtree.query(
-                        x=(xs, ys), p=2, distance_upper_bound=R
-                    )  # , workers=-1)  # todo: faster with more workers?
-                    # todo: circular distance from indices
-                    d = np.array(d, ndmin=1)
-                    np.maximum(np.finfo(np.float64).eps, d, out=d)
+            src = np.zeros((self.Y, self.X, C), np.float32)
 
-                    if i and d != np.inf:
-                        if B.size == 1:
-                            w = 1 / (d**p)
-                            w /= np.sum(w)
-                            v = np.sum(w)
+            if False:
+                idx = (xi.swapaxes(1, 2) + 0.5).astype(int, copy=False)
+
+                for c in range(C):  # looping through color channels reduces memory consumption
+                    src[idx[1].ravel(), idx[0].ravel(), c] += B[..., c].ravel()
+            else:
+                src = _remap(src, xi, B)
+        else:
+            xi = xi.reshape(-1, Y * X, C).swapaxes(0, 1)  # n data points of dimension m
+            if B is not None:
+                B = B.reshape(Y * X, C)  # n data points of dimension m
+
+            # mapping area of square with edge length 'dx' to area of circle with radius 'R'
+            # todo: mapping square to circle?
+            # todo: add to dx: magnification
+            if dx is None:
+                dx = self.magnification
+            dx += np.sqrt(np.prod(self.u)) + self.PSF  # add uncertainty and PSF
+            R = np.sqrt(dx**2 / np.pi)
+
+            src = np.empty((self.Y, self.X, C), np.float32)
+            for c in range(C):
+                kdtree = sp.spatial.KDTree(xi[:, :, c])
+                for xs in range(self.X):
+                    for ys in range(self.Y):
+                        k = kdtree.query_ball_point(
+                            x=(xs, ys), r=R, p=2, return_length=True
+                        )  # , workers=-1)  # todo: faster with more workers?
+
+                        # determine value
+                        if k == 0:
+                            v = 0
+                        elif k == 1:
+                            if B is None:
+                                v = 1
+                            else:
+                                d, i = kdtree.query(
+                                    x=(xs, ys), k=k, p=2, distance_upper_bound=R
+                                )  # , workers=-1)  # todo: faster with more workers?
+                                v = B[i, c]
                         else:
-                            w = 1 / (d**p) * B[i, c]
-                            w /= np.sum(w)
-                            # v = np.sum(B[i, c] * w)
-                            v = np.dot(B[i, c], w)
+                            d, i = kdtree.query(
+                                x=(xs, ys), k=k, p=2, distance_upper_bound=R
+                            )  # , workers=-1)  # todo: faster with more workers?
+                            # todo: circular distance from indices
+
+                            # inverse distance weighting using modified Shepard's method:
+                            # https://en.wikipedia.org/wiki/Inverse_distance_weighting
+                            w = 1 / (d**p)
+
+                            if B is not None:
+                                w *= B[i, c]
+                                w /= np.sum(w)
+                                # v = np.sum(B[i, c] * w)
+                                v = np.dot(B[i, c], w)
+                            else:
+                                w /= np.sum(w)
+                                v = np.sum(w)
 
                         src[ys, xs, c] = v
-                    else:
-                        src[ys, xs, c] = 0
 
         mx = src.max()
-        if mx > 0:
+        if mx > 0 and mx != 1:
             src /= mx
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return src
 
-    # todo: add testing, or put into different module?
     def _simulate(
         self,
         I: np.ndarray,
-        # magnification: float = 1,
+        magnification: float = 1,
         PSF: float = 3,
         system_gain: float = 0.038,
         dark_current: float = 3.64 / 0.038,  # [electrons]  # some cameras feature a dark current compensation
@@ -1949,6 +1927,8 @@ class Fringes:
             Simulated fringe pattern sequence.
         """
 
+        t0 = time.perf_counter()
+
         I.shape = T, Y, X, C = vshape(I).shape
         I = I.astype(float, copy=False)
 
@@ -1972,7 +1952,7 @@ class Fringes:
         dark = rng.normal(dark_current_y0, dark_noise_y0, I.shape)
 
         # spatial nonuniformity
-        SNU = 0  # todo
+        SNU = 0  # todo: spatial nonuniformity
 
         # add noise
         I = I + shot + dark + SNU
@@ -1982,6 +1962,8 @@ class Fringes:
 
         # quantization noise is added by converting to integer
         I = I.astype(self.dtype, copy=False)
+
+        self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return I
 
@@ -2247,7 +2229,7 @@ class Fringes:
                 dT = _T - np.sum(N)
                 if dT != 0:
                     k = int(dT // self.D)
-                    N[:, 1: k + 1] += 1
+                    N[:, 1 : k + 1] += 1
                     if dT % self.D != 0:
                         N[0, k + 1] += 1
             else:
@@ -3172,7 +3154,7 @@ class Fringes:
     @property
     def _ambiguous(self) -> bool:
         """True if unambiguous measument range is larger than the screen length."""
-        return np.any(self.UMR < self.R * self.alpha)
+        return bool(np.any(self.UMR < self.R * self.alpha))
 
     @property
     def mode(self) -> str:
@@ -3397,7 +3379,6 @@ class Fringes:
             self._Vmin = _Vmin
             self.logger.debug(f"{self._Vmin = }")
 
-
     @property
     def umax(self) -> float:
         """Standard deviation of maximum uncertainty for measurement to be valid.
@@ -3474,14 +3455,14 @@ class Fringes:
 
     @property
     def magnification(self) -> float:
-        """Magnification, i.e. ratio of camera pixels to screen pixels.
+        """Magnification of the optical imaging.
 
-        This many camera pixels look at one screen pixel."""
+        Camera pixels per screen pixel, laterally."""
         return self._magnification
 
     @magnification.setter
     def magnification(self, magnification):
-        _magnification = float(max(0, magnification))  # todo: max = self.R.max()
+        _magnification = float(max(0, magnification))
 
         if self._magnification != _magnification:
             self._magnification = _magnification
@@ -3495,7 +3476,7 @@ class Fringes:
 
     @PSF.setter
     def PSF(self, PSF):
-        _PSF = float(max(0, PSF))  # todo: max = self.R.max()
+        _PSF = float(max(0, PSF))
 
         if self._PSF != _PSF:
             self._PSF = _PSF
@@ -3557,9 +3538,9 @@ class Fringes:
                 UMR[d] = np.lcm.reduce([int(i) for i in l])
             elif all(i % 1 == 0 for i in v):  # all v are integers
                 UMR[d] = self.L / np.gcd.reduce([int(i) for i in v])
-            elif all(np.isclose(l, np.rint(l), rtol=0, atol=10 ** -precision)):
+            elif all(np.isclose(l, np.rint(l), rtol=0, atol=10**-precision)):
                 UMR[d] = np.lcm.reduce([int(i) for i in np.rint(l)])  # all l are approximately integers
-            elif all(np.isclose(v, np.rint(v), rtol=0, atol=10 ** -precision)):
+            elif all(np.isclose(v, np.rint(v), rtol=0, atol=10**-precision)):
                 UMR[d] = self.L / np.gcd.reduce([int(i) for i in np.rint(v)])  # all v are approximately integers
             else:  # l and v both are not integers, not even approximately
                 lcopy = l.copy()
@@ -3567,9 +3548,9 @@ class Fringes:
                 # mutual factorial test for integers i.e. mutual divisibility test
                 for i in range(self.K - 1):
                     for j in range(i + 1, self.K - 1):
-                        if l[i] % l[j] < 10 ** -precision:
+                        if l[i] % l[j] < 10**-precision:
                             lcopy[j] = 1
-                        elif l[j] % l[i] < 10 ** -precision:
+                        elif l[j] % l[i] < 10**-precision:
                             lcopy[i] = 1
 
                 l = l[lcopy != 1]
@@ -3584,17 +3565,17 @@ class Fringes:
                     # extend lcm/gcd to rational numbers
 
                     if Dl <= Dv:
-                        ls = l * 10 ** Dl  # wavelengths scaled
-                        UMR[d] = np.lcm.reduce([int(i) for i in ls]) / 10 ** Dl
+                        ls = l * 10**Dl  # wavelengths scaled
+                        UMR[d] = np.lcm.reduce([int(i) for i in ls]) / 10**Dl
                         self.logger.debug("Extended lcm to rational numbers.")
                     else:
-                        vs = v * (10 ** Dv)  # wavelengths scaled
-                        UMR[d] = self.L / np.gcd.reduce([int(i) for i in vs]) / (10 ** Dv)
+                        vs = v * (10**Dv)  # wavelengths scaled
+                        UMR[d] = self.L / np.gcd.reduce([int(i) for i in vs]) / (10**Dv)
                         self.logger.debug("Extended gcd to rational numbers.")
                 else:  # irrational numbers or rational numbers with more digits than "precision"
                     # round and extend lcm to rational numbers
-                    ls = np.round(l * 10 ** precision, decimals=precision).astype("uint64")
-                    UMR[d] = np.lcm.reduce(ls) / 10 ** precision
+                    ls = np.round(l * 10**precision, decimals=precision).astype("uint64")
+                    UMR[d] = np.lcm.reduce(ls) / 10**precision
 
         # self._UMR = float(np.min(UMR))  # cast type frm "numpy.core.multiarray.scalar" to "int" or "float"
 
@@ -3619,7 +3600,7 @@ class Fringes:
     def ui(self) -> float:
         """Intensity noise."""
         quant = 0 if self.dark > 0 else self.quant
-        ui = np.sqrt(self.gain ** 2 * self.dark ** 2 + quant ** 2 + self.shot ** 2)
+        ui = np.sqrt(self.gain**2 * self.dark**2 + quant**2 + self.shot**2)
         return ui
 
     @property
@@ -3636,7 +3617,7 @@ class Fringes:
         """Uncertainty of measurement (standard deviation).
         [u] = px.
 
-        It is based on the phase noise model from [Surrel 1997]
+        It is based on the phase noise model
         and propagated through the unwrapping process and the phase fusion."""
 
         upni = self.upi / (2 * np.pi)  # normalized local phase uncertainties
@@ -3718,6 +3699,7 @@ class Fringes:
 
     # get default values from __init__
     defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
+    """Default values for `params`."""
 
     # restrict instance attributes to the ones listed here
     # commend the next line out or add "__dict__" to circumvent this

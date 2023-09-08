@@ -238,9 +238,41 @@ def test_decoding():
     assert np.allclose(dec.modulation, f.B, atol=1), "Modulation is off more than 1."  # todo: more precise?
     assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
 
+    f.mode = "precise"
+    dec = f.decode(f.encode())
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
+    assert len(dec) == 3, f"Decode retuned {len(dec)} instead of 3 values."
+    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
+    assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 1."
+    assert np.allclose(dec.modulation, f.B, atol=1), "Modulation is off more than 1."  # todo: more precise?
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
 
 def test_decoding_verbose():
     f = Fringes(Y=100)
+
+    dec = f.decode(f.encode(), verbose=True)
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
+    assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
+    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
+
+    f.verbose = True
+    dec = f.decode(f.encode())
+    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
+    assert len(dec) == 9, f"Decode retuned {len(dec)} instead of 9 values."
+    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
+    assert np.allclose(dec.brightness, f.A, atol=0.1), "Brightness is off more than 0.1."
+    assert np.allclose(dec.modulation, f.B, atol=1), "Modulation is off more than 1."  # todo: more precise?
+    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+    assert np.allclose(dec.phase, 0, atol=np.pi), "Phase values are not within [-PI, +PI]."
+    assert np.allclose(dec.orders, f._orders(), atol=0), "Fringe orders are off."
+    # assert np.allclose(dec.residuals, 0, atol=0.5), "Residuals are larger than 0.5."  # todo
+    assert np.allclose(dec.uncertainty, 0, atol=0.5), "Uncertainty is larger than 0.5."
+    assert np.allclose(dec.visibility, 1, atol=0.1), "Visibility is off more than 0.1."
+    assert np.allclose(dec.exposure, 0.5, atol=0.1), "Visibility is off more than 0.1."
+
+    f.mode = "precise"
+    f.verbose = False
 
     dec = f.decode(f.encode(), verbose=True)
     assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
@@ -353,7 +385,7 @@ def test_dtypes():
 #         # todo: test angles
 
 def test_modes():
-    f = Fringes(Y=10)
+    f = Fringes(Y=100)
 
     I = f.encode()
 
@@ -388,14 +420,18 @@ def test_unwrapping():
         grad = np.gradient(dec.registration[d, :, :, 0], axis=1 - d)
         assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
 
+    # todo: func = "cv2"
+
 
 def test_unwrapping_class_method():
     f = Fringes()
     f.K = 1
     f.v = 13
+    f.verbose = True
 
     dec = f.decode(f.encode())
-    Phi = Fringes.unwrap(dec.registration)  # todo: verbose -> reliability
+    Phi = Fringes.unwrap(dec.phase)  # todo: verbose -> reliability
+    Phi /= 2 * np.pi * f.v / f.L
     for d in range(f.D):
         grad = np.gradient(Phi[d, :, :, 0], axis=1 - d)
         assert np.allclose(grad, 1, atol=0.1), "Gradient of unwrapped phase map isn't close to 1."
@@ -409,12 +445,12 @@ def test_unwrapping_class_method():
 
 def test_remapping():
     f = Fringes(Y=100)
-    f.Y /= 2
-    f.verbose = True
 
     dec = f.decode(f.encode())
     assert np.allclose(f.remap(dec.registration), 1, atol=0), "Source doesn't contain only ones."
-    assert np.allclose(f.remap(dec.registration, dec.modulation), 1, atol=0.1), "Source doesn't contain only values close to one."
+    assert np.allclose(f.remap(dec.registration, dec.modulation), 1, atol=0.01), "Source doesn't contain only values close to one."
+    assert np.allclose(f.remap(dec.registration, mode="precise"), 1, atol=0), "Source doesn't contain only ones."
+    assert np.allclose(f.remap(dec.registration, dec.modulation, mode="precise"), 1, atol=0.01), "Source doesn't contain only values close to one."
 
 
 def test_curvature():
@@ -533,7 +569,7 @@ def test_simulation():
 
 if __name__ == "__main__":
     # f = Fringes()
-    # f.l = "1, 2, 3"
+    # f.l = "1, 2, 3"  # testing argparse
 
     # pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
