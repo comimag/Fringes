@@ -34,8 +34,11 @@ To simplify finding and setting the optimal parameters, one can choose from the 
   based on the minimal resolvable wavelength ``lmin`` = ``L`` / ``vmax``.
 - ``T`` can be set directly, based on the desired acquisition time.
   The optimal ``K``, ``N`` and  - if necessary - the multiplexing methods will be determined automatically.
-- Instead of the options above, one can simply use the function ``optimize()``
-  to automatically set the optimal ``v``, ``l``, ``T`` and multiplexing methods.
+- Instead of the options above, one can simply use the function ``optimize()``:
+  If ``umax`` is specified, the optimal parameters are determined
+  that allow a maximal uncertainty of ``umax`` with a minimum number of frames.
+  Else, the parameters of the `Fringes` instance are optimized to yield the minimal uncertainty
+  using the given number of frames ``T``.
 
 However, these methods only perform optimally
 if the recorded modulation ``B`` is known (or can be estimated)
@@ -49,11 +52,26 @@ a) Measure the **modulation transfer function (MTF)** at a given number of sampl
       starting from 0 up to ``vmax``.
    3. Encode, acquire and decode the fringe pattern sequence.
    4. Mask the values of ``B`` with nan where the camera wasn't looking at the screen.
+      The decoded modulation ``B`` can be used as an indicator.
    5. Call ``Bv(B)`` with the estimated modulation from the measurement as the argument.
    6. Finlly, to get the modulation ``B`` at certain spatial frequencies ``v``, simply call ``MTF(v)``.
-      This method interpolates the modulation from the measurements ``Bv`` at the points ``v``.
-b) Estimate the **magnification** and the **Point Spread Function (PSF)** of the imaging system:
+      This method interpolates the modulation from the measurement at the points ``v``.
+b) A linear MTF is assumed [1]_:
+   It starts at ``v`` = 0 with B = 1 and ends at ``v`` = ``vmax`` with B = 0.
+   Therefore, the optimal wavelength is ``vopt`` = ``vmax`` / 2.
+..
+   Estimate the **magnification** and the **Point Spread Function (PSF)** of the imaging system:
 
    1. Set the attributes ``magnification`` and ``PSF``.
    2. Finally, to get the modulation ``B`` at certain spatial frequencies ``v``, simply call ``MTF(v)``.
       Now, this method computes the modulation from the specified attributes ``magnifiction`` and ``PSF`` directly.
+
+c) As a last resort, a constant modulation transfer function is assumed: MTF(``v``) = 1.
+
+.. [1] `Bothe,
+        "Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
+        Dissertation,
+        ISBN 978-3-933762-24-5,
+        BIAS Bremen,
+        2008.
+        <https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2>`_

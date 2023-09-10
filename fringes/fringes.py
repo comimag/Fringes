@@ -329,7 +329,9 @@ class Fringes:
             a = self.u.max() / umax
             N = self.N * a**2
             self.N = np.maximum(3, np.ceil(N))
-            u = self.u
+
+            if self.u > umax:
+                ...  # todo: check if umax is reached
         else:  # T -> u
             if T is None:
                 T = self.T
@@ -2973,11 +2975,12 @@ class Fringes:
             idx = np.argmax(np.sum(1 / var, axis=1))
             vopt = v[idx]
         elif self.PSF > 0:  # determine from PSF
-            vopt_ = 1 / (2 * np.pi * self.PSF)
+            vopt_ = 1 / (2 * np.pi * self.PSF)  # todo
             lopt = 1 / vopt_
             vopt = self.L / lopt
-        else:
             vopt = self.vmax / 2  # approximation [Bothe2008]
+        else:
+            vopt = int(self.vmax)
 
         return vopt
 

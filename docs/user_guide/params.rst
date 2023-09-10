@@ -6,7 +6,8 @@
 Parameters
 ==========
 
-All parameters are parsed when setting, so usually several input formats are accepted, e.g.
+All parameters are implemented as class properties (managed attributes).
+They are parsed when setting, so usually several input formats are accepted, e.g.
 ``bool``, ``int``, ``float``, ``str`` for scalars and additionally ``list``, ``tuple``, ``ndarray`` for arrays.
 
 Note that some attributes have subdependencies, hence dependent attributes might change as well.
@@ -115,7 +116,7 @@ It is limited by ``Imax``.
 ``V`` is the fringe visibility (also called fringe contrast).
 ``V`` = ``A`` / ``B``, where ``V`` and is within the range [0, 1].
 
-``beta`` is the relative brightness (exposure) and is within the range [0, 1].
+``beta`` is the exposure (relative brightness) and is within the range [0, 1].
 
 ``gamma`` denotes the gamma correction factor and can be used to compensate nonlinearities of the display response curve.
 
@@ -196,7 +197,7 @@ During decoding, pixels with less are discarded, which can speed up the computat
 During decoding, pixels with less are discarded, which can speed up the computation.
 
 ``verbose`` can be set to ``True`` to also receive from decoding
-the wrapped phase maps `\varphi_i`, the fringe order `k`, the residuals `r`, the uncertainty `u`,
+the wrapped phase maps `\varphi_i`, the fringe orders `k`, the residuals `r`, the uncertainty `u`,
 the visibility `V` and the exposure `\beta`.
 
 ``FTM`` denotes Fourier-transform method and is deployed if ``T`` = 1
