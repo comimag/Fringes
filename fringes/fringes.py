@@ -45,7 +45,7 @@ class Fringes:
 
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
-    _modes = ("fast", "precise")
+    _indexings = ("xy", "ij")
     _dtypes = (
         "bool",
         "uint8",
@@ -56,6 +56,7 @@ class Fringes:
         "float32",
         "float64",
     )
+    _modes = ("fast", "precise")
     _loader = {
         ".json": json.load,
         ".yaml": yaml.safe_load,
@@ -108,6 +109,7 @@ class Fringes:
         FDM: bool = False,
         static: bool = False,
         lmin: float = 8.0,
+        indexing: str = "xy",
         reverse: bool = False,
         verbose: bool = False,
         mode: str = "fast",
@@ -430,7 +432,14 @@ class Fringes:
             if self.grid == "polar"
             else "logpol"
         )
-        xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))[self.axis if self.D == 1 else ...]
+
+        xi = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))
+
+        if self.indexing == "ij":
+            xi = xi[::-1]  # returns a view
+
+        if self.D == 1:
+            xi = xi[self.axis]  # returns a view
 
         if self.grid in ["polar", "log-polar"]:
             xi *= self.L
@@ -477,23 +486,6 @@ class Fringes:
             Base fringe patterns.
         """
 
-        # dd = [d for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
-        # kk = [k for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
-        # NN = [self._N[d, k] for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
-        # nn = [n for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])]
-        # nn = np.array([n for N in self._N[dd, kk] for n in range(N)])
-        # return = [(d, k) for d in range(self.D) for k in range(self.K) for n in range(self._N[d, k])][t]
-
-        # Nacc = np.cumsum(self._N.ravel()).reshape((self.D, self.K))
-        # return np.unravel_index(np.argmax(t < Nacc), Nacc.shape)  # t < Nacc  # argmax @bool: first element of True
-
-        # Nacc = 0
-        # for d in range(self.D):
-        #     for k in range(self.K):
-        #         Nacc += self._N[d, k]
-        #         if t < Nacc:
-        #             return d, k
-
         t0 = time.perf_counter()
 
         if frames is None:
@@ -508,30 +500,23 @@ class Fringes:
 
         if self.grid != "image" or self.angle != 0:
             xi = self.coordinates()[..., 0]
-            assert xi.ndim == 3, "uv-coordinates are not three-dimensional with shape (D, Y, X)"
         else:
-            xi = None
+            B = int(np.ceil(np.log2(self.R.max() - 1)))  # next power of two
+            B += -B % 8  # next power of two divisible by 8
+            xi = np.indices((self.Y, self.X), dtype=f"uint{B}", sparse=True)
+            if self.indexing == "xy":
+                xi = xi[::-1]
+            if self.D == 1:
+                xi = [xi[self.axis]]
 
-        dtype = np.dtype("float64") if self.SDM or self.FDM else self.dtype
+        is_mixed_color = np.any((self.h != 0) * (self.h != 255))
+        dtype = np.dtype("float64") if self.SDM or self.FDM or is_mixed_color else self.dtype
 
         I = np.empty([T, self.Y, self.X], dtype)
         idx = 0
         frame = 0
         for d in range(self.D):
-            if xi is None and self.grid == "image":
-                x = np.arange(self.R[d]) / self.L  # gets broadcasted
-                if self.D == 2:
-                    if d == 0:
-                        x = x[None, :]
-                    else:
-                        x = x[:, None]
-                else:
-                    if self.axis == 0:
-                        x = x[None, :]
-                    else:
-                        x = x[:, None]
-            else:
-                x = xi[d] / self.L
+            x = xi[d] / self.L
 
             for i in range(self.K):
                 k = 2 * np.pi * self._v[d, i]
@@ -547,7 +532,6 @@ class Fringes:
                         val = self.Imax * (self.beta * (1 + self.V * np.cos(k * x - w * t - self.o))) ** self.gamma
 
                         if dtype.kind in "ui" and rint:
-                            # val += .5
                             np.rint(val, out=val)
                         elif dtype.kind in "b":
                             val = val >= 0.5
@@ -556,9 +540,6 @@ class Fringes:
 
                         idx += 1
                     frame += 1
-
-        # dt = np.float64 if self.SDM or self.FDM or np.any((self.h != 0) * (self.h != 255)) else self.dtype
-        # I = encode(dt, np.ones(1), frames, self._N, self._v, self._f * (-1 if self.reverse else 1), self.o, self.Y, self.X, 1, self.axis, self.gamma, self.A, self.B)
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
@@ -895,8 +876,6 @@ class Fringes:
                         ssd -= s**2 / self.K
 
                         np.minimum(mn, ssd, out=mn)
-
-                    q = 1
         else:
             if self.mode == "fast":
                 SQNR = self.B / self.ui
@@ -1253,7 +1232,7 @@ class Fringes:
             (computed from the imaging system's point spread function)
             and intensity noise added by the camera.
             The required parameters for this are the instance's attributes
-            `magnification`, `PSF`, `system_gain`, `dark_current` and `dark_noise`.
+            `magnification`, `PSF`, `gain`, `dark_current`, `dark` and 'shot' .
             Default is False.
 
         Returns
@@ -1324,8 +1303,8 @@ class Fringes:
                 frames = np.array([np.arange(i * N, (i + 1) * N) for i in frames]).ravel()
 
             if self.SDM:  # WDM before SDM
-                EN0 = np.sum(self._N[0])
-                frames = np.array([np.arange(i, i + EN0 + 1, EN0) for i in frames]).ravel()
+                len_D0 = np.sum(self._N[0])
+                frames = np.array([np.arange(i, i + len_D0 + 1, len_D0) for i in frames]).ravel()
         else:
             frames = None
 
@@ -1430,7 +1409,7 @@ class Fringes:
         t0 = time.perf_counter()
 
         # get and apply videoshape
-        T, Y, X, C = vshape(I).shape  # extract Y, X, C from data as these parameters depend on used camera
+        T, Y, X, C = vshape(I).shape  # extract Y, X, C from data as these parameters depend on the used camera
         I = I.reshape((T, Y, X, C))
 
         # assertions
@@ -1443,14 +1422,12 @@ class Fringes:
             I[I >= self.y0] = I[I >= self.y0] - self.y0
             I[I < self.y0] = 0
 
-        # decolorize i.e. fuse hues/colors
-        if (
-            self.H > 1 or not self._monochrome
-        ):  # for gray fringes, color fusion is not performed, but extended averaging is
+        # decolorize (fuse hues/colors) [for gray fringes, color fusion is not performed, but extended averaging is]
+        if self.H > 1 or not self._monochrome:
             I = self._decolorize(I)
 
         # demultiplex
-        if self.SDM and 1 not in self.N or self.WDM or self.FDM:
+        if self.SDM and 1 not in self.N or self.WDM or self.FDM:  # todo: if selfSDM and 1 in self.N: Fourier-transform method
             I = self._demultiplex(I)
 
         # demodulate
@@ -1461,12 +1438,14 @@ class Fringes:
             if I.dtype.kind in "ui":
                 if np.iinfo(I.dtype).bits > 8:  # data may contain fewer bits of information
                     Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
+                    Imax += -Imax % 2  # same or next power of two divisible by two
                 else:
                     Imax = np.iinfo(I.dtype).max
             else:  # float
                 Imax = 1
             exp = bri / Imax
 
+        # blacken where color value of hue was black
         if self.H > 1 and C == 3:
             idx = np.sum(self.h, axis=0) == 0
             if np.any(idx):  # blacken where color value of hue was black
@@ -1493,6 +1472,7 @@ class Fringes:
             # todo: tests
 
             if self.D == 2:
+                # todo: swapaxes
                 if self.grid == "Cartesian":
                     if self.X >= self.Y:
                         reg[0] += self.X / 2 - 0.5
@@ -1629,10 +1609,11 @@ class Fringes:
                     if func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
                         # dtype must be np.float32  # todo: test this
                         if isinstance(B, np.ndarray) and vshape(B).shape == phi.shape:
+                            # todo: swapaxes
                             SNR = self.B[d, :, :, c] / self.ui
                             upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N) / SNR  # local phase uncertainties
                             upin = upi / (2 * np.pi)  # normalized local phase uncertainties
-                            uxi = upin * self._l  # local positional uncertainties
+                            uxi = upin * self._l[d]  # local positional uncertainties
                             ux = np.sqrt(
                                 1 / np.sum(1 / uxi**2)
                             )  # global phase uncertainty (by inverse variance weighting of uxi)
@@ -1655,7 +1636,7 @@ class Fringes:
             if regmin < 0:
                 reg[d] -= regmin
 
-        reg *= self._l[:, 0, None, None, None] / (2 * np.pi)
+        reg *= self._l[:, 0, None, None, None] / (2 * np.pi)  # todo: what if cam is 90° against screen? also self.rollaxis
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
@@ -1814,7 +1795,9 @@ class Fringes:
             src = np.zeros((self.Y, self.X, C), np.float32)
 
             if False:
-                idx = (xi.swapaxes(1, 2) + 0.5).astype(int, copy=False)
+                if self.indexing == "xy":
+                    xi = xi.swapaxes(1, 2)  # returns a view
+                idx = (xi + 0.5).astype(int, copy=False)
 
                 for c in range(C):  # looping through color channels reduces memory consumption
                     src[idx[1].ravel(), idx[0].ravel(), c] += B[..., c].ravel()
@@ -2304,13 +2287,15 @@ class Fringes:
     def R(self) -> np.ndarray:
         """Lengths of fringe patterns for each direction.
         [R] = px."""
-        if self.D == 2:
-            R = np.array([self.X, self.Y])
-        else:
-            if self.axis == 0:
-                R = np.array([self.X])
-            else:
-                R = np.array([self.Y])
+
+        R = np.array([self.X, self.Y])
+
+        if self.indexing == "ij":
+            R = R[::-1]
+
+        if self.D == 1:
+            R = np.atleast_1d(R[self.axis])
+
         return R
 
     @property
@@ -2331,6 +2316,7 @@ class Fringes:
     def L(self) -> int | float:
         """Length to be encoded.
         [L] = px."""
+
         return float(self.R.max() * self.alpha)
 
     @property
@@ -2404,19 +2390,16 @@ class Fringes:
 
     @property
     def axis(self) -> int:
-        """Axis along which to shift if number of directions equals one."""
+        """Axis along which to shift if number of directions equals one.
+
+        Notes
+        -----
+        Axis 0 is along the x-axis, axis 1 along the y-axis.
+        """
         return self._axis
 
     @axis.setter
-    def axis(self, axis: int | str):
-        if isinstance(axis, str):
-            if axis.lower() in ["x", "u"]:
-                axis = 0
-            elif axis.lower() in ["y", "v"]:
-                axis = 1
-            else:
-                return
-
+    def axis(self, axis: int):
         _axis = int(min(max(0, axis), 1))
 
         if self._axis != _axis:
@@ -3176,6 +3159,23 @@ class Fringes:
         if self._mode != _mode and _mode in self._modes:
             self._mode = _mode
             self.logger.debug(f"{self._mode = }")
+
+    @property
+    def indexing(self) -> str:
+        """Indexing convention.
+
+        The default Cartesian indexing `xy` will index the row first,
+        while matrix indexing `ij` will index the colum first.
+        """
+        return self._indexing
+
+    @indexing.setter
+    def indexing(self, indexing):
+        _indexing = str(indexing)
+
+        if self._indexing != _indexing and _indexing in self._indexings:
+            self._indexing = _indexing
+            self.logger.debug(f"{self._indexing = }")
 
     @property
     def reverse(self) -> bool:

@@ -18,7 +18,6 @@ def circ_dist(a, b, c) -> float:
     return d
 
 
-# @nb.jit(cache=True, nopython=True, nogil=True, fastmath=True)
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
 # @nb.jit(
 #     nb.types.UniTuple(  # output types
@@ -62,7 +61,7 @@ def decode(
     T, Y, X, C = I.shape
     assert np.sum(N) == T, "Sum of shifts must equal number of frames."
     D, K = N.shape
-    assert R.size == D, "Screen length must be given for each direction."
+    assert R.size >= D, "Screen length must be given for each direction."
 
     L = R.max() * a
     l = L / v  # lambda i.e. period lengths in [px]
@@ -182,13 +181,13 @@ def decode(
                         phi[d, :, y, x, c] = p
                         unc[d, y, x, c] = ux  # global positional uncertainty in pixel units
 
-                    if Vmin > 0 and np.any(B / A < Vmin) or ux > umax:
-                        reg[d, y, x, c] = np.nan
-                        if verbose:
-                            res[d, y, x, c] = np.nan
-                            fid[d, :, y, x, c] = np.nan
-
-                        continue
+                    # if Vmin > 0 and np.any(B / A < Vmin) or ux > umax:
+                    #     reg[d, y, x, c] = np.nan
+                    #     if verbose:
+                    #         res[d, y, x, c] = np.nan
+                    #         fid[d, :, y, x, c] = np.nan
+                    #
+                    #     continue
 
                     # spatial demodulation i.e. unwrapping
                     if K == 1:

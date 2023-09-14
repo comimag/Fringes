@@ -89,7 +89,11 @@ def test_save_load():
 
 def test_coordinates():
     f = Fringes()
-    uv = f.coordinates()
+
+    xi = f.coordinates()
+    assert xi.ndim == 4, "Coordinates are not four-dimensional."
+    assert xi.shape == (f.D, f.Y, f.X, 1), "Coordinates don't have shape (f.D, f.Y, f.X, 1)."
+
     assert np.array_equal(f.coordinates(), np.indices((f.Y, f.X))[::-1, :, :, None]), "XY-coordinates are wrong."
 
     f = Fringes(Y=1)
@@ -101,30 +105,6 @@ def test_coordinates():
 
 def test_encoding():
     f = Fringes(Y=100)
-
-    I = f.encode()
-    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
-    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
-
-    dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
-
-
-def test_encoding_unidirectional():
-    f = Fringes(Y=100)
-    f.axis = 0
-    f.D = 1
-
-    I = f.encode()
-    assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
-    assert I.ndim == 4, "Fringe pattern sequence is not 4-dimensional."
-
-    dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
-
-    f = Fringes(X=100, Y=1920)
-    f.axis = 1
-    f.D = 1
 
     I = f.encode()
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -359,17 +339,6 @@ def test_alpha():
     assert np.all(dec.registration < f.R[:, None, None, None]), "Registration values are larger than screen size."
 
 
-def test_dtypes():
-    f = Fringes(Y=100)
-
-    for dtype in f._dtypes:
-        f.dtype = dtype
-
-        I = f.encode()
-
-        assert I.dtype == f.dtype, "Wrong dtype."
-
-
 # def test_grids():
 #     f = Fringes(Y=100)
 #
@@ -383,6 +352,31 @@ def test_dtypes():
 #         assert np.allclose(d, 0, atol=0.1), f"Registration is off more than 0.1 for grid '{f.grid}'."  # todo: fix grids
 #
 #         # todo: test angles
+
+
+def test_indexing_axis():
+    f = Fringes(Y=100)
+
+    for indexing in f._indexings:
+        f.indexing = indexing
+        for D in [1, 2]:
+            f.D = D
+            for axis in [0, 1]:
+                f.axis = axis
+                dec = f.decode(f.encode())
+                assert np.allclose(dec.registration, f.coordinates(), atol=0.1), "Registration is off more than 0.1."
+
+
+def test_dtypes():
+    f = Fringes(Y=100)
+
+    for dtype in f._dtypes:
+        f.dtype = dtype
+
+        I = f.encode()
+
+        assert I.dtype == f.dtype, "Wrong dtype."
+
 
 def test_modes():
     f = Fringes(Y=100)
@@ -568,6 +562,8 @@ def test_simulation():
 
 
 if __name__ == "__main__":
+    # todo: def test_...(): test_..., test..., ...
+
     # f = Fringes()
     # f.l = "1, 2, 3"  # testing argparse
 

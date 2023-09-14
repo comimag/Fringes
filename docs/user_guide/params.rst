@@ -22,7 +22,7 @@ Circular dependencies are resolved automatically.
 Video Shape
 -----------
 
-``shape`` is the standardized shape (T, Y, X, C) of the fringe pattern sequence, where
+``shape`` is the standardized shape (T, Y, X, C) of the fringe pattern sequence, with
 
 - ``T``: number of frames
 - ``Y``: height (in pixel units)
@@ -48,6 +48,12 @@ The following coordinate systems can be used by setting ``grid`` to:
 - ``Cartesian``: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.
 - ``polar``: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
 - ``log-polar``: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
+
+``indexing`` denotes the indexing convention.
+Possible values are:
+
+- ``xy``: Cartesian indexing (defaut) will index the row first.
+- ``ij``: Matrix indexing will index the colum first.
 
 ``D`` denotes the number of directions to be encoded.
 

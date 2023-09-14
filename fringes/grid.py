@@ -4,15 +4,14 @@ import numpy as np
 
 
 def img(Y: int = 720, X: int = 720, a: float = 0):
-    # y, x = np.mgrid[:Y, :X]
-    y, x = np.indices((Y, X))
-    return rot(x, y, a)
+    yy, xx = np.indices((Y, X))
+    return rot(xx, yy, a)
 
 
 def cart(Y: int = 720, X: int = 720, a: float = 0):
     x = np.linspace(-(X - 1) / 2, (X - 1) / 2, X, endpoint=True)
     y = np.linspace((Y - 1) / 2, -(Y - 1) / 2, Y, endpoint=True)
-    xx, yy = np.meshgrid(x, y, sparse=True)  # todo: sparse=False (default)
+    xx, yy = np.meshgrid(x, y, copy=False)
     return rot(xx, yy, a)
 
 
