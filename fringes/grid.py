@@ -51,5 +51,5 @@ def rot(uu, vv, a):
 
 
 def innercirc(Y: int = 720, X: int = 720):
-    """Mask with area inside inscribed circle."""
+    """Boolean mask with True values inside inscribed circle."""
     return pol(Y, X)[1] <= 0.5

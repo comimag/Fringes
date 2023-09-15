@@ -378,7 +378,7 @@ class Fringes:
     def deinterlace(self, I: np.ndarray) -> np.ndarray:
         """Deinterlace fringe patterns.
 
-        The is for fringe patterns
+        This for fringe patterns
         which were acquired with a line scan camera
         while each frame has been displayed and captured
         while the object was moving by one pixel.
@@ -1232,7 +1232,7 @@ class Fringes:
             (computed from the imaging system's point spread function)
             and intensity noise added by the camera.
             The required parameters for this are the instance's attributes
-            `magnification`, `PSF`, `gain`, `dark_current`, `dark` and 'shot' .
+            `magnification`, `PSF`, `gain`, `dark_current`, `dark`, `quant` and 'shot' .
             Default is False.
 
         Returns
@@ -1553,7 +1553,7 @@ class Fringes:
         phi : np.ndarray
             Phase maps to unwrap spatially, stacked along the first dimension.
             It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-            The frames (along first dimension) as well the color channels (along last dimension)
+            The frames (first dimension) as well the color channels (last dimension)
             are unwrapped separately.
 
         B : np.ndarray, optional
@@ -1651,7 +1651,7 @@ class Fringes:
         phi : np.ndarray
             Phase maps to unwrap spatially, stacked along the first dimension.
             It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-            The frames (along first dimension) as well the color channels (along last dimension)
+            The frames (first dimension) as well the color channels (last dimension)
             are unwrapped separately.
 
         mask : np.ndarray, optional
@@ -2346,7 +2346,7 @@ class Fringes:
 
     @property
     def angle(self) -> float:
-        """Angle of coordinate system's principal axis."""
+        """Angle of the coordinate system's principal axis."""
         return self._angle
 
     @angle.setter
@@ -2392,10 +2392,7 @@ class Fringes:
     def axis(self) -> int:
         """Axis along which to shift if number of directions equals one.
 
-        Notes
-        -----
-        Axis 0 is along the x-axis, axis 1 along the y-axis.
-        """
+        Either `0` or `1`."""
         return self._axis
 
     @axis.setter
@@ -3164,7 +3161,7 @@ class Fringes:
     def indexing(self) -> str:
         """Indexing convention.
 
-        The default Cartesian indexing `xy` will index the row first,
+        Cartesian indexing `xy` (the default) will index the row first,
         while matrix indexing `ij` will index the colum first.
         """
         return self._indexing
@@ -3390,7 +3387,7 @@ class Fringes:
 
     @umax.setter
     def umax(self, umax: float):
-        _umax = float(min(max(0, umax), self.L / 2))  # L / 2 due to circular distribution  # todo: R.max() / 2
+        _umax = float(min(max(0, umax), self.L))  # todo: L / 2 due to circular distribution  # todo: R.max() / 2
 
         if self._umax != _umax:
             self._umax = _umax
@@ -3420,7 +3417,7 @@ class Fringes:
 
     @property
     def dark(self) -> float:
-        """Dark noise of digital camera (standard deviation).
+        """Dark noise of the digital camera (standard deviation).
         [dark] = electrons."""
         return self._dark
 

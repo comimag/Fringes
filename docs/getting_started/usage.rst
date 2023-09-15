@@ -33,7 +33,6 @@ so usually several input types are accepted
 (e.g. `bool`, `int`, `float` for scalars
 and additionally `list`, `tuple`, `ndarray` for `arrays <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_).
 Note that some attributes have subdependencies,
-.. (cf. next Figure)
 hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.
 
@@ -157,9 +156,9 @@ Also, the data has to fit in order to be able to execute certain functions.
 As a consequence, if you load data - e.g. the acquired (distorted) fringe pattern sequence -
 the first element of its videoshape has to match the parameter `Frames` in order to be able to decode it.
 
-To display any datum listed in the table in the `Viewer`_, simly select the name of it in the table.
+To display any datum listed in the table in the `Viewer`_, simply select the name of it in the table.
 
-Klick the ``Load`` button to choose data or config file to load.
+Klick the ``Load`` button to choose data or a config file to load.
 With the ``Save`` button, all data including the parameters are saved to the selected directory.
 Use the ``Clear all`` button to delete all data.
 

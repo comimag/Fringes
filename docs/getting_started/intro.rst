@@ -49,7 +49,7 @@ The procedure is analogous in the vertical direction.
        with offset `A`, amplitude `B` and spatial frequency `\nu`.
        An additional phase offset `\varphi_0` may be set to
        e.g. let the fringe patterns start (at the origin) with a gray value of zero.
-       There can be `K` sets, i.e. `K` fringe patterns with different spatial frequency `\nu_i`,
+       There can be `K` sets, i.e. `K` fringe patterns with different spatial frequencies `\nu_i`,
        with `i \in \{ \mathbb{N}_0 \enspace | \enspace i < K \}`.
 
     #.  Temporal Modulation
@@ -110,7 +110,7 @@ The procedure is analogous in the vertical direction.
        b) Temporal Phase Unwrapping (TPU)
 
           If multiple sets with different spatial frequencies `\nu_i` are used,
-          and the unambiguous measurement range `UMR` is larger than the screen length `L`,
+          and the unambiguous measurement range is larger than the screen length `UMR > L`,
           the ambiguity of the phase map is resolved by generalized multi-frequency temporal phase unwrapping (GTPU).
 
        c) Spatial Phase Unwrapping (SPU)
@@ -141,7 +141,7 @@ The procedure is analogous in the vertical direction.
           Again using the 2DFFT algorithm, we compute the inverse Fourier-transform.
           Now we have the signal phase `\varPhi_s` in the imaginary part
           completely separated from the unwanted amplitude variation `B` in the real part.
-          Subsequently, a spatial phase-unwrapping algorithm may be deployed to remove any remaining phase jumps.
+          Subsequently, a spatial phase-unwrapping algorithm may be allpied to remove any remaining phase jumps.
           This phase unwrapping method is not critical if the signal-to-noise ratio is higher than 10
           and the gradients of the signal phase `\varPhi_s` are less than `\pi` per pixel.
           Again, this only yields a relative phase map, therefore absolute positions are unknown.
@@ -157,7 +157,7 @@ The procedure is analogous in the vertical direction.
 
 In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
 are replaced by the maximal possible gray value `I_{max}`,
-the relative quantities exposure (relative average intensity) `\beta` and visibilty (relative fringe contrast) `V` [9]_:
+the relative quantities exposure `\beta` (relative average intensity) and visibilty `V` (relative fringe contrast) [9]_:
 
 `I = A + B \cos(\varPhi) = I_{max} \beta (1 + V \cos(\varPhi)`
 

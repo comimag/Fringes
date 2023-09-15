@@ -26,7 +26,7 @@ Troubleshooting
 
 - My decoded coordinates show systematic offsets
 
-  #. Ensure that the unamboguous measurement range is larger than the pattern length, i.e. ``UMR`` :math:`\ge` ``L``.
+  #. Ensure that the unambiguous measurement range is larger than the pattern length, i.e. ``UMR`` :math:`\ge` ``L``.
      If not, adjust the used wavelengths ``l`` resp. number of periods ``v`` accordingly.
   #. Ensure that the correct frames were captured while acquiring the fringe pattern sequence.
      If the timings are not set correctly, the sequence may be a frame off.

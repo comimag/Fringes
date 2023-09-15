@@ -35,7 +35,7 @@ If a `multiplexing`_ scheme is activated, ``T`` reduces further.
 ``L`` is the maximum of ``X`` and ``Y`` and denotes the length (in pixel units) to be ancoded.
 It can be extended by the factor ``alpha``.
 
-``C`` depends on the `coloring`_ and `multiplexing`_ schemes activated`.
+``C`` depends on the `coloring`_ and `multiplexing`_ schemes activated.
 
 ``size`` is the product of ``shape``.
 
@@ -199,11 +199,11 @@ Choose either ``'fast'`` (the default) or ``'precise'``.
 ``Vmin`` denotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
 During decoding, pixels with less are discarded, which can speed up the computation.
 
-``umax`` denotes the maximal unvertainty required for the measurement to be valid and is in the interval [0, 1].
+``umax`` denotes the maximal uncertainty required for the measurement to be valid and is in the interval [0, `L`].
 During decoding, pixels with less are discarded, which can speed up the computation.
 
 ``verbose`` can be set to ``True`` to also receive from decoding
-the wrapped phase maps `\varphi_i`, the fringe orders `k`, the residuals `r`, the uncertainty `u`,
+the wrapped phase maps `\varphi_i`, the fringe orders `k_i`, the residuals `r`, the uncertainty `u`,
 the visibility `V` and the exposure `\beta`.
 
 ``FTM`` denotes Fourier-transform method and is deployed if ``T`` = 1
