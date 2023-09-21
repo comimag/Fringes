@@ -18,8 +18,8 @@ You instantiate, parameterize and deploy the ``Fringes`` class:
     f = frng.Fringes()          # instantiate the Fringes class
 
 You can change the `logging level <https://docs.python.org/3/library/logging.html#levels>`_ of a ``Fringes`` instance.
-For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters are changed
-and how long functions take to execute.
+For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters were changed
+and how long functions took to execute.
 
 .. code-block:: python
 

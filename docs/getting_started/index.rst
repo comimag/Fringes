@@ -5,5 +5,5 @@ Getting started
     :maxdepth: 2
 
     intro
-    installation
+    install
     usage

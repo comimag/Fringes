@@ -100,7 +100,6 @@ The procedure is analogous in the vertical direction.
        This constitutes the registration, which is a mapping in the same pixel grid as the camera sensor
        and contains the information where each camera pixel, i.e. each camera sightray, was looking at
        during the fringe pattern acquisition.
-       Note that in contrast to binary coding schemes, e.g. Gray code, the coordinate is obtained with sub-pixel precision.
 
        a) No Unwrapping
 
@@ -110,7 +109,7 @@ The procedure is analogous in the vertical direction.
        b) Temporal Phase Unwrapping (TPU)
 
           If multiple sets with different spatial frequencies `\nu_i` are used,
-          and the unambiguous measurement range is larger than the screen length `UMR > L`,
+          and the unambiguous measurement range is larger than or equal to the screen length `UMR \le L`,
           the ambiguity of the phase map is resolved by generalized multi-frequency temporal phase unwrapping (GTPU).
 
        c) Spatial Phase Unwrapping (SPU)
@@ -149,17 +148,17 @@ The procedure is analogous in the vertical direction.
           .. figure:: FTM.png
               :scale: 25%
               :align: center
-              :alt: mtf
+              :alt: ftm
 
               In this image, the spatial frequency `\nu_r` is denoted as `f_0`.
               (A) Separated Fourier spectra; (B) single spectrum selected and translated to the origin.
-              From [7]_.
+              From [8]_.
 
 In an alternative formulation, the absolute quantities offset `A` and amplitude `B`
 are replaced by the maximal possible gray value `I_{max}`,
 the relative quantities exposure `\beta` (relative average intensity) and visibilty `V` (relative fringe contrast) [9]_:
 
-`I = A + B \cos(\varPhi) = I_{max} \beta (1 + V \cos(\varPhi)`
+`I = A + B \cos(\varPhi) = I_{max} \beta (1 + V \cos(\varPhi))`
 
 The two parameters `\beta` and `V` describe the phase shifting signal `I`
 independently of the value range of the light source or camera.
@@ -188,10 +187,27 @@ The visibility `V` of the fringes is influenced by:
 
 - the maximum contrast of the light source,
 - the modulation transfer function of the optical elements,
-- the depth of field and defocus,
+- the camera lens (defocus and depth of field),
 - the resolution of the camera
   (the camera pixel size projected onto the light source acts as a low pass filter,
   reducing the modulation of the signal).
+
+Note that in a real measurement,
+for one thing, the camera sight ray is not an infinitesimal thin ray but a (diverging) beam,
+and for another the reflection of (transmission through) an object results in a scattering lobe (cf. next figure).
+The intersection of the scattering lobe with the screen surface is the so called point spread function.
+This results in blurring of the displayed fringe patterns.
+However, the coding scheme determines the center of mass of this point spread function with sub-pixel precision.
+The visibility `V` correlates with the blurring and hence with the width of the point spread function
+and can therefore be used as a measure for it.
+
+.. figure:: PSF.png
+    :scale: 15%
+    :align: center
+    :alt: psf
+
+    Projecting the scattering lobe of the surface onto the screen results in a point spread function (PSF).
+    From [10]_.
 
 .. [1] `Burke et al.,
         "Reverse engineering by fringe projection",
@@ -246,3 +262,9 @@ The visibility `V` of the fringes is influenced by:
         Technisches Messen,
         2012.
         <https://doi.org/10.1524/teme.2012.0256>`_
+
+.. [10] `Höfer et al.,
+        Pattern coding strategies for deflectometric measurement systems,
+        Proc. SPIE 8791,
+        2013.
+        <https://doi.org/10.1117/12.2022133>`_

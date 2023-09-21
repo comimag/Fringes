@@ -16,12 +16,15 @@ def test_version():
     assert __version__, "Version is not specified."
 
 
-def test_property_docs():
+def test_properties():
     f = Fringes()
 
     for p in dir(f):
-        if isinstance(getattr(type(f), p, None), property) and getattr(type(f), p, None).fset is not None:
-            assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring defined."
+        if isinstance(getattr(type(f), p, None), property):
+            assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring."
+
+            if not p.startswith("_"):
+                assert p in f, ""
 
 
 def test_init_doc():  # todo
@@ -446,6 +449,9 @@ def test_remapping():
     assert np.allclose(f.remap(dec.registration, mode="precise"), 1, atol=0), "Source doesn't contain only ones."
     assert np.allclose(f.remap(dec.registration, dec.modulation, mode="precise"), 1, atol=0.01), "Source doesn't contain only values close to one."
 
+    assert np.allclose(f.remap(dec.registration, mode="precise"), 1, atol=0), "Source doesn't contain only ones."
+    assert np.allclose(f.remap(dec.registration, dec.modulation, mode="precise"), 1, atol=0.1), "Source doesn't contain only values close to one."
+
 
 def test_curvature():
     f = Fringes(Y=100)
@@ -562,10 +568,16 @@ def test_simulation():
 
 
 if __name__ == "__main__":
+    # f = Fringes()
+    # # f.K = 1
+    # f.verbose = True
+    # I = f.encode()
+    # dec = f.decode(I)
+
     # todo: def test_...(): test_..., test..., ...
 
     # f = Fringes()
     # f.l = "1, 2, 3"  # testing argparse
 
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
