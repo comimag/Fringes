@@ -199,7 +199,7 @@ The intersection of the scattering lobe with the screen surface is the so called
 This results in blurring of the displayed fringe patterns.
 However, the coding scheme determines the center of mass of this point spread function with sub-pixel precision.
 The visibility `V` correlates with the blurring and hence with the width of the point spread function
-and can therefore be used as a measure for it.
+and can be used as an indicator.
 
 .. figure:: PSF.png
     :scale: 15%

@@ -1,12 +1,13 @@
 # Fringes
 [![PyPI](https://img.shields.io/pypi/v/fringes)](https://pypi.org/project/fringes/)
-![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fringes)
 [![Read the Docs](https://img.shields.io/readthedocs/fringes)](https://fringes.readthedocs.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)
 
 <!---
+![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
 ![GitHub issues](https://img.shields.io/github/issues/comimag/fringes)
 ![GitHub](https://img.shields.io/github/license/comimag/fringes)
 --->
