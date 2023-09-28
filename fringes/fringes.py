@@ -18,11 +18,12 @@ from si_prefix import si_format as si
 
 from .util import vshape, bilateral, median, _remap, circular_distance
 from . import grid
-from .decoder import decode  # todo: fast_decode (only N>= 3) i.e. fast_unwrap(CRT + ssdlim)
+from .decoder import decode  # todo: fast_decode (only N>= 3) and fast_unwrap(CRT + ssdlim)
 
 
 class Fringes:
-    """Easy to use class for generating and analyzing fringe patterns with phase shifting algorithms."""
+    """Easy-to-use class for parameterizing, generating and analyzing fringe patterns with phase shifting algorithms."""
+    # note: the class docstring is continuated at the end of the class
 
     # value limits
     _Hmax = 101  # this is arbitrary
@@ -43,9 +44,27 @@ class Fringes:
     _lminmin = 3  # l >= 3 yields sufficient modulation theoretically
     # _lminmin = 8  # l >= 8 yields sufficient modulation practically [Liu2014]
 
+    # allowed values; take care to only use immutable types!  # todo: is that so?
+    values = {
+        "grid": ("image", "Cartesian", "polar", "log-polar"),
+        "indexing": ("xy", "ij"),
+        "dtype": (
+            "bool",
+            "uint8",
+            "uint16",
+            # "uint32",  # integer overflow in pyqtgraph -> replace line 528 of ImageItem.py with:
+            # "uint64",  # bins = self._xp.arange(mn, mx + 1.01 * step, step, dtype="uint64")
+            # "float16",  # numba doesn't handle float16, also most algorithms convert float16 to float32 anyway
+            "float32",
+            "float64",
+        ),
+        "mode": ("fast", "precise"),
+    }
+
     # allowed values; take care to only use immutable types!
     _grids = ("image", "Cartesian", "polar", "log-polar")
     _indexings = ("xy", "ij")
+    _modes = ("fast", "precise")
     _dtypes = (
         "bool",
         "uint8",
@@ -56,7 +75,7 @@ class Fringes:
         "float32",
         "float64",
     )
-    _modes = ("fast", "precise")
+
     _loader = {
         ".json": json.load,
         ".yaml": yaml.safe_load,
@@ -79,6 +98,7 @@ class Fringes:
     # default values are defined here; take care to only use immutable types!
     def __init__(
         self,
+        *,  # bundels all args, what follows are only kwargs
         Y: int = 1200,
         X: int = 1920,
         H: int = 1,  # inferred from h
@@ -178,7 +198,7 @@ class Fringes:
         return item in self.properties
 
     def __str__(self) -> str:
-        return "Fringes"
+        return self.__name__
 
     def __repr__(self) -> str:
         return f"{self.params}"
@@ -1582,14 +1602,29 @@ class Fringes:
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
 
-            - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
+            - 'ski': `Scikit-image[1]_ <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
 
-            - else: `OpenCV https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
+            - else: `OpenCV[2]_ https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
 
         Returns
         -------
         unwrapped : np.ndarray
-            Unwrapped phase map(s)."""
+            Unwrapped phase map(s).
+
+        References
+        ----------
+        .. [1] `Herráez et al.,
+        "Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
+        Applied Optics,
+        2002.
+        <https://doi.org/10.1364/AO.41.007437>`_
+
+        .. [2] `Lei et al.,
+        "A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping",
+        Optik - International Journal for Light and Electron Optics,
+        2015.
+        <https://doi.org/10.1016/j.ijleo.2015.04.070>`_
+        """
 
         t0 = time.perf_counter()
 
@@ -1681,15 +1716,30 @@ class Fringes:
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
 
-            - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
+            - 'ski': `Scikit-image[1]_ <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
 
-            - else: `OpenCV <https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
+            - else: `OpenCV[2]_ <https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
 
         Returns
         -------
         unwrapped : np.ndarray
             Unwrapped phase map(s).
+
+        References
+        ----------
+        .. [1] `Herráez et al.,
+        "Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
+        Applied Optics,
+        2002.
+        <https://doi.org/10.1364/AO.41.007437>`_
+
+        .. [2] `Lei et al.,
+        "A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping",
+        Optik - International Journal for Light and Electron Optics,
+        2015.
+        <https://doi.org/10.1016/j.ijleo.2015.04.070>`_
         """
+        # todo: references
 
         T, Y, X, C = vshape(phi).shape
         phi = phi.reshape((T, Y, X, C))
@@ -3721,41 +3771,42 @@ class Fringes:
                             f"'{k}' got overwritten by interdependencies. Choose consistent parameter set."
                         )
 
-    # get default values from __init__
-    defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
+    types = dict(sorted(__init__.__annotations__.items()))
+    """Types of 'params' values."""
+
+    # defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
+    defaults = dict(sorted(__init__.__kwdefaults__.items()))
     """Default values for `params`."""
 
-    # restrict instance attributes to the ones listed here
-    # commend the next line out or add "__dict__" to circumvent this
-    __slots__ = tuple("_" + k for k in defaults.keys() if k not in "HMTlAB") + (
-        "logger",
-        "_UMR",
-        "_t",
-    )
-
-    properties = []
-    """List of properties."""
-
-    glossary = {}
+    glossary = {k: v.__doc__ for k, v in sorted(vars().items()) if not k.startswith("_") and isinstance(v, property)}
     """Glossary."""
+    # and v.__doc__
+
+    # restrict instance attributes to the ones listed here
+    # (commend the next line out to prevent this)
+    __slots__ = tuple("_" + k for k in defaults.keys() if k not in "HMTlAB") + ("logger", "_UMR", "_t")
+
+    # continuing the class docstring following the NumPy style guide:
+    # https://numpydoc.readthedocs.io/en/latest/format.html#class-docstring
+    __doc__ += "\n\nParameters\n----------"
+    __doc__ += "\n*args : iterable\n    Non-keyword arguments are explicitly discarded."
+    __doc__ += "\n    Only keyword arguments are considered."
+    for __k, __v in __init__.__kwdefaults__.items():
+        # do this in for loop instead of list comprehension,
+        # because for the latter, names in class scope are not accessible
+        __doc__ += f"\n{__k} : {types[__k]}, default = {__v}\n    {glossary[__k].splitlines()[0]}"
+    __doc__ += "\n\nAttributes\n----------"
     for __k, __v in sorted(vars().items()):
-        if not __k.startswith("_"):
-            if isinstance(__v, property):
-                properties.append(__k)
-
-                if __v.__doc__ is not None:
-                    glossary[__k] = __v.__doc__
-
-    # __doc__ += "\n\nParameters:\n"
-    # for __k, __v in sorted(vars().items()):
-    #     if not __k.startswith("_"):
-    #         if isinstance(__v, property) and __v.__doc__ is not None:
-    #             __doc__ += f"    {__k}: {__v.__doc__}\n"
-
-    __init__.__doc__ = "Parameters:\n"
-    for __k, __v in sorted(vars().items()):
-        if __k in defaults:
-            if isinstance(__v, property) and __v.__doc__ is not None:
-                __init__.__doc__ += f"    {__k} ({__init__.__annotations__[__k]}) : {__v.__doc__}\n"
-
+        # do this in for loop instead of list comprehension,
+        # because for the latter, names in class scope are not accessible
+        if __k not in defaults and not __k.startswith("_") and isinstance(__v, property):
+            __doc__ += f"\n{__k} : {type(__v)}"
+    __doc__ += "\ntypes : dict"
+    __doc__ += "\ndefaults : dict"
+    __doc__ += "\nglossary : dict"
+    __doc__ += f"\nlogger : Logger, default = logging.getLogger({__qualname__})"
+    __doc__ += "\n    https://docs.python.org/3/library/logging.html#logger-objects"
+    __doc__ += "\n\nMethods\n-------"
+    __doc__ += f"\nencode\n    {encode.__doc__.splitlines()[0]}"
+    __doc__ += f"\ndecode\n    {decode.__doc__.splitlines()[0]}"
     del __k, __v

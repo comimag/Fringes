@@ -10,7 +10,7 @@ documentation = "https://fringes.readthedocs.io"
 keywords = ["phase shifting", "phase unwrapping", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.13"
+python = "^3.9,<3.13"  # todo: test 3.9 for __annotations__
 numpy = "^1.23.5"
 numba = "^0.57.1"
 scipy = "^1.10.0"

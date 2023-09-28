@@ -4,7 +4,7 @@
 [![Read the Docs](https://img.shields.io/readthedocs/fringes)](https://fringes.readthedocs.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)](https://pypistats.org/packages/fringes)
 
 <!---
 ![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
@@ -16,7 +16,7 @@
 link to  paper, please cite
 --->
 
-Easy to use tool for generating and analyzing fringe patterns with phase shifting algorithms.
+Easy-to-use tool for parameterizing, generating and analyzing fringe patterns with phase shifting algorithms.
 
 ![Coding Scheme](https://raw.githubusercontent.com/comimag/fringes/main/docs/getting_started/coding-scheme.gif)\
 Phase Shift Coding Scheme.

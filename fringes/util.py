@@ -70,8 +70,8 @@ def vshape(data: np.ndarray) -> np.ndarray:
     (24, 1200, 1820, 1)
     """
 
-    assert isinstance(data, np.ndarray)
-    assert data.ndim > 0
+    if data.ndim == 0:
+        data = data.reshape(1)  # returns a view
 
     channels = (1, 3, 4)  # possible number of color channels
 
@@ -102,7 +102,7 @@ def vshape(data: np.ndarray) -> np.ndarray:
     elif data.ndim == 1:
         T = data.shape
 
-    return data.reshape(T, Y, X, C)
+    return data.reshape(T, Y, X, C)  # returns a view
 
 
 def circular_distance(a: np.ndarray, b: np.ndarray, c: float) -> np.ndarray:

@@ -1,10 +1,8 @@
-from collections import namedtuple
 import glob
 import os
 import time
 import tempfile
 
-import toml
 import numpy as np
 import pytest
 import subprocess
@@ -23,15 +21,7 @@ def test_properties():
         if isinstance(getattr(type(f), p, None), property):
             assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring."
 
-            if not p.startswith("_"):
-                assert p in f, ""
-
-
-def test_init_doc():  # todo
-    f = Fringes()
-
-    assert f.__init__.__doc__.count(" : ") == len(f.defaults),\
-        "Not all init parameters have an associated property with a defined docstring."
+        assert f.params.keys() == f.defaults.keys(), "Property names differ from default names."
 
 
 def test_init():
@@ -464,6 +454,7 @@ def test_height():
     f = Fringes(Y=100)
 
     dec = f.decode(f.encode())
+    h = height(curvature(dec.registration))
     assert np.allclose(height(curvature(dec.registration)), 0, atol=0.1), "Height if off more than 0.1."
 
 
@@ -568,16 +559,10 @@ def test_simulation():
 
 
 if __name__ == "__main__":
-    # f = Fringes()
-    # # f.K = 1
-    # f.verbose = True
-    # I = f.encode()
-    # dec = f.decode(I)
-
     # todo: def test_...(): test_..., test..., ...
 
     # f = Fringes()
     # f.l = "1, 2, 3"  # testing argparse
 
-    pytest.main()
+    # pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
