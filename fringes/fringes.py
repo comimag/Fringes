@@ -98,7 +98,7 @@ class Fringes:
     # default values are defined here; take care to only use immutable types!
     def __init__(
         self,
-        *,  # bundels all args, what follows are only kwargs
+        *args,  # bundels all args, what follows are only kwargs
         Y: int = 1200,
         X: int = 1920,
         H: int = 1,  # inferred from h
@@ -3774,7 +3774,6 @@ class Fringes:
     types = dict(sorted(__init__.__annotations__.items()))
     """Types of 'params' values."""
 
-    # defaults = dict(sorted(dict(zip(__init__.__annotations__, __init__.__defaults__)).items()))
     defaults = dict(sorted(__init__.__kwdefaults__.items()))
     """Default values for `params`."""
 
