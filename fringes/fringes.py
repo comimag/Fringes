@@ -3795,18 +3795,18 @@ class Fringes:
         # do this in for loop instead of list comprehension,
         # because for the latter, names in class scope are not accessible
         __doc__ += f"\n{__k} : {types[__k]}, default = {__v}\n    {glossary[__k].splitlines()[0]}"
-    __doc__ += "\n\nAttributes\n----------"
-    for __k, __v in sorted(vars().items()):
-        # do this in for loop instead of list comprehension,
-        # because for the latter, names in class scope are not accessible
-        if __k not in defaults and not __k.startswith("_") and isinstance(__v, property):
-            __doc__ += f"\n{__k} : {type(__v)}"
-    __doc__ += "\ntypes : dict"
-    __doc__ += "\ndefaults : dict"
-    __doc__ += "\nglossary : dict"
-    __doc__ += f"\nlogger : Logger, default = logging.getLogger({__qualname__})"
-    __doc__ += "\n    https://docs.python.org/3/library/logging.html#logger-objects"
-    __doc__ += "\n\nMethods\n-------"
-    __doc__ += f"\nencode\n    {encode.__doc__.splitlines()[0]}"
-    __doc__ += f"\ndecode\n    {decode.__doc__.splitlines()[0]}"
+    # __doc__ += "\n\nAttributes\n----------"
+    # for __k, __v in sorted(vars().items()):
+    #     # do this in for loop instead of list comprehension,
+    #     # because for the latter, names in class scope are not accessible
+    #     if __k not in defaults and not __k.startswith("_") and isinstance(__v, property):
+    #         __doc__ += f"\n{__k} : {type(__v)}"
+    # __doc__ += "\ntypes : dict"
+    # __doc__ += "\ndefaults : dict"
+    # __doc__ += "\nglossary : dict"
+    # __doc__ += f"\nlogger : Logger, default = logging.getLogger({__qualname__})"
+    # __doc__ += "\n    https://docs.python.org/3/library/logging.html#logger-objects"
+    # __doc__ += "\n\nMethods\n-------"
+    # __doc__ += f"\nencode\n    {encode.__doc__.splitlines()[0]}"
+    # __doc__ += f"\ndecode\n    {decode.__doc__.splitlines()[0]}"
     del __k, __v

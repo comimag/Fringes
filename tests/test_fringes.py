@@ -564,5 +564,5 @@ if __name__ == "__main__":
     # f = Fringes()
     # f.l = "1, 2, 3"  # testing argparse
 
-    # pytest.main()
+    pytest.main()
     subprocess.run(['pytest', '--tb=short', str(__file__)])
