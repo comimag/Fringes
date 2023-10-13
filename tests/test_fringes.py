@@ -559,6 +559,7 @@ def test_simulation():
 
 
 if __name__ == "__main__":
+    test_curvature()
     # todo: def test_...(): test_..., test..., ...
 
     # f = Fringes()

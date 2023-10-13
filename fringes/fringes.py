@@ -762,7 +762,7 @@ class Fringes:
             ti = np.concatenate((N0, Nacc), axis=1).astype(np.int_)  # indices for traversing t
 
             dt = np.float32  # float32's precision is usually better than quantization noise in phase shifting sequence
-            A = np.empty((self.D, Y, X, C), dt)  # brightness must be identical for all sets, therefore we arverage over them
+            A = np.empty((self.D, Y, X, C), dt)  # brightness must be identical for all sets, hence we arverage
             B = np.empty((self.D, self.K, Y, X, C), dt)
             x = np.empty((self.D, Y, X, C), dt)
             p = np.empty((self.D, self.K, Y, X, C), dt)
