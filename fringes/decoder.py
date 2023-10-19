@@ -248,7 +248,9 @@ def decode(
                                 avg = sum  # / K
                                 if verbose:
                                     fid[d, i0[d], y, x, c] = k
-                                    for i in i_not_i0[d]:  # indices of v without i0  # todo: to this after final avg is known
+                                    for i in i_not_i0[
+                                        d
+                                    ]:  # indices of v without i0  # todo: to this after final avg is known
                                         fid[d, i, y, x, c] = int(xk / l[d, i] - pn[i] + 0.5)  # fringe order of i-th set
 
                                 if mn <= ssdlim:

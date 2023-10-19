@@ -11,8 +11,8 @@ keywords = ["phase shifting", "phase unwrapping", "fringe analysis", "fringe pro
 
 [tool.poetry.dependencies]
 python = "^3.9,<3.13"  # todo: test 3.9 for __annotations__
-numpy = "^1.23.5"
-numba = "^0.57.1"
+numpy = "^1.26.1"
+numba = "^0.58.1"
 scipy = "^1.10.0"
 sympy = "^1.11.1"
 si-prefix = "^1.2.2"

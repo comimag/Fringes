@@ -5,8 +5,11 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)](https://pypistats.org/packages/fringes)
+![Liberapay receiving](https://img.shields.io/liberapay/receives/comimag.svg?logo=liberapay)
+[![Static Badge](https://img.shields.io/badge/liberapay-donate-yellow?logo=liberapay)](https://liberapay.com/comimag/donate)
 
 <!---
+[![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/comimag/payment/)
 ![GitHub top language](https://img.shields.io/github/languages/top/comimag/fringes)
 ![GitHub issues](https://img.shields.io/github/issues/comimag/fringes)
 ![GitHub](https://img.shields.io/github/license/comimag/fringes)

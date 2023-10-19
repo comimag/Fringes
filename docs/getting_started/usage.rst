@@ -61,14 +61,9 @@ It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``
 
     A, B, x = f.decode(I)       # decode fringe patterns
 
-.. note::
-  During the first execution, an initial compilation is executed.
-  This can take several tens of seconds up to single digit minutes, depending on your CPU.
-  However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster,
-  approaching the speeds of code written in C.
 
 .. note::
-  For the compitationally expensive ``decoding`` we make use of the just-in-time compiler [Numba](https://numba.pydata.org/).
+  For the compitationally expensive ``decoding`` we make use of the just-in-time compiler `Numba <https://numba.pydata.org/>`_.
   During the first execution, an initial compilation is executed.
   This can take several tens of seconds up to single digit minutes, depending on your CPU.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster,

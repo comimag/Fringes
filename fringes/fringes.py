@@ -23,6 +23,7 @@ from .decoder import decode  # todo: fast_decode (only N>= 3) and fast_unwrap(CR
 
 class Fringes:
     """Easy-to-use class for parameterizing, generating and analyzing fringe patterns with phase shifting algorithms."""
+
     # note: the class docstring is continuated at the end of the class
 
     # value limits
@@ -789,10 +790,14 @@ class Fringes:
                     shot = np.sqrt(self.gain * np.maximum(0, A[d] - self.y0)) if self.gain != 0 else 0
                     ui = np.sqrt(dark**2 + quant**2 + shot**2)  # intensity noise
                     SNR = B[d] / ui
-                    upi = np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N[d, :, None, None, None]) / SNR  # local phase uncertainties  # todo: M
+                    upi = (
+                        np.sqrt(2) / np.sqrt(self.M) / np.sqrt(self._N[d, :, None, None, None]) / SNR
+                    )  # local phase uncertainties  # todo: M
                     upin = upi / (2 * np.pi)  # normalized local phase uncertainties
                     uxi = upin * self._l[d, :, None, None, None]  # local positional uncertainties
-                    ux = np.sqrt(1 / np.sum(1 / uxi**2, axis=0))  # global positional uncertainty (by inverse variance weighting)
+                    ux = np.sqrt(
+                        1 / np.sum(1 / uxi**2, axis=0)
+                    )  # global positional uncertainty (by inverse variance weighting)
                     u[d] = ux
 
                     # # todo:  np.seterr(invalid='ignore')
@@ -821,7 +826,9 @@ class Fringes:
                                 r[d] = np.nan
                                 k[d] = np.nan
                     elif self._v[d, 0] <= 1:  # one period covers whole screen: only scaling, no unwrapping
-                        x[d] = ((p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0])  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
+                        x[d] = (
+                            (p[d, 0] + self.o) / (2 * np.pi) % 1 * self._l[d, 0]
+                        )  # revert offset and change codomain from [-PI, PI] to [0, 1) -> normalized phi
                         if self.verbose or verbose:
                             r[d] = 0
                             k[d] = 0
@@ -846,7 +853,9 @@ class Fringes:
                                 # dtype of p must be np.float32  # todo: test this
                                 if (self.verbose or verbose) and self.umax > 0:
                                     mask = (u[d] > self.umax).astype(np.uint8, copy=False)
-                                    x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c], mask)  # todo: test this
+                                    x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(
+                                        p[d, 0, :, :, c], mask
+                                    )  # todo: test this
                                 else:
                                     x[d, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[d, 0, :, :, c])
 
@@ -907,7 +916,15 @@ class Fringes:
                     for i in it.chain(range(0, i0), range(i0 + 1, 1)):
                         k[d, i] = x[d] // self._l[d, i]  # fringe order of i-th set
 
-            bri, mod, reg, phi, fid, res, unc = A, B.reshape(-1, Y, X, C), x, p.reshape(-1, Y, X, C), k.reshape(-1, Y, X, C), r, u
+            bri, mod, reg, phi, fid, res, unc = (
+                A,
+                B.reshape(-1, Y, X, C),
+                x,
+                p.reshape(-1, Y, X, C),
+                k.reshape(-1, Y, X, C),
+                r,
+                u,
+            )
         else:
             if self.mode == "fast":
                 SQNR = self.B / self.ui

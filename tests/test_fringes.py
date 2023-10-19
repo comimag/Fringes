@@ -559,7 +559,10 @@ def test_simulation():
 
 
 if __name__ == "__main__":
-    test_curvature()
+    f = Fringes()
+    I = f.encode()
+    import timeit
+    a = timeit.timeit("f.decode(I)")
     # todo: def test_...(): test_..., test..., ...
 
     # f = Fringes()
