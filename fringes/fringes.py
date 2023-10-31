@@ -18,11 +18,11 @@ from si_prefix import si_format as si
 
 from .util import vshape, bilateral, median, _remap, circular_distance
 from . import grid
-from .decoder import decode  # todo: fast_decode (only N>= 3) and fast_unwrap(CRT + ssdlim)
+from .decoder import decode
 
 
 class Fringes:
-    """Easy-to-use class for parameterizing, generating and analyzing fringe patterns with phase shifting algorithms."""
+    """Easy-to-use class to configure, encode and decode fringe patterns with phase shifting algorithms."""
 
     # note: the class docstring is continuated at the end of the class
 
@@ -443,7 +443,13 @@ class Fringes:
         return I
 
     def coordinates(self) -> np.ndarray:
-        """Generate the coordinate matrices of the coordinate system defined in `grid`."""
+        """Generate the coordinate matrices of the coordinate system defined in `grid`.
+
+        Returns
+        -------
+        xi : np.ndarray
+            Coordinate matrices.
+        """
 
         t0 = time.perf_counter()
 
@@ -605,14 +611,11 @@ class Fringes:
               and contains the information where each camera pixel, i.e. each camera sightray,
               was looking at during the fringe pattern acquisition.
 
-        phase : np.ndarray, optional
-            Local phase.
-
-        orders : np.ndarray, optional
-            Fringe orders.
-
         residuals : np.ndarray, optional
             Residuals from the optimization-based unwrapping process.
+
+        phase : np.ndarray, optional
+            Local phase.
         """
 
         t0 = time.perf_counter()
@@ -926,20 +929,16 @@ class Fringes:
                 u,
             )
         else:
+            # maximal residual
             if self.mode == "fast":
                 SQNR = self.B / self.ui
-                r = min(self.u.max(), 1.0)  # todo: 0.5 or self.u
+                rmax = min(self.u.max(), 1.0)  # todo: 0.5 or self.u
                 # todo: r[d] for d in range(self.D)
             else:
-                r = 0.0
-            r = 0.0  # todo
+                rmax = 0.0
+            rmax = 0.0  # todo
 
-            quant = 0 if self.dark > 0 else self.quant
-            A = self.A * self.MTF(0)
-            shot = np.sqrt(self.gain * max(0, A - self.y0)) if self.gain != 0 else 0  # average intensity is bias
-            ui = np.sqrt(self.gain**2 * self.dark**2 + quant**2 + shot**2)
-
-            phi, bri, mod, reg, res, fid, unc = decode(
+            bri, mod, phi, reg, res = decode(
                 I,
                 self._N,
                 self._v,
@@ -947,17 +946,15 @@ class Fringes:
                 self.R,
                 self.alpha,
                 self.o,
-                r,
+                rmax,
                 self.mode,
                 self.Vmin,
-                self.umax,
-                self.ui,  # todo: / np.sqrt(self._M[None, None, :]),
                 self.verbose or verbose,
             )
 
         self.logger.debug(f"{si(time.perf_counter() - t0)}s")
 
-        return bri, mod, reg, phi, fid, res, unc
+        return bri, mod, phi, reg, res
 
     def _multiplex(self, I: np.ndarray, rint: bool = True) -> np.ndarray:
         """Multiplex fringe patterns.
@@ -1466,11 +1463,6 @@ class Fringes:
         T, Y, X, C = vshape(I).shape  # extract Y, X, C from data as these parameters depend on the used camera
         I = I.reshape((T, Y, X, C))
 
-        # assertions
-        assert T == self.T, "Number of frames of parameters and data don't match."
-        if self.FDM:
-            assert len(np.unique(self.N)) == 1, "Shifts aren't equal."
-
         # subtract dark signal
         if self.y0 > 0:
             I[I >= self.y0] = I[I >= self.y0] - self.y0
@@ -1483,23 +1475,15 @@ class Fringes:
         # demultiplex
         if (
             self.SDM and 1 not in self.N or self.WDM or self.FDM
-        ):  # todo: if selfSDM and 1 in self.N: Fourier-transform method
+        ):  # todo: if self.SDM and 1 in self.N: Fourier-transform method
             I = self._demultiplex(I)
 
         # demodulate
-        bri, mod, reg, phi, fid, res, unc = self._demodulate(I, verbose)
+        bri, mod, phi, reg, res = self._demodulate(I, verbose)
 
+        # verbose
         if self.verbose or verbose:
-            vis = (mod.reshape(self.D, self.K, Y, X, C) / bri[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
-            if I.dtype.kind in "ui":
-                if np.iinfo(I.dtype).bits > 8:  # data may contain fewer bits of information
-                    Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
-                    Imax += -Imax % 2  # same or next power of two divisible by two
-                else:
-                    Imax = np.iinfo(I.dtype).max
-            else:  # float
-                Imax = 1
-            exp = bri / Imax
+            unc, fid, vis, exp = self._verbose_(I, bri, mod, reg)
 
         # blacken where color value of hue was black
         if self.H > 1 and C == 3:
@@ -1509,9 +1493,9 @@ class Fringes:
                 mod[..., idx] = 0
                 reg[..., idx] = np.nan
                 if self.verbose:
+                    unc[..., idx] = np.nan  # self.R / np.sqrt(12)  # todo: circular distribution =
                     phi[..., idx] = np.nan
                     fid[..., idx] = np.nan
-                    unc[..., idx] = self.R / np.sqrt(12)  # todo: circular distribution
                     vis[..., idx] = 0
                     exp[..., idx] = 0
 
@@ -1590,14 +1574,88 @@ class Fringes:
         if self.verbose or verbose:
             dec = namedtuple(
                 "decoded",
-                "brightness modulation registration phase orders residuals uncertainty visibility exposure",
-            )(bri, mod, reg, phi, fid, res, unc, vis, exp)
+                "brightness modulation registration residuals uncertainty phase orders visibility exposure",
+            )(bri, mod, reg, res, unc, phi, fid, vis, exp)
         else:
             dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
         self.logger.info(f"{si(time.perf_counter() - t0)}s")
 
         return dec
+
+    def _verbose_(self, I: np.ndarray, A: np.ndarray, B: np.ndarray, xi: np.ndarray, lessbits: bool = False):
+        """Compute verbose output.
+
+        Parameters
+        ----------
+        I : np.ndarray
+            Fringe pattern sequence.
+
+        A : np.ndarray
+            Brightness.
+
+        B : np.ndarray
+            Modulation.
+
+        xi : np.ndarray
+            Registration.
+
+        lessbits : bool, optional
+            The fringe pattern sequence 'I' may contain fewer bits of information than its corresponding dtype.
+            This occurs if e.g. a 10 or 12 bit camera is used, for which the corresponding dtype would be 'uint16'.
+            If 'lessbits' is True, the number of bits is estimated based on the maximal value of 'I'.
+            This affects the value of the exposure 'e'.
+
+        Returns
+        -------
+        u : np.ndarray, optional
+            uncertainty of positional decoding in pixel units
+
+        k : np.ndarray, optional
+            Fringe orders.
+
+        V : np.ndarray, optional
+            Residuals from the optimization-based unwrapping process.
+
+        e : np.ndarray, optional
+            Local exposure (relative average intensity).
+        """
+
+        Y, X, C = A.shape[1:]
+
+        dark = self.gain * self.dark
+        quant = 0 if self.dark > 0 else self.quant
+        shot = (
+            np.sqrt(self.gain * np.maximum(0, A - self.y0)) if self.gain != 0 else np.zeros_like(A)
+        )  # average intensity = brightness
+        ui = np.sqrt(dark**2 + quant**2 + shot**2)  # intensity noise
+        upi = (
+            np.sqrt(2)
+            / np.sqrt(self.M)
+            / np.sqrt(self._N[:, :, None, None, None])
+            / B.reshape(self.D, self.K, Y, X, C)
+            * ui[:, None, :, :]
+        )  # local phase uncertainties  # todo: M
+        uxi = upi / (2 * np.pi) * self._l[:, :, None, None, None]  # local positional uncertainties
+        u = np.sqrt(1 / np.sum(1 / uxi**2, axis=1))  # global positional uncertainty
+
+        k = (xi[:, None, :, :, :] // self._l[:, :, None, None, None]).astype(int).reshape(self.D * self.K, Y, X, C)
+
+        V = (B.reshape(self.D, self.K, Y, X, C) / A[:, None, :, :, :]).reshape(self.D * self.K, Y, X, C)
+
+        if I.dtype.kind in "ui":
+            if lessbits and np.iinfo(I.dtype).bits > 8:  # data may contain fewer bits of information
+                Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
+                Imax += -Imax % 2  # same or next power of two divisible by two
+            else:
+                Imax = np.iinfo(I.dtype).max
+        else:  # float
+            Imax = 1
+        e = A / Imax
+
+        # todo: phi
+
+        return u, k, V, e
 
     def _unwrap(
         self, phi: np.ndarray, B: np.ndarray, func: str = "ski"
@@ -2809,7 +2867,7 @@ class Fringes:
             Nmin = int(np.ceil(2 * self.f.max() + 1))  # sampling theorem
             # todo: 2 * D * K + 1 -> fractional periods if static
         else:
-            Nmin = 1  # 3
+            Nmin = 3  # todo: 1 -> use old decoder
         return Nmin
 
     @property
@@ -2848,7 +2906,7 @@ class Fringes:
 
         if not np.array_equal(self._N, _N):
             self._N = _N
-            self.logger.debug(f"self._N = {str(self.N).replace(chr(10), ',')}")
+            self.logger.debug(f"self._N = {str(self._N).replace(chr(10), ',')}")
             self._UMR = None
             self.D, self.K = self._N.shape
             self.logger.debug(f"{self.T = }")
@@ -3115,8 +3173,8 @@ class Fringes:
 
         if not np.array_equal(self._v, _v):
             self._v = _v
-            self.logger.debug(f"self.v = {str(self.v.round(3)).replace(chr(10), ',')}")
-            self.logger.debug(f"self.l = {str(self.l.round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self.v = {str(self._v.round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self.l = {str(self._l.round(3)).replace(chr(10), ',')}")
             self._UMR = None
             self.D, self.K = self._v.shape
             self.f = self._f
@@ -3165,7 +3223,7 @@ class Fringes:
 
         if 0 not in _f and not np.array_equal(self._f, _f):
             self._f = _f
-            self.logger.debug(f"self._f = {str((self.f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
             self.D, self.K = self._f.shape
             self.N = self._N  # todo: remove if fractional periods is implemented, log warning
 
@@ -3280,7 +3338,7 @@ class Fringes:
         if self._reverse != _reverse:
             self._reverse = _reverse
             self.logger.debug(f"{self._reverse = }")
-            self.logger.debug(f"self._f = {str((self.f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
+            self.logger.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
 
     @property
     def verbose(self) -> bool:
@@ -3628,6 +3686,8 @@ class Fringes:
             if len(l) == 0 or len(v) == 0:
                 UMR[d] = 1  # one since we can only control discrete pixels
                 break
+
+            # todo: if all(i.is_ for i in )
 
             if all(i % 1 == 0 for i in l):  # all l are integers
                 UMR[d] = np.lcm.reduce([int(i) for i in l])

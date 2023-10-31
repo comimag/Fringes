@@ -132,6 +132,20 @@ def circular_distance(a: np.ndarray, b: np.ndarray, c: float) -> np.ndarray:
     return d
 
 
+# @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
+# def circ_dist(a, b, c) -> float:
+#     d = b - a
+#     dmax = c / 2
+#
+#     # return dmax - np.abs(dmax - d)
+#
+#     if d > dmax:
+#         d -= c
+#     elif d < -dmax:
+#         d += c
+#     return d
+
+
 def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.ndarray:  # todo: test
     """Curvature map.
 

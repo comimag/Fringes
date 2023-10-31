@@ -19,7 +19,7 @@
 link to  paper, please cite
 --->
 
-Easy-to-use tool for parameterizing, generating and analyzing fringe patterns with phase shifting algorithms.
+User-friendly tool to configure, encode and decode fringe patterns with phase shifting algorithms.
 
 ![Coding Scheme](https://raw.githubusercontent.com/comimag/fringes/main/docs/getting_started/coding-scheme.gif)\
 Phase Shift Coding Scheme.
