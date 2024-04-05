@@ -27,20 +27,18 @@ release = version
 # https://www.sphinx-doc.org/en/main/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.todo',  # todo: test this
-    'sphinx.ext.coverage',  # todo: test this
-    'sphinx.ext.viewcode',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.napoleon',  # Support for NumPy and Google style docstrings
+    'sphinx.ext.autodoc',  # Generate autodoc summaries
+    'sphinx.ext.viewcode',  # Add links to highlighted source code
     'sphinx.ext.autosectionlabel',
-    'sphinx_design',
+    'sphinx_design'
 ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-
+# Enable numref
+numfig = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/main/usage/configuration.html#options-for-html-output

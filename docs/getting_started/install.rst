@@ -3,7 +3,6 @@ Installation
 
 pip
 ---
-
 You can install `Fringes` directly from `Pypi <https://pypi.org/>`_ with ``pip``::
 
     pip install fringes
@@ -18,7 +17,6 @@ You can install `Fringes` directly from `Pypi <https://pypi.org/>`_ with ``pip``
 
 From Source
 -----------
-
 To get access to the very latest features and bugfixes you have three choices:
 
 1. Clone Fringes from `GitHub <https://github.com/>`_ with ``git``::

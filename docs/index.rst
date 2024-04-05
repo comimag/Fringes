@@ -10,6 +10,10 @@ Fringes documentation
     api_reference/index
     contributor_guide/index
 
+Fringes is an easy to use, pure-python tool.
+With it you can create customized fringe patterns
+and analyse them using phase shifting algorithms.
+
 .. grid:: 2
 
     .. grid-item-card::
@@ -20,7 +24,7 @@ Fringes documentation
 
         New to Fringes? Check out the getting started guides.
         It contains an introduction to phase shifting,
-        guide you the installation process
+        guides you through the installation process
         and gives examples of the most common use cases.
 
         +++

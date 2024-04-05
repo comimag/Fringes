@@ -1,18 +1,15 @@
 .. default-role:: math
-.. _coloring: `coloring and averaging`_
-.. _frequency division multiplexing: `multiplexing`_
-.. _wavelength division multiplexing: `multiplexing`_
 
 Parameters
 ==========
-
 All parameters are implemented as class properties (managed attributes).
 They are parsed when setting, so usually several input formats are accepted, e.g.
 ``bool``, ``int``, ``float``, ``str`` for scalars and additionally ``list``, ``tuple``, ``ndarray`` for arrays.
 
-Note that some attributes have subdependencies, hence dependent attributes might change as well.
+Note that some attributes have subdependencies (cf. :numref:`inter`), hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.
 
+.. _inter:
 .. figure:: interdependencies.svg
     :align: center
     :alt: interdependencies
@@ -21,7 +18,6 @@ Circular dependencies are resolved automatically.
 
 Video Shape
 -----------
-
 ``shape`` is the standardized shape (T, Y, X, C) of the fringe pattern sequence, with
 
 - ``T``: number of frames
@@ -29,19 +25,18 @@ Video Shape
 - ``X``: width (in pixel units)
 - ``C``: number of color channels
 
-``T`` = ``H`` `\cdot \sum` ``N``.
-If a `multiplexing`_ scheme is activated, ``T`` reduces further.
+.. ``T`` = ``H`` `\cdot \sum` ``N``.
+   If a `multiplexing`_ scheme is activated, ``T`` reduces further.
 
 ``L`` is the maximum of ``X`` and ``Y`` and denotes the length (in pixel units) to be ancoded.
 It can be extended by the factor ``alpha``.
 
-``C`` depends on the `coloring`_ and `multiplexing`_ schemes activated.
+``C`` depends on the :ref:`coloring <coloring and averaging>` and `multiplexing`_ schemes activated.
 
 ``size`` is the product of ``shape``.
 
 Coordinate System
 ------------------
-
 The following coordinate systems can be used by setting ``grid`` to:
 
 - ``image``: The top left corner pixel of the grid is the origin (0, 0) and positive directions are right- resp. downwards.
@@ -64,8 +59,7 @@ the fringe pattern is shifted if ``D`` = 1.
 
 Set
 ---
-
-Each set consists of the following attributes (cf. black box in above Figure):
+Each set consists of the following attributes (cf. black box in :numref:`inter`):
 
 - ``N``: number of shifts
 - ``l``: wavelength (in pixel units)
@@ -85,7 +79,7 @@ If a set attribute is 0D i.e. a scalar, then all values are simply replaced by t
 ``l`` and ``v`` are related by ``l`` = ``L`` / ``v``.
 When ``L`` changes, ``v`` is kept constant and only ``l`` is changed.
 
-Usually ``f`` = 1 and is essentially only changed if `frequency division multiplexing`_ ``FDM`` is activated.
+Usually ``f`` = 1 and is essentially only changed if :ref:`frequency division multiplexing <multiplexing>` ``FDM`` is activated.
 
 ``reverse`` is a boolean which reverses the direction of the shifts (by multiplying ``f`` with -1).
 
@@ -94,11 +88,9 @@ e.g. let the fringe patterns start (at the origin) with a gray value of zero.
 
 Intensity Values
 ----------------
-
 ``dtype`` denotes the data type of the fringe pattern sequence.
 Possible values are:
 
-- ``bool``
 - ``uint8`` (default)
 - ``uint16``
 - ``float32``
@@ -106,12 +98,17 @@ Possible values are:
 
 ``nbytes`` is the total bytes consumed by fringe pattern sequence.
 
-``q`` is the quantization step size.
-``q`` = 1 for ``bool`` and `2^r` for r-bit ``unsigned integers``,
+.. ``q`` is the quantization step size and equals 1 for ``bool``, `2^r` for r-bit ``unsigned integers``,
+   and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
+
+``q`` is the quantization step size and equals `2^r` for r-bit ``unsigned integers``
 and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
 
-``Imax`` is the maximum gray value.
-``Imax`` = 1 for ``float`` and ``bool``, and ``Imax`` = `2^r - 1` for ``unsigned integers`` with r bits.
+.. ``Imax`` is the maximum gray value and equals 1 for ``float`` and ``bool``,
+   and `2^r - 1` for ``unsigned integers`` with r bits.
+
+``Imax`` is the maximum gray value and equals 1 for ``float``
+and `2^r - 1` for ``unsigned integers`` with r bits.
 
 ``A`` is the offset, also called brightness (of the background).
 It is limited by ``Imax``.
@@ -119,7 +116,7 @@ It is limited by ``Imax``.
 ``B`` is the amplitude of the cosinusoidal fringes.
 It is limited by ``Imax``.
 
-``V`` is the fringe visibility (also called fringe contrast).
+``V`` is the fringe :ref:`visibility <visibility and Exposure>` (also called fringe contrast).
 ``V`` = ``A`` / ``B``, where ``V`` and is within the range [0, 1].
 
 ``beta`` is the exposure (relative brightness) and is within the range [0, 1].
@@ -128,7 +125,6 @@ It is limited by ``Imax``.
 
 Coloring and Averaging
 ----------------------
-
 The fringe patterns can be colorized by setting the hue ``h`` to any RGB color triple within the interval [0, 255].
 However, black (0, 0, 0) is not allowed.
 ``h`` must be in shape (``H``, 3):
@@ -146,7 +142,7 @@ The hues ``h`` can also be set by assigning any combination of the following cha
 - ``'w'``: white
 
 ``C`` is the number of color channels required for either the set of hues ``h``
-or `wavelength division multiplexing`_.
+or :ref:`wavelength division multiplexing <multiplexing>`.
 For example, if all hues are monochromatic, i.e. the RGB values are identical for each hue, ``C`` equals 1, else 3.
 
 Repeating hues will be fused by averaging them before decoding.
@@ -155,46 +151,42 @@ Repeating hues will be fused by averaging them before decoding.
 
 Multiplexing
 ------------
-
 The following multiplexing methods can be activated by setting them to ``True``:
 
-- ``SDM``: Spatial Division Multiplexing [1]_
+- ``SDM``: Spatial Division Multiplexing
 
-  This results in crossed fringe patterns. The amplitude ``B`` is halved.
+  This results in crossed fringe patterns.
   It can only be activated if we have two directions ``D`` = 2.
   The number of frames ``T`` is reduced by a factor of 2.
 
-- ``WDM``: Wavelength Divison Multiplexing [2]_
+- ``WDM``: Wavelength Divison Multiplexing
 
-  All shifts ``N`` must equal 3. Then, the shifts are multiplexed into the color channel,
-  resulting in an RGB fringe pattern.
+  The shifts are multiplexed into the color channel, resulting in an RGB fringe pattern.
+  All shifts ``N`` must equal 3.
   The number of frames ``T`` is reduced by a factor of 3.
 
-- ``FDM``: Frequency Division Multiplexing [3]_, [4]_, [5]_
+- ``FDM``: Frequency Division Multiplexing
 
   Here, the directions ``D`` and the sets ``K`` are multiplexed.
-  Hence, the amplitude ``B`` is reduced by a factor of ``D`` * ``K``.
-  It can only be activated if ``D`` > 1 or ``K`` > 1.
   This results in crossed fringe patterns if ``D`` = 2.
-  Each set per direction receives an individual temporal frequency ``f``,
-  which is used in [temporal demodulation](#temporal-demodulation) to distinguish the individual sets.
-  A minimal number of shifts ``_Nmin`` `\ge \lceil` 2 * ``_fmax`` `\rceil` + 1
-  is required to satisfy the sampling theorem and ``N`` is updated automatically if necessary.
+  It can only be activated if ``D`` > 1 or ``K`` > 1.
   If one wants a static pattern, i.e. one that remains congruent when shifted, set ``static`` to ``True``.
 
-``SDM`` and ``WDM`` can be used together [6]_ (reducing ``T`` by a factor of 2 * 3 = 6), ``FDM`` with neighter.
+``SDM`` and ``WDM`` can be used together (reducing ``T`` by a factor of 2 * 3 = 6), ``FDM`` with neighter.
 
 ``TDM``: By default, the aforementioned multiplexing methods are deactivated,
 so we then only have Time Divison Multiplexing.
+
+For more details, please refer to :doc:`Multiplex </user_guide/mux>`.
 
 Unwrapping
 ----------
 
 ``uwr`` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
-See [spatial demodulation](#spatial-demodulation--phase-unwrapping--pu-) for more details.
+See :ref:`unwrapping <uwr>` for more details.
 
-``mode`` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
-Choose either ``'fast'`` (the default) or ``'precise'``.
+.. ``mode`` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
+   Choose either ``'fast'`` (the default) or ``'precise'``.
 
 ``Vmin`` denotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
 During decoding, pixels with less are discarded, which can speed up the computation.
@@ -206,7 +198,7 @@ During decoding, pixels with less are discarded, which can speed up the computat
 the wrapped phase maps `\varphi_i`, the fringe orders `k_i`, the residuals `r`, the uncertainty `u`,
 the visibility `V` and the exposure `\beta`.
 
-``FTM`` denotes Fourier-transform method and is deployed if ``T`` = 1
+``FTM`` denotes :ref:`Fourier-transform method <Fourier Transform Method>` and is deployed if ``T`` = 1
 and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.
 
 Quality Metrics
@@ -217,18 +209,17 @@ The coding is only unique within the interval [0, ``UMR``); after that it repeat
 
 The ``UMR`` is derived from ``l`` and ``v``:
 
-- If ``l`` `\in \mathbb{N}`, ``UMR`` = `lcm(` ``l`` `)` with `lcm` being the least common multiple.
-- Else, if ``v`` `\in \mathbb{N}`, ``UMR`` = ``L`` / `gcd(` ``v`` `)` with `gcd` being the greatest common divisor.
+- If ``l`` `\in \mathbb{N}`, ``UMR`` = `lcm(` ``l`` `)`, with `lcm` being the least common multiple.
+- Else, if ``v`` `\in \mathbb{N}`, ``UMR`` = ``L`` / `gcd(` ``v`` `)`, with `gcd` being the greatest common divisor.
 - Else, if ``v`` `\lor` ``l`` `\in \mathbb{Q}` , `lcm` resp. `gcd` are extended to rational numbers.
-- Else, if ``v`` `\land` ``l`` `\in \mathbb{R} \setminus \mathbb{Q}` , ``l`` and ``v`` are approximated by rational numbers
-  with a fixed length of decimal digits.
+- Else, if ``v`` `\land` ``l`` `\in \mathbb{R} \setminus \mathbb{Q}` , ``UMR`` = `prod(` ``l`` `)`, with `prod` being the product operator.
 
 ``eta`` denotes the coding efficiency ``L`` / ``UMR``.
 It makes no sense to choose ``UMR`` much larger than ``L``,
 because then a significant part of the coding range is not used.
 
 ``u`` denotes the minimum possible uncertainty of the measurement in pixels.
-It is based on the phase noise model from [7]_
+It is based on the phase noise model from [1]_
 and propagated through the unwrapping process and the phase fusion.
 It is influenced by the parameters
 
@@ -237,7 +228,7 @@ It is influenced by the parameters
 - ``l``: wavelengths of the fringes,
 - ``B``: measured amplitude
 
-and the measurement hardware [8]_, [9]_
+and the measurement hardware [2]_, [3]_
 
 - ``quant``: quantization noise of the light source or camera,
 - ``dark``: dark noise of the used camera,
@@ -252,55 +243,19 @@ It remains constant if ``L`` and hence ``l`` is scaled (the scaling factor cance
 and is a measure of how many points can be distinguished within the unambiguous measurement range [0, ``UMR``).
 Again, it remains constant if ``L`` and hence ``l`` is scaled (the scaling factor cancels out).
 
-.. [1] `Park,
-        "A twodimensional phase-shifting method for deflectometry",
-        International Symposium on Optomechatronic Technologies,
-        2008.
-        <https://doi.org/10.1117/12.816472>`_
-
-.. [2] `Huang,
-        "Color-encoded digital fringe projection technique for high-speed three-dimensional surface contouring",
-        Optical Engineering,
-        1999.
-        <https://doi.org/10.1117/1.602151>`_
-
-.. [3] `Liu et al.,
-        "Dual-frequency pattern scheme for high-speed 3-D shape measurement",
-        Optics Express,
-        2010.
-        <https://doi.org/10.1364/OE.18.005229>`_
-
-.. [4] `Liu et al.,
-        "Fast and accurate deflectometry with crossed fringes",
-        Advanced Optical Technologies,
-        2014.
-        <https://doi.org/10.1515/aot-2014-0032>`_
-
-.. [5] `Kludt and Burke,
-        "Coding strategies for static patterns suitable for UV deflectometry",
-        Forum Bildverarbeitung 2018,
-        2018.
-        <https://publikationen.bibliothek.kit.edu/1000088264>`_
-
-.. [6] `Trumper et al.,
-        "Instantaneous phase shifting deflectometry",
-        Optics Express,
-        2016.
-        <https://doi.org/10.1364/OE.24.027993>`_
-
-.. [7] `Surrel,
+.. [1] `Surrel,
         "Additive noise effect in digital phase detection",
         Applied Optics,
         1997.
         <https://doi.org/10.1364/AO.36.000271>`_
 
-.. [8] `EMVA,
+.. [2] `EMVA,
         "Standard for Characterization of Image Sensors and Cameras Release 4.0 Linear",
         European Machine Vision Association,
         2021.
         <https://www.emva.org/standards-technology/emva-1288/emva-standard-1288-downloads-2/>`_
 
-.. [9] `Bothe,
+.. [3] `Bothe,
         "Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
         Dissertation,
         ISBN 978-3-933762-24-5,

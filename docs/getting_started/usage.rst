@@ -1,6 +1,5 @@
 Usage
 =====
-
 This package provides the handy ``Fringes`` class,
 which handles all the required parameters
 for configuring fringe pattern sequences
@@ -8,7 +7,6 @@ and provides methods for fringe analysis.
 
 Command-line use
 ----------------
-
 You instantiate, parameterize and deploy the ``Fringes`` class:
 
 .. code-block:: python
@@ -25,7 +23,7 @@ and how long functions took to execute.
 
     f.logger.setLevel("DEBUG")  # set the logging level
 
-All parameters are accesible by the respective attributes of the ``Fringes`` instance
+All :ref:`parameters <parameters>` are accesible by the respective attributes of the ``Fringes`` instance
 (a glossary of them is obtained by the class attribute ``glossary``).
 They are implemented as class properties (managed attributes),
 which are parsed when setting,
@@ -55,23 +53,22 @@ in videoshape (frames ``T``, width ``X``, height ``Y``, color channels ``C``).
     I = f.encode()              # encode fringe patterns
 
 For analyzing (recorded) fringe patterns, use the method ``decode()``.
-It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``x``.
+It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``X``.
 
 .. code-block:: python
 
-    A, B, x = f.decode(I)       # decode fringe patterns
+    A, B, X = f.decode(I)       # decode fringe patterns
 
 
 .. note::
   For the compitationally expensive ``decoding`` we make use of the just-in-time compiler `Numba <https://numba.pydata.org/>`_.
   During the first execution, an initial compilation is executed.
-  This can take several tens of seconds up to single digit minutes, depending on your CPU.
+  This can take several tens of seconds up to single digit minutes, depending on your CPU and energy settings.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster,
   approaching the speeds of code written in C.
 
 Graphical User Interface
 ------------------------
-
 Do you prefer to interact with a GUI?
 Fringes has a sister project which is called Fringes-GUI: https://pypi.org/project/fringes-gui/
 
@@ -97,9 +94,8 @@ Now the graphical user interface should appear:
 
 Attributes
 """"""""""
-
 In the top left corner the attribute widget is located.
-It contains the parameter tree which contains all the attributes of the `Fringes` class.
+It contains the parameter tree which contains all the :ref:`attributes <parameters>` of the `Fringes` class.
 If you select a parameter and hover over it, a tool tip will appear,
 containing the docstring of the respective attribute of the `Fringes` class.
 
@@ -137,29 +133,23 @@ or press the ``reset`` button in the `Methods`_ widget to restore the default pa
 
 Methods
 """""""
-
 In the bottem left corner you will find action buttons for the associated methods of the `Fringes` class.
 Alternatively, you can use the keyboard shortcuts which are displayed when you hover over them.
 The buttons are only active if the necessary data is available, i.e. was enoded, decoded or loaded.
 
 Viewer
 """"""
-
 In the center resides the viewer.
 If float data is to be displayed, `nan` is replaced by zeros.
 
 Data
 """"
-
 In the top right corner the data widget is located.
 It lists the data which was encoded, decoded or loaded.
 
-.. _Parameter Tree: `attributes`_
-.. _buttons: `methods`_
-
-In order to keep the parameters in the `Parameter Tree`_ consistent with the data,
+In order to keep the parameters in the :ref:`Parameter Tree <attributes>` consistent with the data,
 once a parameter has changed, certain data will be removed
-and also certain `buttons`_ will be deactivated.
+and also certain :ref:`buttons <methods>` will be deactivated.
 Also, the data has to fit in order to be able to execute certain functions.
 As a consequence, if you load data - e.g. the acquired (distorted) fringe pattern sequence -
 the first element of its videoshape has to match the parameter `Frames` in order to be able to decode it.
@@ -176,6 +166,5 @@ select its name in the table and klick ``Set data (to be decoded)``.
 
 Log
 """
-
 The logging of the `Fringes` class is displayed here.
-The logging level can be set in the `Parameter Tree`_.
+The logging level can be set in the :ref:`Parameter Tree <attributes>`.

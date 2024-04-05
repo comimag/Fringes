@@ -1,4 +1,0 @@
-Colorize
-========
-
-to be continued...

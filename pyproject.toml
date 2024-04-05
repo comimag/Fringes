@@ -1,38 +1,50 @@
 [tool.poetry]
 name = "Fringes"
-version = "1.0.0"
+version = "1.1.0"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 license = "CC-BY-NC-SA-4.0"
 authors = ["Christian Kludt"]
 readme = "README.md"
 repository = "https://github.com/comimag/fringes"
 documentation = "https://fringes.readthedocs.io"
-keywords = ["phase shifting", "phase unwrapping", "fringe analysis", "fringe projection", "deflectometry", "computational imaging"]
+keywords = [
+    "phase shifting",
+    "phase unwrapping",
+    "fringe analysis",
+    "fringe projection",
+    "deflectometry",
+    "computational imaging"
+]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research"
+]
 
 [tool.poetry.dependencies]
 python = "^3.9,<3.13"  # todo: test 3.9 for __annotations__
 numpy = "^1.26.1"
-numba = "^0.58.1"
+numba = "0.59.0"
 scipy = "^1.10.0"
 sympy = "^1.11.1"
-si-prefix = "^1.2.2"
 scikit-image = "^0.22.0"
 opencv-contrib-python = "^4.7.0"
 pyyaml = "^6.0"
 toml = "^0.10.2"
-asdf = "^2.14.3"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.3.0"
 matplotlib = "^3.7.1"
+pyqtgraph = "^0.13.3"
+pyqt6 = "^6.6.1"
+black = "^24.2.0"
 
-[tool.poetry.group.test.dependencies]
-pytest = "^7.4.0"
-
-[tool.poetry.group.doc.dependencies]
-sphinx = "6.2.1"
-sphinx-rtd-theme = "^1.2.2"
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.2.6"
 sphinx-design = "^0.5.0"
+sphinx-rtd-theme = "^2.0.0"
+
+[tool.poetry.group.tests.dependencies]
+pytest = "^8.1.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

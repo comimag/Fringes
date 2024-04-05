@@ -1,8 +1,11 @@
 before publishing new version to pypi:
+    poetry version
+    poetry update
+    poetry lock
     pytest
-    version
-    lock
+    citation (zenodo)
     black
-    push
-    build
-    publish
+    push to github
+    check docs on read-the-docs
+    poetry build
+    poetry publish

@@ -6,7 +6,7 @@ Troubleshooting
   This is most likely due to the just-in-time compiler `Numba <https://numba.pydata.org/>`_,
   which is used for this computationally expensive function:
   During the first execution, an initial compilation is executed. 
-  This can take several tens of seconds up to single digit minutes, depending on your CPU.
+  This can take several tens of seconds up to single digit minutes, depending on your CPU and energy settings.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster, 
   approaching the speeds of code written in C.
 

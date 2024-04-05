@@ -1,7 +1,7 @@
 import time
 import typing as tp
 import itertools as it
-import logging as lg
+import logging
 
 import numpy as np
 import numba as nb
@@ -146,8 +146,8 @@ def circular_distance(a: np.ndarray, b: np.ndarray, c: float) -> np.ndarray:
 #     return d
 
 
-def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.ndarray:  # todo: test
-    """Curvature map.
+def curvature(s: np.ndarray, calibrated: bool = False, normalize: bool = True) -> np.ndarray:  # todo: test
+    """Mean curvature map.
 
     Combuted by differentiating a slope map.
 
@@ -161,7 +161,7 @@ def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.n
         Default is False.
         If this is False, the median value of the computed curvature map is added as an offset,
         so the median value of the final curvature map becomes zero.
-    map : bool
+    normalize : bool
         Flag indicating whether to use the acrtangent function
         to nonlinearly map the codomain from [-inf, inf] to [-1, 1].
         Default is True.
@@ -172,10 +172,12 @@ def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.n
         Curvature map.
     """
 
+    t0 = time.perf_counter()
+
     T, Y, X, C = vshape(s).shape
     s = s.reshape(T, Y, X, C)  # returns a view
 
-    assert T == 2, "More than 2 directions."
+    assert T == 2, "Number of direction doesn't equal 2."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
     c = np.gradient(s[0], axis=0) + np.gradient(s[0], axis=1) + np.gradient(s[1], axis=0) + np.gradient(s[1], axis=1)
@@ -187,7 +189,9 @@ def curvature(s: np.ndarray, calibrated: bool = False, map: bool = True) -> np.n
     if map:
         c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
 
-    return c
+    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+
+    return c.reshape(-1, Y, X, C)
 
 
 def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
@@ -211,6 +215,8 @@ def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
         Local height map.
     """
 
+    t0 = time.perf_counter()
+
     k = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], np.float32)
     # k *= iterations  # todo
 
@@ -230,6 +236,8 @@ def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
 
     # todo: residuals
     # filter2(kernel_laplace, z) - cature;
+
+    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
     return z
 
@@ -254,6 +262,8 @@ def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
         Filtered data.
     """
 
+    t0 = time.perf_counter()
+
     T, Y, X, C = vshape(I).shape
     I = I.reshape(T, Y, X, C)
     out = np.empty_like(I)
@@ -268,39 +278,7 @@ def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
                 out[t, :, :, c] = ski.restoration.denoise_bilateral(I[t, :, :, c], win_size=k, sigma_spatial=1)
                 # out[t, :, :, c] = cv2.bilateralFilter(I[t], d=k, sigmaColor=np.std(I[t, :, :, c]), sigmaSpace=1)
 
-    return out
-
-
-def median(I: np.ndarray, k: int = 3) -> np.ndarray:  # todo: test
-    """Median filter.
-
-    Removes salt and pepper noise.
-
-    Parameters
-    ----------
-    I : np.ndarray
-        Input data.
-        It is reshaped to videoshape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-    k : int, optional
-        Size of the filter kernel.
-        Default is 3.
-
-    Returns
-    -------
-    out : np.ndarray
-        Filtered data.
-    """
-
-    T, Y, X, C = vshape(I).shape
-    I = I.reshape(T, Y, X, C)
-    out = np.empty_like(I)
-
-    for t in range(T):
-        for c in range(C):
-            if 5 >= k > 1 == k % 2 and I.dtype == np.uint8:  # use opencv for faster performance
-                out[t, :, :, c] = cv2.medianBlur(I[t, :, :, c], k=k)
-            else:
-                out[t, :, :, c] = sp.ndimage.median_filter(I[t, :, :, c], size=(k, k), mode="nearest")
+    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
     return out
 
@@ -394,86 +372,190 @@ def _remap(
                 if not np.isnan(reg[0, yc, xc, c]):
                     xs = int(reg[0, yc, xc, c] + 0.5)  # i.e. rint()
 
-                    if not np.isnan(reg[1, yc, xc, c]):
-                        ys = int(reg[1, yc, xc, c] + 0.5)  # i.e. rint()
+                    if xs < Xs:
+                        if not np.isnan(reg[1, yc, xc, c]):
+                            ys = int(reg[1, yc, xc, c] + 0.5)  # i.e. rint()
 
-                        # if mod.ndim > 1:
-                        #     m = mod[yc, xc, c]
-                        #     if not np.isnan(m):
-                        #         src[ys, xs, c] += m
-                        # else:
-                        #     src[ys, xs, c] += 1
+                            if ys < Ys:
+                                # if mod.ndim > 1 and not np.isnan(mod[yc, xc, c]):  # todo: test shape
+                                #     m = mod[yc, xc, c]
+                                #     src[ys, xs, c] += m
+                                # else:
+                                #     src[ys, xs, c] += 1
 
-                        m = mod[yc, xc, c]
-                        if not np.isnan(m):
-                            src[ys, xs, c] += m
+                                if not np.isnan(mod[yc, xc, c]):
+                                    m = mod[yc, xc, c]
+                                    src[ys, xs, c] += m
     return src
 
 
-# @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)  # todo
-def filter(combos, K, L, lmin):
-    kroot = L ** (1 / K)
-    if lmin <= kroot:
-        lcombos = np.array([l for l in combos if np.any(l > kroot) and np.lcm.reduce(l) >= L])
-    else:
-        lcombos = np.array([l for l in combos if np.lcm.reduce(l) >= L])
-
-    return lcombos
-
-
-def coprime(n: list[int] | tuple[int] | np.ndarray) -> bool:  # n: iterable  # todo: extend to rational numbers
-    """Test whether numbers are pairwise co-prime.
-
-    Parameters
-    ----------
-    n : list, tuple, np.ndarray
-        Integer numbers.
-
-    Returns
-    -------
-    iscoprime : bool
-        True if numbers are pairwise co-prime, else False.
-    """
-
-    n = np.array(n).ravel()  # return view
-
-    if n.size == 0:  # check whether iterable has entries
-        return False
-
-    if not np.all([i % 1 == 0 for i in n]):  # check whether numbers are integers
-        return False
-
-    if n.dtype != int:  # convert numbers to integers
-        n = n.astype(int, copy=True)  # return copy
-
-    for i in range(n.size):  # each combination; number of combinations = n.size * (n.size - 1) / 2
-        for j in range(i + 1, n.size):
-            if n[j] == 1 or np.gcd(n[i], n[j]) != 1:
-                return False
-
-    # alternatively: np.lcm.reduce(n) == np.prod(n)
-
-    return True
+# # @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)  # todo
+# def filter(combos, K, L, lmin):
+#     kroot = L ** (1 / K)
+#     if lmin <= kroot:
+#         lcombos = np.array([l for l in combos if np.any(l > kroot) and np.lcm.reduce(l) >= L])
+#     else:
+#         lcombos = np.array([l for l in combos if np.lcm.reduce(l) >= L])
+#
+#     return lcombos
+#
+#
+# def coprime(n: list[int] | tuple[int] | np.ndarray) -> bool:  # n: iterable  # todo: extend to rational numbers
+#     """Test whether numbers are pairwise co-prime.
+#
+#     Parameters
+#     ----------
+#     n : list, tuple, np.ndarray
+#         Integer numbers.
+#
+#     Returns
+#     -------
+#     iscoprime : bool
+#         True if numbers are pairwise co-prime, else False.
+#     """
+#
+#     # convert to array and flatten
+#     n = np.array(n).ravel()  # returns a view
+#
+#     # check whether iterable has entries
+#     if n.size == 0:
+#         return False
+#
+#     # check whether numbers are integers
+#     if not np.all([i % 1 == 0 for i in n]):
+#         return False
+#
+#     # ensure numbers are integers
+#     if n.dtype != int:
+#         n = n.astype(int, copy=False)
+#
+#     # check pairwise for coprimality, i.e. gcd(a, b) == 1
+#     for i in range(n.size):  # each combination; number of combinations = n.size * (n.size - 1) / 2
+#         for j in range(i + 1, n.size):
+#             if np.gcd(n[i], n[j]) != 1:
+#                 return False
+#
+#     # alternatively: np.lcm.reduce(n) == np.prod(n)
+#
+#     return True
+#
+#
+# def extgcd(a, b):
+#     """Erweiterter euklidischer Algorithmus.
+#
+#     https://hwlang.de/krypto/algo/euklid-erweitert.htm
+#
+#     Parameters
+#     ----------
+#     a : int
+#         Ganzzahl.
+#
+#     b : int
+#         Ganzzahl.
+#
+#     Returns
+#     -------
+#     a : int
+#         Größter gemeinsamer Teiler von 'a' und 'b'.
+#
+#     u : int
+#         Koeffizienten 'u' und 'v' einer Darstellung von 'a' als ganzzahlige Linearmbination.
+#
+#     v : int
+#         Koeffizienten 'u' und 'v' einer Darstellung von 'a' als ganzzahlige Linearmbination.
+#     """
+#
+#     u, v, s, t = 1, 0, 0, 1
+#     while b != 0:
+#         q = a // b
+#         a, b = b, a - q * b
+#         u, s = s, u - q * s
+#         v, t = t, v - q * t
+#     return a, u, v
+#
+#
+# def modinverse(a, n):
+#     """Berechnet das multiplikativ inverse Element von a modulo n.
+#
+#     https://hwlang.de/krypto/grund/inverses-element.htm
+#
+#     Parameters
+#     ----------
+#     a : int
+#         Ganzzahl.
+#
+#     n : int
+#         Modul.
+#
+#     Returns
+#     -------
+#     mi : int
+#         Multiplikativ inverse Element von 'a' modulo 'n'.
+#     """
+#
+#     g, u, v = extgcd(a, n)
+#     return u % n
+#
+#
+# def chineseRemainder(nn, rr):
+#     """Chinesischer-Restsatz-Algorithmus.
+#
+#     Der Vorteil dieser Implementierung nach dem Divide-and-Conquer-Prinzip besteht darin,
+#     dass in den unteren Rekursionsebenen viele Berechnungen mit kleinen Zahlen stattfinden
+#     und erst in den oberen Rekursionsebenen wenige Berechnungen mit großen Zahlen.
+#
+#     https://hwlang.de/krypto/algo/chinese-remainder.htm
+#
+#     Parameters
+#     ----------
+#     nn : np.ndarray, list
+#         Liste paarweise teilerfremder Moduln.
+#
+#     rr : np.ndarray, list
+#         Liste der Reste.
+#
+#     Returns
+#     -------
+#     mn : int
+#         Produkt der Moduln.
+#
+#     x : int
+#         Zahl x nach dem chinesischen Restsatz.
+#     """
+#
+#     if len(nn) == 1:
+#         return nn[0], rr[0]
+#     else:
+#         k = len(nn) // 2
+#         m, a = chineseRemainder(nn[:k], rr[:k])
+#         n, b = chineseRemainder(nn[k:], rr[k:])
+#         g, u, v = extgcd(m, n)
+#         x = (b - a) * u % n * m + a
+#         return m * n, x
+#
+#
+# def modinv(x, p):
+#     """Modular multiplicative inverse.
+#
+#     y = invmod(x, p) such that x*y == 1 (mod p)
+#
+#     https://bugs.python.org/issue36027
+#
+#     Parameters
+#     ----------
+#
+#     x : int
+#         Integer.
+#
+#     p : int
+#         Modul.
+#
+#     Returns
+#     -------
+#     y : Modular multiplicative inverse.
+#     """
+#     return pow(x, -1, p)
 
 
 if __name__ == "__main__":
-    l = np.array([29, 31])
-    # l = np.array([9, 10, 11])
-    # l = np.array([12, 17, 19])
-    # l = np.array([4, 5, 7])
-    X = 1920
-    v = X // l
-
-    # l = v
-    m = coefficients(l)  # todo: numba, LUT?
-    x = 35
-    p = x % l
-    crtOK = np.lcm.reduce(l) == np.prod(l)
-    i, f = np.divmod(p, 1)  # integer and fractional part
-    umr = np.prod(l)  # np.lcm.reduce(l)
-    lcm = np.lcm.reduce(l)
-    x2 = np.sum(m * i) % umr + np.mean(f)
-    x3 = np.sum(m[::-1] * i) % umr + np.mean(f)
-    idx0 = x2 // l
-
-    a = 1
+    pass

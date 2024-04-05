@@ -20,6 +20,14 @@ fringes.grid module
    :undoc-members:
    :show-inheritance:
 
+fringes.main module
+-------------------
+
+.. automodule:: fringes.main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 fringes.util module
 -------------------
 

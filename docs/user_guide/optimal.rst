@@ -19,8 +19,8 @@ As a consequence, one can use much smaller wavelenghts ``l`` (larger number of p
 
 However, it must be assured that the unambiguous measurment range is always equal or larger than both,
 the width ``X`` and the height ``Y``.
-Else, [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-) would yield wrong results and thus instead
-[spatial phase unwrapping](#spatial-phase-unwrapping--spu-) is used.
+Else, :ref:`temporal phase unwrapping <tpu>` would yield wrong results and thus instead
+:ref:`spatial phase unwrapping <spu>` is used.
 Be aware that in the latter case only a relative phase map is obtained,
 which lacks the information of where exactly the camera sight rays were looking at during acquisition.
 
@@ -33,11 +33,11 @@ To simplify finding and setting the optimal parameters, one can choose from the 
   This will automatically determine the optimal integer set of ``l``,
   based on the minimal resolvable wavelength ``lmin`` = ``L`` / ``vmax``.
 - ``T`` can be set directly, based on the desired acquisition time.
-  The optimal ``K``, ``N`` and  - if necessary - the multiplexing methods will be determined automatically.
+  The optimal ``K``, ``N`` and  - if necessary - the :ref:`multiplexing <multiplex>` will be determined automatically.
 - Instead of the options above, one can simply use the function ``optimize()``:
   If ``umax`` is specified, the optimal parameters are determined
   that allow a maximal uncertainty of ``umax`` with a minimum number of frames.
-  Else, the parameters of the `Fringes` instance are optimized to yield the minimal uncertainty
+  Else, the parameters of the `Fringes` instance are optimized to yield the minimal uncertainty possible
   using the given number of frames ``T``.
 
 However, these methods only perform optimally
@@ -51,7 +51,7 @@ a) Measure the **modulation transfer function (MTF)** at a given number of sampl
       This will create spatial frequencies ``v`` spaced evenly on a log scale (a geometric progression),
       starting from 0 up to ``vmax``.
    3. Encode, acquire and decode the fringe pattern sequence.
-   4. Mask the values of ``B`` with nan where the camera wasn't looking at the screen.
+   4. Mask the values of ``B`` with *nan* where the camera wasn't looking at the screen.
       The decoded modulation ``B`` can be used as an indicator.
    5. Call ``Bv(B)`` with the estimated modulation from the measurement as the argument.
    6. Finlly, to get the modulation ``B`` at certain spatial frequencies ``v``, simply call ``MTF(v)``.
@@ -59,6 +59,7 @@ a) Measure the **modulation transfer function (MTF)** at a given number of sampl
 b) A linear MTF is assumed [1]_:
    It starts at ``v`` = 0 with B = 1 and ends at ``v`` = ``vmax`` with B = 0.
    Therefore, the optimal wavelength is ``vopt`` = ``vmax`` / 2.
+
 ..
    Estimate the **magnification** and the **Point Spread Function (PSF)** of the imaging system:
 

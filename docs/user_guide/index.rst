@@ -6,7 +6,7 @@ User Guide
 
     params
     optimal
-    color
     mux
-    remap
+    filter
+    source
     trouble

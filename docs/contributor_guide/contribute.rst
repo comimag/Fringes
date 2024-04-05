@@ -3,8 +3,7 @@ Contribute
 
 Roadmap
 -------
-
-I am continuously monitoring the latest papers to the topics
+I am continuously monitoring the latest papers on the topics
 
 - phase shifting,
 - phase unwarpping,
