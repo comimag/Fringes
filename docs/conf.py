@@ -41,7 +41,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 numfig = True
 
 # -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/main/usage/configuration.html#options-for-html-output
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 html_theme = 'sphinx_rtd_theme'  # 'alabaster'
 html_static_path = ['_static']

@@ -51,6 +51,7 @@ from fringes import Fringes, curvature, height, __version__
 
 def test_version():
     assert __version__, "Version is not specified."
+    # todo: check version is never than latest on PyPi
 
 
 def test_properties():
