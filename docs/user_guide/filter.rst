@@ -69,17 +69,17 @@ The visibility `V` of the fringes is influenced by:
 - the camera lens' modulation transfer function,
 - the camera's resolution (the camera pixel size projected onto the light source acts as a low pass filter).
 
-.. figure:: visibility.png
+.. .. figure:: visibility.png
     :scale: 75%
     :align: center
 
-    Visibility.
+..     Visibility.
 
-.. figure:: exposure.png
+.. .. figure:: exposure.png
     :scale: 75%
     :align: center
 
-    Exposure.
+..     Exposure.
 
 Slope
 --------------------

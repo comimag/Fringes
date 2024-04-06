@@ -10,7 +10,10 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/main/usage/configuration.html#project-information
 
-import toml
+try:
+    import toml
+except ModuleNotFoundError:
+    import tomllib as toml
 import time
 fname = os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
 name = toml.load(fname)["tool"]["poetry"]["name"]
@@ -31,7 +34,7 @@ extensions = [
     'sphinx.ext.autodoc',  # Generate autodoc summaries
     'sphinx.ext.viewcode',  # Add links to highlighted source code
     'sphinx.ext.autosectionlabel',
-    'sphinx_design'
+    'sphinx_design',
 ]
 
 templates_path = ['_templates']
