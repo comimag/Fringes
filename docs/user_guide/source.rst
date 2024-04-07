@@ -181,7 +181,7 @@ where `I_\mathrm{max}` denotes the maximal value the screen `\tilde{\mathcal{S}}
 and `I_\mathrm{th}` denotes the global threshold.
 The complement yields the darkfield illumination for the recorded scene:
 
-`S^\mathrm{DF} = S \setminus S^\mathrm{BF}`
+`S^\mathrm{DF} = S \setminus S^\mathrm{BF}`.
 
 .. [1] `Shepard,
        "A two-dimensional interpolation function for irregularly-spaced data",

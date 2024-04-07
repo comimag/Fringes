@@ -2,8 +2,9 @@
 [![PyPI](https://img.shields.io/pypi/v/fringes)](https://pypi.org/project/fringes/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fringes)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
 [![Read the Docs](https://img.shields.io/readthedocs/fringes)](https://fringes.readthedocs.io)
+[![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
+[![Static Badge](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.10936353-blue)](https://zenodo.org/doi/10.5281/zenodo.10936353)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/fringes)](https://pypistats.org/packages/fringes)
 
 <!---
@@ -27,8 +28,9 @@ Figure 1: Phase Shifting Coding Scheme.
 
 ## Features
 - [Parameterize](https://fringes.readthedocs.io/en/latest/user_guide/params.html) the phase shifting algorithm
-- Create and decode custom
- [fringe patterns](https://fringes.readthedocs.io/en/latest/getting_started/fundamentals.html)
+- [Create](https://fringes.readthedocs.io/en/main/getting_started/fundamentals.html#encoding) and
+  [decode](https://fringes.readthedocs.io/en/main/getting_started/fundamentals.html#decoding)
+  customized fringe patterns
 - Generalized Temporal Phase Unwrapping (GTPU)
 - Uncertainty Propagation
 - [Optimal Coding Strategy](https://fringes.readthedocs.io/en/latest/user_guide/optimal.html)
@@ -88,12 +90,20 @@ The documentation can be found here:
 
 https://fringes.readthedocs.io
 
-<!---
-[![Read the Docs](https://img.shields.io/readthedocs/fringes)](https://fringes.readthedocs.io)
---->
-
 ## License
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
+
+## Citation
+<!---
+If you use this software, please cite it using this DOI:
+[10.5281/zenodo.10938579](https://doi.org/10.5281/zenodo.10938579)
+--->
+
+Alternatively, you can cite all versions,
+i.e. the concept of this software package,
+by using the DOI [10.5281/zenodo.10936353](https://zenodo.org/doi/10.5281/zenodo.10936353).
+This DOI represents all versions,
+and will always resolve to the latest one.
 
 ## Support
 I was looking for a user-friendly tool to configure,

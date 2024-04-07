@@ -10,10 +10,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/main/usage/configuration.html#project-information
 
-try:
-    import toml
-except ModuleNotFoundError:
-    import tomllib as toml
+import toml
 import time
 fname = os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
 name = toml.load(fname)["tool"]["poetry"]["name"]
