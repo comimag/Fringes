@@ -3,9 +3,10 @@ before publishing new version to pypi:
     poetry update
     poetry lock
     pytest
-    citation (zenodo)
     black
-    push to github
+    citation (zenodo)
+    git tag
+    git push
     check docs on read-the-docs
     poetry build
     poetry publish

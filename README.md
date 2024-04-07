@@ -94,16 +94,13 @@ https://fringes.readthedocs.io
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
 
 ## Citation
-<!---
 If you use this software, please cite it using this DOI:
-[10.5281/zenodo.10938579](https://doi.org/10.5281/zenodo.10938579)
---->
-
-Alternatively, you can cite all versions,
-i.e. the concept of this software package,
-by using the DOI [10.5281/zenodo.10936353](https://zenodo.org/doi/10.5281/zenodo.10936353).
-This DOI represents all versions,
+[10.5281/zenodo.10936353](https://zenodo.org/doi/10.5281/zenodo.10936353)\
+This DOI represents all versions, i.e. the concept of this software package,
 and will always resolve to the latest one.
+
+If you want to cite a specific version,
+please choose the respective DOI from [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10936353) yourself.
 
 ## Support
 I was looking for a user-friendly tool to configure,
