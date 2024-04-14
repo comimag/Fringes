@@ -15,13 +15,6 @@ You instantiate, parameterize and deploy the ``Fringes`` class:
 
     f = frng.Fringes()          # instantiate the Fringes class
 
-You can change the `logging level <https://docs.python.org/3/library/logging.html#levels>`_ of a ``Fringes`` instance.
-For example, changing it to `'DEBUG'` gives you verbose feedback on which parameters were changed
-and how long functions took to execute.
-
-.. code-block:: python
-
-    f.logger.setLevel("DEBUG")  # set the logging level
 
 All :ref:`parameters <parameters>` are accesible by the respective attributes of the ``Fringes`` instance
 (a glossary of them is obtained by the class attribute ``glossary``).
@@ -61,23 +54,39 @@ It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``
 
 
 .. note::
-  For the compitationally expensive ``decoding`` we make use of the just-in-time compiler `Numba <https://numba.pydata.org/>`_.
+  For the compitationally expensive ``decode()``-function
+  we make use of the just-in-time compiler `Numba <https://numba.pydata.org/>`_.
   During the first execution, an initial compilation is executed.
   This can take several tens of seconds up to single digit minutes, depending on your CPU and energy settings.
   However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster,
   approaching the speeds of code written in C.
 
+In your application, you can configure the
+`logging <https://docs.python.org/3/howto/logging.html#advanced-logging-tutorial>`_
+of the ``fringes`` package like so:
+
+.. code-block:: python
+
+    import logging
+
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s.%(funcName)s(): %(message)s")
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("fringes")
+    logger.setLevel("INFO")
+
+
 Graphical User Interface
 ------------------------
 Do you prefer to interact with a GUI?
-Fringes has a sister project which is called Fringes-GUI: https://pypi.org/project/fringes-gui/
+`Fringes` has a sister project which is called `Fringes-GUI`: https://pypi.org/project/fringes-gui/
 
-You can install ``Fringes-GUI`` directly from `PyPi <https://pypi.org/>`_ with ``pip``::
+You can install `Fringes-GUI` directly from `PyPi <https://pypi.org/>`_ with ``pip``::
 
     pip install fringes-gui
 
 
-Then you import the `fringes-gui` package and call the function ``run()``.
+Then you import the ``fringes-gui`` package and call the function ``run()``.
 
 .. code-block:: python
 
@@ -90,7 +99,7 @@ Now the graphical user interface should appear:
     :align: center
     :alt: gui
 
-    Screenshot of the GUI
+    Screenshot of the GUI.
 
 Attributes
 """"""""""

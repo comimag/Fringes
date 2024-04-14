@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 import time
 import tempfile
@@ -47,6 +48,10 @@ from fringes import Fringes, curvature, height, __version__
 #             T = Tnew
 #
 #     assert T <= 1, f"Decoding takes {int(np.round(T * 1000))}ms > 1000ms."
+
+
+def test_logging():
+    assert "fringes" in logging.Logger.manager.loggerDict
 
 
 def test_version():
@@ -609,5 +614,5 @@ def test_simulation():
 
 
 if __name__ == "__main__":
-    # pytest.main()
-    subprocess.run(['pytest', '--tb=short', str(__file__)])
+    pytest.main()
+    # subprocess.run(['pytest', '--tb=short', str(__file__)])
