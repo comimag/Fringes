@@ -1,6 +1,10 @@
+import logging
+
 import numpy as np
 
 # todo: import numba as nb
+
+logger = logging.getLogger(__name__)
 
 
 def img(Y: int = 720, X: int = 720, a: float = 0):

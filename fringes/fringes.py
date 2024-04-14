@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 import itertools as it
 from collections import namedtuple
 import time
@@ -17,12 +17,7 @@ from .util import vshape, bilateral, _remap
 from . import grid
 from .decoder import decode
 
-# logging.getLogger(__name__)
-# formatter = logging.Formatter("%(asctime)s %(levelname)-8s %(name)7s.%(funcName)-11s: %(message)s")
-# handler = logging.StreamHandler()
-# handler.setFormatter(formatter)
-# logger.addHandler(handler)
-# logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Fringes:
@@ -149,15 +144,6 @@ class Fringes:
             k: v for k, v in sorted(locals().items()) if k in self.defaults and not np.array_equal(v, self.defaults[k])
         }
 
-        # logger
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel("WARNING")
-        if not self.logger.hasHandlers():
-            formatter = logging.Formatter("%(asctime)s %(levelname)-8s %(name)7s.%(funcName)-11s: %(message)s")
-            handler = logging.StreamHandler()
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-
         # set default values
         self._UMR = None  # used for caching
         for k, v in self.defaults.items():
@@ -240,7 +226,7 @@ class Fringes:
             fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         if not os.path.isfile(fname):
-            logging.error(f"File '{fname}' does not exist.")
+            logger.error(f"File '{fname}' does not exist.")
             return
 
         with open(fname, "r") as f:
@@ -253,18 +239,18 @@ class Fringes:
             elif ext == ".toml":
                 p = toml.load(f)
             else:
-                logging.error(f"Unknown file type '{ext}'.")
+                logger.error(f"Unknown file type '{ext}'.")
                 return {}
 
         if "fringes" in p:
             params = p["fringes"]
             self.params = params
 
-            logging.info(f"Loaded parameters from '{fname}'.")
+            logger.info(f"Loaded parameters from '{fname}'.")
 
             return params
         else:
-            logging.error(f"No 'fringes' section in file '{fname}'.")
+            logger.error(f"No 'fringes' section in file '{fname}'.")
             return {}
 
     def save(self, fname: str = None) -> None:
@@ -295,7 +281,7 @@ class Fringes:
             fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         if not os.path.isdir(os.path.dirname(fname)):
-            logging.warning(f"File directory does not exist.")
+            logger.warning(f"File directory does not exist.")
             return
 
         name, ext = os.path.splitext(fname)
@@ -303,7 +289,7 @@ class Fringes:
             name, ext = ext, name
 
         if ext not in self._loader.keys():
-            logging.warning(f"File extension is unknown. Must be one of {self._loaders.keys()}")
+            logger.warning(f"File extension is unknown. Must be one of {self._loaders.keys()}")
             return
 
         with open(fname, "w") as f:
@@ -314,13 +300,13 @@ class Fringes:
             elif ext == ".toml":
                 toml.dump({"fringes": self.params}, f)
 
-        logging.debug(f"Saved parameters to {fname}.")  # todo: info?
+        logger.debug(f"Saved parameters to {fname}.")  # todo: info?
 
     def reset(self) -> None:
         """Reset parameters of the `Fringes` instance to default values."""
 
         self.params = self.defaults
-        logging.info("Reset parameters to defaults.")
+        logger.info("Reset parameters to defaults.")
 
     def optimize(self, T: int = None, umax: float = None) -> None:  # todo: self.umax
         """Optimize the parameters of the `Fringes` instance.
@@ -365,7 +351,7 @@ class Fringes:
 
             self.T = T  # distribute frames optimally (evenly) on shifts
 
-        logging.info("Optimized parameters.")
+        logger.info("Optimized parameters.")
 
     @staticmethod
     def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
@@ -439,7 +425,7 @@ class Fringes:
         # I = I.reshape((T * Y, X, C))  # concatenate
         I = I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I
 
@@ -471,7 +457,7 @@ class Fringes:
         if self.grid in ["polar", "log-polar"]:
             xi *= self.L
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return xi
 
@@ -573,7 +559,7 @@ class Fringes:
                         idx += 1
                     frame += 1
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I.reshape(-1, Y, X, 1)
 
@@ -775,7 +761,7 @@ class Fringes:
                 self.verbose or verbose,
             )
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return bri, mod, phi, reg, res
 
@@ -833,7 +819,7 @@ class Fringes:
             assert I.dtype.kind == "f"
 
             if np.any(self._N < 2 * np.abs(self._f).max() + 1):  # todo: fractional periods
-                logging.warning("Decoding might be disturbed.")
+                logger.warning("Decoding might be disturbed.")
 
             I = I.reshape((self.D * self.K, -1))  # returns a view
             I -= self.A
@@ -846,7 +832,7 @@ class Fringes:
                     np.rint(I, out=I)
                 I = I.astype(self.dtype, copy=False)  # returns a view
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I
 
@@ -927,7 +913,7 @@ class Fringes:
             assert len(np.unique(self.N)) == 1
             I = np.tile(I, (self.D * self.K, 1, 1, 1))
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I
 
@@ -1002,7 +988,7 @@ class Fringes:
         #                 J[i, ..., c] = I[i, ..., cj] * (self.h[h, c] / 255)
         #         i += 1
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return J
 
@@ -1082,7 +1068,7 @@ class Fringes:
             I = np.sum(I * w[:, None, None, None, :], axis=0, dtype=dtype)
             # todo: numpy.tensordot ?
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I
 
@@ -1234,7 +1220,7 @@ class Fringes:
         if self.H > 1 or np.any(self.h != 255):  # can be used for extended averaging
             I = self._colorize(I, frames)
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return (
             self._simulate(I, PSF=0, system_gain=self.gain, dark_current=self.y0 / self.gain, dark_noise=self.dark)
@@ -1365,7 +1351,7 @@ class Fringes:
 
         # spatial unwrapping
         if self._ambiguous:
-            logging.warning("Unwrapping is not spatially independent and only yields a relative phase map.")
+            logger.warning("Unwrapping is not spatially independent and only yields a relative phase map.")
             reg = self._unwrap(reg, bri)  # todo: res if verbose
         else:  # coordiante retransformation
             # todo: tests
@@ -1444,7 +1430,7 @@ class Fringes:
         else:
             dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return dec
 
@@ -1593,9 +1579,9 @@ class Fringes:
 
         for d in range(self.D):
             if self.K == 1:  # todo: self.K[d] == 1
-                logging.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
+                logger.info(f"Spatial phase unwrapping in 2D{' for each color indepently' if C > 1 else ''}.")
             else:
-                logging.info(f"Spatial phase unwrapping in 3D{' for each color indepently' if C > 1 else ''}.")
+                logger.info(f"Spatial phase unwrapping in 3D{' for each color indepently' if C > 1 else ''}.")
                 func = "ski"  # only ski can unwrap in 3D
 
             for c in range(C):
@@ -1632,7 +1618,7 @@ class Fringes:
 
         reg *= self._l[:, 0, None, None, None] / (2 * np.pi)
 
-        logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return reg  # todo: res if verbose
 
@@ -1901,7 +1887,7 @@ class Fringes:
         if mx > 0 and mx != 1:
             src /= mx
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return src
 
@@ -2096,7 +2082,7 @@ class Fringes:
         # quantization noise is added by converting to integer
         I = I.astype(self.dtype, copy=False)
 
-        logging.info(f"{1000 * (time.perf_counter() - t0)}ms")
+        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
         return I
 
@@ -2204,7 +2190,7 @@ class Fringes:
 
         if _T == 1:  # WDM + SDM todo: FTM?
             if self.grid not in self._grids[:2]:
-                logging.error(f"Couldn't set 'T = 1': grid not in {self._grids[:2]}'.")
+                logger.error(f"Couldn't set 'T = 1': grid not in {self._grids[:2]}'.")
                 return
 
             self.H = 1
@@ -2306,7 +2292,7 @@ class Fringes:
 
         if self._Y != _Y:
             self._Y = _Y
-            logging.debug(f"{self._Y = }")
+            logger.debug(f"{self._Y = }")
             self._UMR = None
 
             if self._X == self._Y == 1:
@@ -2331,7 +2317,7 @@ class Fringes:
 
         if self._X != _X:
             self._X = _X
-            logging.debug(f"{self._X = }")
+            logger.debug(f"{self._X = }")
             self._UMR = None
 
             if self._X == self._Y == 1:
@@ -2376,7 +2362,7 @@ class Fringes:
 
         if self._alpha != _alpha:
             self._alpha = _alpha
-            logging.debug(f"{self._alpha = }")
+            logger.debug(f"{self._alpha = }")
             self._UMR = None
 
     @property
@@ -2409,12 +2395,12 @@ class Fringes:
         _grid = str(grid)
 
         if (self.SDM or self.uwr == "FTM") and self.grid not in self._grids[:2]:
-            logging.error(f"Couldn't set 'grid': grid not in {self._grids[:2]}'.")
+            logger.error(f"Couldn't set 'grid': grid not in {self._grids[:2]}'.")
             return
 
         if self._grid != _grid and _grid in self._grids:
             self._grid = _grid
-            logging.debug(f"{self._grid = }")
+            logger.debug(f"{self._grid = }")
             self.SDM = self.SDM
 
     @property
@@ -2428,7 +2414,7 @@ class Fringes:
 
         if self._angle != _angle:
             self._angle = _angle
-            logging.debug(f"{self._angle = }")
+            logger.debug(f"{self._angle = }")
 
     @property
     def D(self) -> int:
@@ -2441,7 +2427,7 @@ class Fringes:
 
         if self._D > _D:
             self._D = _D
-            logging.debug(f"{self._D = }")
+            logger.debug(f"{self._D = }")
 
             self.N = self._N[: self.D, :]
             self.v = self._v[: self.D, :]
@@ -2453,7 +2439,7 @@ class Fringes:
             self.SDM = False
         elif self._D < _D:
             self._D = _D
-            logging.debug(f"{self._D = }")
+            logger.debug(f"{self._D = }")
 
             self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._N.shape[0], 1)), axis=0)
             self.v = np.append(self._v, np.tile(self._v[-1, :], (_D - self._v.shape[0], 1)), axis=0)
@@ -2474,7 +2460,7 @@ class Fringes:
 
         if self._axis != _axis:
             self._axis = _axis
-            logging.debug(f"{self._axis = }")
+            logger.debug(f"{self._axis = }")
             self._UMR = None
 
     @property
@@ -2515,7 +2501,7 @@ class Fringes:
         _H = int(min(max(1, H), self._Hmax))
 
         # if self.WDM:
-        #     logging.error("Couldn't set 'H': WDM is active.")
+        #     logger.error("Couldn't set 'H': WDM is active.")
         #     return
 
         if self.H != _H:
@@ -2586,24 +2572,24 @@ class Fringes:
             _h = _h[: self._Hmax, :3, ..., -1]
 
         if _h.shape[1] == 2:  # C-axis must equal 3
-            logging.error("Couldn't set 'h': Only 2 instead of 3 color channels provided.")
+            logger.error("Couldn't set 'h': Only 2 instead of 3 color channels provided.")
             return
 
         if np.any(np.max(_h, axis=1) == 0):
-            logging.error("Didn't set 'h': Black color is not allowed.")
+            logger.error("Didn't set 'h': Black color is not allowed.")
             return
 
         if self.WDM and not self._monochrome:
-            logging.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
+            logger.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
             return
 
         if not np.array_equal(self._h, _h):
             Hold = self.H
             self._h = _h
-            logging.debug(f"self._h = {str(self._h).replace(chr(10), ',')}")
+            logger.debug(f"self._h = {str(self._h).replace(chr(10), ',')}")
             if Hold != _h.shape[0]:
-                logging.debug(f"self.H = {_h.shape[0]}")  # computed upon call
-            logging.debug(f"{self.M = }")  # computed upon call
+                logger.debug(f"self.H = {_h.shape[0]}")  # computed upon call
+            logger.debug(f"{self.M = }")  # computed upon call
 
     @property
     def TDM(self) -> bool:
@@ -2627,20 +2613,20 @@ class Fringes:
         if _SDM:
             if self.D != 2:
                 _SDM = False
-                logging.error("Didn't set 'SDM': Pointless as only one dimension exist.")
+                logger.error("Didn't set 'SDM': Pointless as only one dimension exist.")
 
             if self.grid not in self._grids[:2]:
                 _SDM = False
-                logging.error(f"Couldn't set 'SDM': grid not in {self._grids[:2]}'.")
+                logger.error(f"Couldn't set 'SDM': grid not in {self._grids[:2]}'.")
 
             if self.FDM:
                 _SDM = False
-                logging.error("Couldn't set 'SDM': FDM is active.")
+                logger.error("Couldn't set 'SDM': FDM is active.")
 
         if self._SDM != _SDM:
             self._SDM = _SDM
-            logging.debug(f"{self._SDM = }")
-            logging.debug(f"{self.T = }")  # computed upon call
+            logger.debug(f"{self._SDM = }")
+            logger.debug(f"{self.T = }")  # computed upon call
 
             if self.SDM:
                 self.B /= self.D
@@ -2663,20 +2649,20 @@ class Fringes:
         if _WDM:
             if not np.all(self.N == 3):
                 _WDM = False
-                logging.error("Couldn't set 'WDM': At least one Shift != 3.")
+                logger.error("Couldn't set 'WDM': At least one Shift != 3.")
 
             if not self._monochrome:
                 _WDM = False
-                logging.error("Couldn't set 'WDM': Not all hues are monochromatic.")
+                logger.error("Couldn't set 'WDM': Not all hues are monochromatic.")
 
             if self.FDM:  # todo: remove this, already covered by N
                 _WDM = False
-                logging.error("Couldn't set 'WDM': FDM is active.")
+                logger.error("Couldn't set 'WDM': FDM is active.")
 
         if self._WDM != _WDM:
             self._WDM = _WDM
-            logging.debug(f"{self._WDM = }")
-            logging.debug(f"{self.T = }")  # computed upon call
+            logger.debug(f"{self._WDM = }")
+            logger.debug(f"{self.T = }")  # computed upon call
 
     @property
     def FDM(self) -> bool:
@@ -2701,19 +2687,19 @@ class Fringes:
         if _FDM:
             if self.D == self.K == 1:
                 _FDM = False
-                logging.error("Didn't set 'FDM': Dimensions * Sets = 1, so nothing to multiplex.")
+                logger.error("Didn't set 'FDM': Dimensions * Sets = 1, so nothing to multiplex.")
 
             if self.SDM:
                 _FDM = False
-                logging.error("Couldn't set 'FDM': SDM is active.")
+                logger.error("Couldn't set 'FDM': SDM is active.")
 
             if self.WDM:  # todo: remove, already covered by N
                 _FDM = False
-                logging.error("Couldn't set 'FDM': WDM is active.")
+                logger.error("Couldn't set 'FDM': WDM is active.")
 
         if self._FDM != _FDM:
             self._FDM = _FDM
-            logging.debug(f"{self._FDM = }")
+            logger.debug(f"{self._FDM = }")
             # self.K = self._K
             self.N = self._N
             self.v = self._v
@@ -2739,7 +2725,7 @@ class Fringes:
 
         if self._static != _static:
             self._static = _static
-            logging.debug(f"{self._static = }")
+            logger.debug(f"{self._static = }")
             self.v = self._v
             self.f = self._f
 
@@ -2760,7 +2746,7 @@ class Fringes:
 
         if self._K > _K:  # remove elements
             self._K = _K
-            logging.debug(f"{self._K = }")
+            logger.debug(f"{self._K = }")
 
             self.N = self._N[:, : self.K]
             self.v = self._v[:, : self.K]
@@ -2770,7 +2756,7 @@ class Fringes:
                 self.FDM = False
         elif self._K < _K:  # add elements
             self._K = _K
-            logging.debug(f"{self._K = }")
+            logger.debug(f"{self._K = }")
 
             self.N = np.append(
                 self._N, np.tile(self._N[0, 0], (self.D, _K - self._N.shape[1])), axis=1
@@ -2825,7 +2811,7 @@ class Fringes:
                     _N[d, i] = 3
 
         if self.WDM and not np.all(_N == 3):
-            logging.error("Couldn't set 'N': At least one Shift != 3.")
+            logger.error("Couldn't set 'N': At least one Shift != 3.")
             return
 
         if self.FDM and not np.all(_N == _N[0, 0]):
@@ -2834,10 +2820,10 @@ class Fringes:
 
         if not np.array_equal(self._N, _N):
             self._N = _N
-            logging.debug(f"self._N = {str(self._N).replace(chr(10), ',')}")
+            logger.debug(f"self._N = {str(self._N).replace(chr(10), ',')}")
             self._UMR = None
             self.D, self.K = self._N.shape
-            logging.debug(f"{self.T = }")
+            logger.debug(f"{self.T = }")
 
     @property
     def lmin(self) -> float:
@@ -2857,8 +2843,8 @@ class Fringes:
 
         if self._lmin != _lmin:
             self._lmin = _lmin
-            logging.debug(f"{self._lmin = }")
-            logging.debug(f"{self.vmax = }")  # computed upon call
+            logger.debug(f"{self._lmin = }")
+            logger.debug(f"{self.vmax = }")  # computed upon call
             self.l = self.l  # l triggers v
 
     @property
@@ -3093,7 +3079,7 @@ class Fringes:
                     p = np.array(list(sympy.ntheory.generate.primerange(n, pmax + 1)))[:ith]  # primes
                     p = [p[-i // 2] if i % 2 else p[i // 2] for i in range(len(p))]  # resort primes
                     _v = np.sort(np.array(p, float).reshape((self.D, self.K)), axis=1)  # resort primes
-                    logging.warning(
+                    logger.warning(
                         f"Periods were not coprime. " f"Changing values to {str(_v.round(3)).replace(chr(10), ',')}."
                     )
             # else:
@@ -3102,8 +3088,8 @@ class Fringes:
 
         if not np.array_equal(self._v, _v):
             self._v = _v
-            logging.debug(f"self.v = {str(self._v.round(3)).replace(chr(10), ',')}")
-            logging.debug(f"self.l = {str(self._l.round(3)).replace(chr(10), ',')}")
+            logger.debug(f"self.v = {str(self._v.round(3)).replace(chr(10), ',')}")
+            logger.debug(f"self.l = {str(self._l.round(3)).replace(chr(10), ',')}")
             self._UMR = None
             self.D, self.K = self._v.shape
             self.f = self._f
@@ -3150,7 +3136,7 @@ class Fringes:
 
         if 0 not in _f and not np.array_equal(self._f, _f):
             self._f = _f
-            logging.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
+            logger.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
             self.D, self.K = self._f.shape
             self.N = self._N  # todo: remove if fractional periods is implemented, log warning
 
@@ -3168,7 +3154,7 @@ class Fringes:
 
         if self._p0 != _p0:
             self._p0 = _p0
-            logging.debug(f"self._p0 = {self._p0 / np.pi} PI")
+            logger.debug(f"self._p0 = {self._p0 / np.pi} PI")
 
     @property
     def Bv(self) -> np.ndarray:
@@ -3181,7 +3167,7 @@ class Fringes:
     def Bv(self, B: np.ndarray):
         if B is None:
             self._Bv = None
-            logging.debug(f"self.Bv = {self._Bv}")
+            logger.debug(f"self.Bv = {self._Bv}")
             return
 
         _B = np.array(np.maximum(0, B), float)
@@ -3206,7 +3192,7 @@ class Fringes:
 
         if not np.array_equal(self._Bv, _Bv):
             self._Bv = _B
-            logging.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
+            logger.debug(f"self.Bv = {str(self.Bv.round(3)).replace(chr(10), ',')}")
 
     @property
     def _monochrome(self) -> bool:
@@ -3233,7 +3219,7 @@ class Fringes:
 
         if self._indexing != _indexing and _indexing in self._indexings:
             self._indexing = _indexing
-            logging.debug(f"{self._indexing = }")
+            logger.debug(f"{self._indexing = }")
             self._UMR = None
 
     @property
@@ -3247,8 +3233,8 @@ class Fringes:
 
         if self._reverse != _reverse:
             self._reverse = _reverse
-            logging.debug(f"{self._reverse = }")
-            logging.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
+            logger.debug(f"{self._reverse = }")
+            logger.debug(f"self._f = {str((self._f * (-1 if self.reverse else 1)).round(3)).replace(chr(10), ',')}")
 
     @property
     def verbose(self) -> bool:
@@ -3267,7 +3253,7 @@ class Fringes:
 
         if self._verbose != _verbose:
             self._verbose = _verbose
-            logging.debug(f"{self._verbose = }")
+            logger.debug(f"{self._verbose = }")
 
     @property
     def mode(self) -> str:
@@ -3285,7 +3271,7 @@ class Fringes:
 
         if self._mode != _mode and _mode in self._modes:
             self._mode = _mode
-            logging.debug(f"{self._mode = }")
+            logger.debug(f"{self._mode = }")
 
     @property
     def uwr(self) -> str:
@@ -3314,7 +3300,7 @@ class Fringes:
 
         if self._gamma != _gamma and _gamma != 0:
             self._gamma = _gamma
-            logging.debug(f"{self._gamma = }")
+            logger.debug(f"{self._gamma = }")
 
     @property
     def shape(self) -> tuple[int]:
@@ -3354,9 +3340,9 @@ class Fringes:
 
         if self._dtype != _dtype and str(_dtype) in self._dtypes:
             self._dtype = _dtype
-            logging.debug(f"{self._dtype = }")
-            logging.debug(f"self.A = {self.A}")
-            logging.debug(f"self.B = {self.B}")
+            logger.debug(f"{self._dtype = }")
+            logger.debug(f"self.A = {self.A}")
+            logger.debug(f"self.B = {self.B}")
 
     @property
     def Imax(self) -> int:
@@ -3384,7 +3370,7 @@ class Fringes:
 
         if self.A != _A:
             self.beta = _A / self.Imax
-            logging.debug(f"{self.A = }")
+            logger.debug(f"{self.A = }")
 
     @property
     def _Bmax(self):
@@ -3402,7 +3388,7 @@ class Fringes:
 
         if self.B != _B:  # and _B != 0:
             self.V = _B / self.A
-            logging.debug(f"{self.B = }")
+            logger.debug(f"{self.B = }")
 
     @property
     def _betamax(self):
@@ -3420,7 +3406,7 @@ class Fringes:
 
         if self._beta != _beta:
             self._beta = _beta
-            logging.debug(f"{self.beta = }")
+            logger.debug(f"{self.beta = }")
 
     @property
     def _Vmax(self):
@@ -3443,7 +3429,7 @@ class Fringes:
 
         if self._V != _V:
             self._V = _V
-            logging.debug(f"{self.V = }")
+            logger.debug(f"{self.V = }")
 
     @property
     def Vmin(self) -> float:
@@ -3456,7 +3442,7 @@ class Fringes:
 
         if self._Vmin != _Vmin:
             self._Vmin = _Vmin
-            logging.debug(f"{self._Vmin = }")
+            logger.debug(f"{self._Vmin = }")
 
     @property
     def umax(self) -> float:
@@ -3470,7 +3456,7 @@ class Fringes:
 
         if self._umax != _umax:
             self._umax = _umax
-            logging.debug(f"{self._umax = }")
+            logger.debug(f"{self._umax = }")
 
     # @property
     # def r(self) -> int:
@@ -3511,7 +3497,7 @@ class Fringes:
 
         if self._dark != _dark:
             self._dark = _dark
-            logging.debug(f"{self._dark = }")
+            logger.debug(f"{self._dark = }")
 
     @property
     def shot(self) -> float:
@@ -3532,7 +3518,7 @@ class Fringes:
 
         if self._gain != _gain:
             self._gain = _gain
-            logging.debug(f"{self._gain = }")
+            logger.debug(f"{self._gain = }")
 
     @property
     def PSF(self) -> float:  # todo: magnification?
@@ -3546,7 +3532,7 @@ class Fringes:
 
         if self._PSF != _PSF:
             self._PSF = _PSF
-            logging.debug(f"{self._PSF = }")
+            logger.debug(f"{self._PSF = }")
 
     @property
     def y0(self) -> float:
@@ -3560,7 +3546,7 @@ class Fringes:
 
         if self._y0 != _y0:
             self._y0 = _y0
-            logging.debug(f"{self._y0 = }")
+            logger.debug(f"{self._y0 = }")
 
     @property
     def UMR(self) -> np.ndarray:
@@ -3631,19 +3617,19 @@ class Fringes:
                     if Dl <= Dv:
                         ls = l * 10**Dl  # wavelengths scaled
                         UMR[d] = np.lcm.reduce(ls.astype(int, copy=False)) / 10**Dl
-                        logging.debug("Extended lcm to rational numbers.")
+                        logger.debug("Extended lcm to rational numbers.")
                     else:
                         vs = v * 10**Dv  # spatial frequencies scaled
                         UMR[d] = self.L / (np.gcd.reduce(vs.astype(int, copy=False)) / 10**Dv)
-                        logging.debug("Extended gcd to rational numbers.")
+                        logger.debug("Extended gcd to rational numbers.")
                 else:  # irrational numbers or rational numbers with more digits than "precision"
                     UMR[d] = np.prod(l)
 
         self._UMR = UMR
-        logging.debug(f"self.UMR = {str(self._UMR)}")
+        logger.debug(f"self.UMR = {str(self._UMR)}")
 
         if self._ambiguous:
-            logging.warning(
+            logger.warning(
                 "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
             )
 
@@ -3758,7 +3744,7 @@ class Fringes:
         else:  # else clause executes only after the loop completes normally, i.e. did not encounter a break
             return
 
-        logging.warning(f"'{k}' got overwritten by interdependencies. Choose a consistent parameter set.")
+        logger.warning(f"'{k}' got overwritten by interdependencies. Choose a consistent parameter set.")
         self.params = params_old
 
     types: dict = dict(sorted(__init__.__annotations__.items()))
@@ -3796,7 +3782,7 @@ class Fringes:
     # __doc__ += "\ndefaults : dict"
     # __doc__ += "\nglossary : dict"
     # __doc__ += f"\nlogger : Logger, default = logger.getLogger({__qualname__})"  # todo
-    # __doc__ += "\n    https://docs.python.org/3/library/logging.html#logger-objects"
+    # __doc__ += "\n    https://docs.python.org/3/library/logger.html#logger-objects"
     # __doc__ += "\n\nMethods\n-------"
     # __doc__ += f"\nencode\n    {encode.__doc__.splitlines()[0]}"
     # __doc__ += f"\ndecode\n    {decode.__doc__.splitlines()[0]}"

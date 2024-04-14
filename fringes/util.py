@@ -1,7 +1,7 @@
+import logging
 import time
 import typing as tp
 import itertools as it
-import logging
 
 import numpy as np
 import numba as nb
@@ -10,6 +10,8 @@ import scipy as sp
 # import sympy.ntheory.generate
 import skimage as ski
 import cv2
+
+logger = logging.getLogger(__name__)
 
 
 def vshape(data: np.ndarray) -> np.ndarray:

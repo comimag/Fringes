@@ -4,20 +4,20 @@ Source
 ======
 The registration (:ref:`decoded coordinates <decoding>`) `\boldsymbol{\Xi}` is a function
 
-`\boldsymbol{\Xi} : \mathcal{C} \mapsto \mathcal{S} \cup \emptyset,
+`\boldsymbol{\Xi} : \mathcal{C} \mapsto \mathcal{S} \cup \varnothing,
 \quad \mathcal{C} \subseteq \mathbb{Z}^2,
 \quad \mathcal{S} \subseteq \mathbb{R}^2`
 
 defined over the two-dimensional set of all camera pixels `\mathcal{C}`
-and yielding positions `\boldsymbol{\hat{\xi}}` on the two-dimensional screen `\mathcal{S}`:
+and yielding positions `\mathbf{\hat{x}}_\mathrm{s}` on the two-dimensional screen `\mathcal{S}`:
 
-`\boldsymbol{\Xi}(\mathbf{x}_\mathrm{c}) = \boldsymbol{\hat{\xi}},
+`\boldsymbol{\Xi}(\mathbf{x}_\mathrm{c}) = \mathbf{\hat{x}}_\mathrm{s},
 \quad \text{with} \quad \mathbf{x}_\mathrm{c} =
 \left(\begin{array}{c}
 x_\mathrm{c} \\
 y_\mathrm{c}
 \end{array}\right),
-\quad \boldsymbol{\hat{\xi}} =
+\quad \mathbf{\hat{x}}_\mathrm{s} =
 \left(\begin{array}{c}
 x_\mathrm{s} \\
 y_\mathrm{s}
@@ -26,126 +26,144 @@ y_\mathrm{s}
 More pictorial, it contains the information where each camera sight ray was looking to:
 where onto the screen or elsewhere.
 
-Similarly, the modulation (signal strenth) `\mathbf{B}` is a function
+Similarly, the mean modulation (signal strenth) `\boldsymbol{\bar{B}}` is a function
 
-`\mathbf{B} : \mathcal{C} \mapsto \mathcal{M},
-\quad \mathcal{M} \subseteq \mathbb{R}_+^{2 \times K}`
+`\boldsymbol{\bar{B}} : \mathcal{C} \mapsto \mathcal{M},
+\quad \mathcal{M} \subseteq \mathbb{R}`
 
-defined over `\mathcal{C}`
-and yielding `2 \times K`-channel, non-negative modulation values `\hat{b}`
-for every camera pixel `\mathbf{x}_\mathrm{c}`:
+defined over `\mathcal{C}` and yielding non-negative modulation values `\bar{b}_{_{\mathbf{x}_\mathrm{c}}}`
+for every camera pixel `\mathbf{x}_\mathrm{c}`.
 
-`\mathbf{B}(\mathbf{x}_\mathrm{c}) =
-\left(\begin{array}{cccc}
-\hat{b}_{\mathrm{x},0} & \hat{b}_{\mathrm{x},1} & \cdots & \hat{b}_{\mathrm{x},K-1} \\
-\hat{b}_{\mathrm{y},0} & \hat{b}_{\mathrm{y},1} & \cdots & \hat{b}_{\mathrm{y},K-1}
-\end{array}\right)`.
+.. `\mathbf{B} : \mathcal{C} \mapsto \mathcal{M},
+   \quad \mathcal{M} \subseteq \mathbb{R}_+^{2 \times K}`
 
-The channels of the modulation values are the coding direction `d \in \{ \mathrm{x}, \mathrm{y} \}`
-and the fringe pattern set `i \in \{ \, \mathbb{N}_0 \mid i < K \, \}`.
-The elementwise mean modulation is denoted by
+   defined over `\mathcal{C}`
+   and yielding `2 \times K`-channel, non-negative modulation values `\hat{b}`
+   for every camera pixel `\mathbf{x}_\mathrm{c}`:
 
-`\bar{\mathbf{B}}(\mathbf{x}_\mathrm{c}) = \frac{\sum_{d,i} \hat{b}_{d,i}}{2K}`.
+   `\mathbf{B}(\mathbf{x}_\mathrm{c}) =
+   \left(\begin{array}{cccc}
+   \hat{b}_{\mathrm{x},0} & \hat{b}_{\mathrm{x},1} & \cdots & \hat{b}_{\mathrm{x},K-1} \\
+   \hat{b}_{\mathrm{y},0} & \hat{b}_{\mathrm{y},1} & \cdots & \hat{b}_{\mathrm{y},K-1}
+   \end{array}\right)`.
 
-.. \bar{b}
-.. `\frac{\sum_d \sum_{i=0}^{K-1} \hat{b}_{d,i}}{2K}`
+   The channels of the modulation values are the coding direction `d \in \{ \mathrm{x}, \mathrm{y} \}`
+   and the fringe pattern set `i \in \{ \, \mathbb{N}_0 \mid i < K \, \}`.
+   The mean of every element of the modulation `\mathbf{B}` is denoted by
+
+   `\bar{b}_{\mathbf{x}_\mathrm{c}}
+   = \frac{\sum_{d, i \in \{ \mathrm{x}, \mathrm{y} \}, \{ \, \mathbb{N}_0 \mid i < K \, \}} \hat{b}_{d,i}}{2K}`.
 
 To determine how much a screen pixel `\mathbf{x}_\mathrm{s}`
 contributed to the exposure of the camera sensor `\mathcal{C}`,
 we need the inverse function `\boldsymbol{\Xi}^{-1} : \mathcal{S} \mapsto \mathcal{C}`
-to remap `\bar{b}` from `\mathbf{x}_\mathrm{c}` to `\mathbf{x}_\mathrm{s}`
+to remap `\bar{b}_{_{\mathbf{x}_\mathrm{c}}}` from `\mathbf{x}_\mathrm{c}` to `\mathbf{x}_\mathrm{s}`
 and accumulate it in the plane `\mathcal{S}`.
-However, the inverse `\boldsymbol{\Xi}^{-1}` does not exist for the following reasons:
+However, this presents an ill-posed problem for the following reasons:
 
-1. `\boldsymbol{\Xi}` is not injective
-   because there might be more than one camera sight ray looking at the same screen point `\boldsymbol{\hat{\xi}}`.
+1. `\boldsymbol{\Xi}^{-1}` is not well defined
+   because there may be screen points `\mathbf{\hat{x}}_\mathrm{s}` where no camera sight ray is looking at,
+   so that `\boldsymbol{\Xi}` is not surjective.
 
-2. `\boldsymbol{\Xi}` is not surjective
-   because there may be screen points `\boldsymbol{\hat{\xi}}` where no camera sight ray is looking at.
+2. `\boldsymbol{\Xi}^{-1}` is not uniquely defined
+   because there might be more than one camera sight ray looking at the same screen point `\mathbf{\hat{x}}_\mathrm{s}`,
+   so that `\boldsymbol{\Xi}` is not injective.
 
-Because the registration `\mathbf{\Xi}` is neighter injective nor surjective,
-it follows that it is not bijective, hence it is not invertible.
-Furthermore, although screen positions `\boldsymbol{\hat{\xi}}` are decoded with continuous values,
-the screen itself can only be activated at discrete pixels
+3. `\boldsymbol{\Xi}^{-1}` is not continuous:
+   although screen positions `\mathbf{\hat{x}}_\mathrm{s}` are decoded with continuous values,
+   the screen itself can only be activated at discrete pixels
 
-`\mathbf{x}_\mathrm{s} =
-\left(\begin{array}{c}
-x_\mathrm{s} \\
-y_\mathrm{s}
-\end{array}\right),
-\quad \text{with} \quad \mathbf{x}_\mathrm{s} \in \tilde{\mathcal{S}} \subseteq \mathbb{Z}^2`.
+   `\mathbf{x}_\mathrm{s} =
+   \left(\begin{array}{c}
+   x_\mathrm{s} \\
+   y_\mathrm{s}
+   \end{array}\right),
+   \quad \text{with} \quad \mathbf{x}_\mathrm{s} \in \tilde{\mathcal{S}} \subseteq \mathbb{Z}^2`.
+
+.. 3. continuous ???
+
+.. However, the inverse `\boldsymbol{\Xi}^{-1}` does not exist for the following reasons:
+
+Because the registration `\mathbf{\Xi}` is neighter surjective nor injective,
+it follows that it is not injective, hence it is not invertible.
 
 A straight forward approxiation would be to compute the nearest integer screen pixel
-`\mathbf{x}_\mathrm{s} = \lfloor \boldsymbol{\hat{\xi}} \rceil`
-for each element `\boldsymbol{\hat{\xi}} \in \boldsymbol{\Xi}`
-and increment `\tilde{\mathcal{S}}` there by `\bar{\mathbf{B}}(\mathbf{x}_\mathrm{c})`.
+`\mathbf{x}_\mathrm{s} = \lfloor \mathbf{\hat{x}}_\mathrm{s} \rceil`
+and increment `\tilde{\mathcal{S}}` there by `\bar{b}_{_{\mathbf{x}_\mathrm{c}}}`.
 However, this neglects the fact that the camera pixel `\mathbf{x}_\mathrm{c}`
 projected onto the screen `\tilde{\mathcal{S}}`
 is usually :ref:`blurred <blur>`, i.e. spread over several screen pixels.
-Therefore, we take the opposite approach and
-assign an interpolated value to each screen pixel `\mathbf{x}_\mathrm{s}` as follows:
 
-1. We compute the Euclidian distances `\mathbf{D}` from the screen pixel `\mathbf{x}_\mathrm{s}`
-   to all elements `\boldsymbol{\hat{\xi}}` of the registration `\boldsymbol{\Xi}`:
+As a regularization constraint we assume a certain smoothness:
+Although the continuity assumption is not necessarily satisfied by every object,
+and especially not if we place a microlens array in front of the screen to assemble a lightfield display,
+we assume the inverse mapping `\boldsymbol{\Xi}^{-1}` can be represented as a piecewise-continuous function,
+at least for local regions with the size of the camera sight ray's :ref:`point spread function <psf>`
+with radius `R_{\mathbf{x}_\mathrm{c}}`.
+With this regularization constraint, we assign an interpolated value `\tilde{b}_{\mathbf{x}_\mathrm{s}}`
+to each screen pixel `\mathbf{x}_\mathrm{s}` as follows:
 
-   `\mathbf{D}(\mathbf{x}_\mathrm{c}) = \lVert \mathbf{x}_\mathrm{s} - \boldsymbol{\Xi} \rVert`.
+1. Denote by `d` the Euclidian distance between a screen pixel `\mathbf{x}_\mathrm{s}`
+   and a decoded screen position `\mathbf{\hat{x}}_\mathrm{s}`:
+
+   `d({\mathbf{x}_\mathrm{s}}, \mathbf{\hat{x}}_\mathrm{s})
+   = \lVert \mathbf{x}_\mathrm{s} - \mathbf{\hat{x}}_\mathrm{s} \rVert`.
 
 2. The set of all camera pixels `\mathbf{x}_\mathrm{c}`
-   where `\mathbf{D}(\mathbf{x}_\mathrm{c})` evaluates to zero is denoted by
+   where `d` evaluates to zero is denoted by
 
    `\mathcal{C}^\mathrm{0}(\mathbf{x}_\mathrm{c})
-   = \{ \mathbf{x}_\mathrm{c} \in \mathcal{C}, \mid d = 0 \},
-   \quad \text{with} \quad d \in \mathbf{D}(\mathbf{x}_\mathrm{c})`.
+   = \{ \mathbf{x}_\mathrm{c} \in \mathcal{C}, \mid d({\mathbf{x}_\mathrm{s}}, \mathbf{\hat{x}}_\mathrm{s}) = 0 \}`.
+
+.. \quad \text{with} \quad \mathbf{\hat{x}}_\mathrm{s} = \boldsymbol{\Xi}(\mathbf{x}_\mathrm{c})`
 
 3. Similarly, the set of all camera pixels `\mathbf{x}_\mathrm{c}`
-   where `\mathbf{D}(\mathbf{x}_\mathrm{c})` is within the radius `\mathbf{R}(\mathbf{x}_\mathrm{c})` is denoted by
+   where `d` is within the radius `R_{\mathbf{x}_\mathrm{c}}` is denoted by
 
-   `\mathcal{C}^\mathrm{R}(\mathbf{x}_\mathrm{c})
-   = \{ \mathbf{x}_\mathrm{c} \in \mathcal{C} \mid 0 < d \leq R \},
-   \quad \text{with} \quad d \in \mathbf{D}(\mathbf{x}_\mathrm{c}), \quad R \in \mathbf{R}(\mathbf{x}_\mathrm{c})`;
+   `\mathcal{C}^\mathrm{R_{\mathbf{x}_\mathrm{c}}}(\mathbf{x}_\mathrm{c})
+   = \{ \mathbf{x}_\mathrm{c} \in \mathcal{C} \mid 0 < d({\mathbf{x}_\mathrm{s}}, \mathbf{\hat{x}}_\mathrm{s}) \leq R_{\mathbf{x}_\mathrm{c}} \}`;
 
-   the distance `\mathbf{R}(\mathbf{x}_\mathrm{c})`
-   corresponds to the radius of the camera sight ray's :ref:`point spread function <psf>`.
+.. the distance `R_{\mathbf{x}_\mathrm{c}}` corresponds to the radius
+   of the camera sight ray's :ref:`point spread function <psf>`.
 
 4. We apply inverse distance weighting [1]_ by virtue of the modified [2]_ Shepard's method and use the weights
 
-   `\mathbf{W}(\mathbf{x}_\mathrm{c}) =
+   `w_{_{\mathbf{x}_\mathrm{c}}}(\mathbf{x}_\mathrm{c}) =
    \begin{cases}
-   0, & \text{if} \quad 0 < d \leq R,
-   \quad \text{with} \quad d \in \mathbf{D}(\mathbf{x}_\mathrm{c}), \quad R \in \mathbf{R}(\mathbf{x}_\mathrm{c}) \\
-   \mathbf{D}(\mathbf{x}_\mathrm{c})^{\circ - 2}, & \text{otherwise}
+   d({\mathbf{x}_\mathrm{s}}, \mathbf{\hat{x}}_\mathrm{s})^{-2}, & \text{if} \quad d \leq R_{\mathbf{x}_\mathrm{c}}, \\
+   0, & \text{otherwise}
    \end{cases}`
 
-   where `^{\circ}` denotes the Hadamard, i.e. elementwise, power operator.
+.. `w_{_{\mathbf{x}_\mathrm{c}}}(\mathbf{x}_\mathrm{c}) =
+   \begin{cases}
+   \frac{1}{d_{_{\mathbf{x}_\mathrm{c}}}^2(\mathbf{x}_\mathrm{c})}, & \text{if} \quad d \leq R_{\mathbf{x}_\mathrm{c}}, \\
+   0, & \text{otherwise}
+   \end{cases}`.
 
 With this we compute the source activation heatmap
-by setting the value of the screen pixel `(\mathbf{x}_\mathrm{s})` to
+by setting the value of the screen pixel `\mathbf{x}_\mathrm{s}` to
 
 a) the mean value of all mean modulation values
    where the distance evaluates to zero,
 
 b) the inverse distance weighted mean of the mean modulation values
-   where the distance is larger than zero but smaller than the radius `R` or
+   where the distance is larger than zero but smaller than or equal to the radius `R_{\mathbf{x}_\mathrm{c}}` or
 
-c) zero if no distance value is within the radius `R`:
+c) zero if no distance value is within the radius `R_{\mathbf{x}_\mathrm{c}}`:
 
 .. todo: source contribution heatmap
 
-`\mathbf{S}(\mathbf{x}_\mathrm{s}) =
+`S^\mathrm{BF}(\mathbf{x}_\mathrm{s}) = \tilde{b}_{_{\mathbf{x}_\mathrm{s}}} =
 \begin{cases}
-\frac{\sum_{j \in \mathcal{C}^\mathrm{0}(\mathbf{x}_\mathrm{c})} \mathbf{\bar{B}}_j(\mathbf{x}_\mathrm{c})}
-{| \mathcal{C}^\mathrm{0}(\mathbf{x}_\mathrm{c}) |},
-& \text{if} \quad | \mathcal{C}^\mathrm{0}(\mathbf{x}_\mathrm{c}) | > 0 \\
-\frac{\sum_{j \in \mathcal{C}^\mathrm{R}(\mathbf{x}_\mathrm{c})}
-{\mathbf{W}_j(\mathbf{x}_\mathrm{c}) \odot \mathbf{\bar{B}}_j}(\mathbf{x}_\mathrm{c})}
-{\sum_{j \in \mathcal{C}^\mathrm{R}(\mathbf{x}_\mathrm{c})} \mathbf{W}_j(\mathbf{x}_\mathrm{c})},
-& \text{if} \quad | \mathcal{C}^\mathrm{R}(\mathbf{x}_\mathrm{c}) | > 0 \\
+\frac{\sum_{\mathbf{x}_\mathrm{c} \in \mathcal{C}^\mathrm{0}} \bar{b}_{_{\mathbf{x}_\mathrm{c}}}}{| \mathcal{C}^\mathrm{0} |},
+& \text{if} \quad | \mathcal{C}^\mathrm{0} | > 0 \\
+\frac{\sum_{\mathbf{x}_\mathrm{c} \in \mathcal{C}^\mathrm{R}} w_{_{\mathbf{x}_\mathrm{c}}} \bar{b}_{_{\mathbf{x}_\mathrm{c}}}}{\sum_{\mathbf{x}_\mathrm{c} \in \mathcal{C}^\mathrm{R}} w_{_{\mathbf{x}_\mathrm{c}}}}
+& \text{if} \quad | \mathcal{C}^\mathrm{R} | > 0 \\
 0, & \text{otherwise}
 \end{cases}`
 
-where `\odot` denotes the Hadamard multiplication operator.
 When using a *kd-tree* as a fast spatial search structure, this becomes an efficient interpolation method
-with computational complexity `\mathcal{O}(| \tilde{\mathcal{S}} | | \mathcal{C} | \log(| \mathcal{C} |))`.
+with computational complexity `\mathcal{O}(| \tilde{\mathcal{S}} | \log(| \mathcal{C} |))`.
 
 :numref:`source_map` depicts the normalized source activation heatmap:
 a grid representing the screen (light source)
@@ -181,7 +199,7 @@ where `I_\mathrm{max}` denotes the maximal value the screen `\tilde{\mathcal{S}}
 and `I_\mathrm{th}` denotes the global threshold.
 The complement yields the darkfield illumination for the recorded scene:
 
-`S^\mathrm{DF} = S \setminus S^\mathrm{BF}`.
+`S^\mathrm{DF} = S \setminus S^\mathrm{BF}`
 
 .. [1] `Shepard,
        "A two-dimensional interpolation function for irregularly-spaced data",
