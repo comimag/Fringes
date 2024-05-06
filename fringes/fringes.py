@@ -227,7 +227,7 @@ class Fringes:
 
         if not os.path.isfile(fname):
             logger.error(f"File '{fname}' does not exist.")
-            return
+            return {}
 
         with open(fname, "r") as f:
             ext = os.path.splitext(fname)[-1]
@@ -371,20 +371,20 @@ class Fringes:
 
         # normalize to [0, 1]
         Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1
-        J = I / Imax
+        I /= Imax
 
         # estimate gamma correction factor
-        med = np.nanmedian(J)  # Median is a robust estimator for the mean.
+        med = np.nanmedian(I)  # Median is a robust estimator for the mean.
         gamma = np.log(med) / np.log(0.5)
         inv_gamma = 1 / gamma
 
         # apply inverse gamma
         # table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
-        # J = cv2.LUT(J, table)
-        J **= inv_gamma
-        J *= Imax
+        # I = cv2.LUT(I, table)
+        I **= inv_gamma
+        I *= Imax
 
-        return J
+        return I
 
     def deinterlace(self, I: np.ndarray) -> np.ndarray:
         """Deinterlace fringe patterns.
@@ -423,7 +423,7 @@ class Fringes:
         assert T * Y % self.T == 0, "Number of frames of parameters and data don't match."
 
         # I = I.reshape((T * Y, X, C))  # concatenate
-        I = I.reshape((-1, self.T, X, C)).swapaxes(0, 1)
+        I = I.reshape((-1, self.T, X, C)).swapaxes(0, 1)  # returns a view
 
         logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
 
@@ -1041,9 +1041,7 @@ class Fringes:
         elif self.H == 2 and C in [1, 3] and solo and mono:
             # advanced indexing returns a copy, not a view
             if C == 1:
-                I = np.squeeze(
-                    I,
-                )  # returns a view
+                I = np.squeeze(I, )  # returns a view
                 I = np.moveaxis(I, 0, -1)  # returns a view
                 idx = np.argmax(self.h, axis=0)
                 I = I[..., idx]

@@ -71,7 +71,7 @@ For generating the fringe pattern sequence `I`, use the method `encode()`.
 It returns a [NumPy array](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) in videoshape (frames, height, width, color channels).
 
 For analyzing (recorded) fringe patterns, use the method `decode()`.
-It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `x`.
+It returns the Numpy arrays brightness `A`, modulation `B` and coordinate `X`.
 
 > Note:\
 For the compitationally expensive ``decoding`` we make use of the just-in-time compiler [Numba](https://numba.pydata.org/).
