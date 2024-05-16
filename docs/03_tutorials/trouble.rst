@@ -1,5 +1,5 @@
-Troubleshooting
-===============
+Troubleshooting / FAQ
+=====================
 
 - ``poetry install`` does not work
   First, ensure that poetry is installed correctly as descibed on the [Poetry Website](https://python-poetry.org/docs/).\

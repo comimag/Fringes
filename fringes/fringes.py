@@ -1228,7 +1228,7 @@ class Fringes:
 
     def decode(
         self,
-        I: np.ndarray,
+        I: np.ndarray | list,
         verbose: bool = False,
         despike: bool = False,
         denoise: bool = False,
@@ -1306,6 +1306,12 @@ class Fringes:
         """
 
         t0 = time.perf_counter()
+
+        # transform to array
+        if isinstance(I, list):
+            I = np.array(I, dtype=I[0].dtype, copy=False)
+        elif isinstance(I, np.ndarray) and I.dtype.kind == 'O':
+            I = np.array([i for i in I], dtype=I[0].dtype, copy=True)
 
         # get and apply videoshape
         T, Y, X, C = vshape(I).shape  # extract Y, X, C from data as these parameters depend on the used camera

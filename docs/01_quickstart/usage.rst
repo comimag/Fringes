@@ -31,11 +31,6 @@ Circular dependencies are resolved automatically.
 
     f.X = 1920                  # set width of the fringe patterns
     f.Y = 1080                  # set height of the fringe patterns
-    f.K = 2                     # set number of sets
-    f.N = 4                     # set number of shifts
-    f.v = [9, 10]               # set spatial frequencies
-
-    f.T                         # get number of frames
 
 For generating the fringe pattern sequence ``I``, use the method ``encode()``.
 It returns a `Numpy array <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_
@@ -45,12 +40,37 @@ in videoshape (frames ``T``, width ``X``, height ``Y``, color channels ``C``).
 
     I = f.encode()              # encode fringe patterns
 
+record fringe pattern
+acquisition
+acquire:
+setup as in fig XXX
+use screen and camera to record fringe pattern sequentially
+take care to not use autoexposure, ensure constant exposure time for each capture
+
+.. code-block:: python
+
+    import numpy as np
+
+    # allocate empty image stack of length 'T'
+    I_rec = np.empty(f.T, dtype=obj)
+
+    # acquire the fringe patterns in a loop
+    for t, pattern in enumerate(I):
+        # display the fringe pattern with index 't' in fullscreen mode
+        ...
+
+        # capture the reflected fringe pattern with the camera
+        ...
+
+        # save the captured fringe pattern to the allocated image stack
+        I_rec[t] = ...
+
 For analyzing (recorded) fringe patterns, use the method ``decode()``.
 It returns the Numpy arrays brightness ``A``, modulation ``B`` and coordinate ``X``.
 
 .. code-block:: python
 
-    A, B, X = f.decode(I)       # decode fringe patterns
+    A, B, X = f.decode(I_rec)   # decode recorded fringe patterns
 
 
 .. note::

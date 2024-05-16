@@ -5,10 +5,10 @@ Fringes documentation
     :hidden:
     :maxdepth: 1
 
-    getting_started/index
-    user_guide/index
-    api_reference/index
-    contributor_guide/index
+    01_quickstart/index
+    02_examples/index
+    03_tutorials/index
+    04_api/index
 
 Fringes is an easy to use, pure-python tool.
 With it you can create customized fringe patterns
@@ -17,43 +17,58 @@ and analyse them using phase shifting algorithms.
 .. grid:: 2
 
     .. grid-item-card::
-        :img-top: /images/getting_started.svg
+        :img-top: /images/rocket.png
 
-        Getting Started
-        ^^^^^^^^^^^^^^^
+        Quickstart
+        ^^^^^^^^^^
 
-        New to Fringes? Check out the getting started guides.
-        It contains an introduction to phase shifting,
-        guides you through the installation process
-        and gives examples of the most common use cases.
+        - Installation
+        - Usage
 
         +++
 
-        .. button-ref:: getting_started/index
+        .. button-ref:: 01_quickstart/index
             :expand:
             :color: success
             :click-parent:
 
-            To the getting started guide
+            To the quickstart guide
 
     .. grid-item-card::
         :img-top: /images/user_guide.svg
 
-        User Guide
-        ^^^^^^^^^^
+        Examples
+        ^^^^^^^^
 
-        The user guide provides in-depth information on the key concepts of Fringes
-        with a detailed explanation of the key parameters.
-        Performance related considerations are detailed here.
+        - ...
 
         +++
 
-        .. button-ref:: user_guide/index
+        .. button-ref:: 02_examples/index
             :expand:
             :color: success
             :click-parent:
 
-            To the user guide
+            To the examples
+
+    .. grid-item-card::
+        :img-top: /images/user_guide.svg
+
+        Tutorials
+        ^^^^^^^^^
+
+        - Measurement setup
+        - Fundamentals
+        - Filters
+
+        +++
+
+        .. button-ref:: 03_tutorials/index
+            :expand:
+            :color: success
+            :click-parent:
+
+            To the tutorials
 
     .. grid-item-card::
         :img-top: /images/api.svg
@@ -67,29 +82,9 @@ and analyse them using phase shifting algorithms.
 
         +++
 
-        .. button-ref:: api_reference/index
+        .. button-ref:: 04_api/index
             :expand:
             :color: success
             :click-parent:
 
             To the reference guide
-
-
-    .. grid-item-card::
-        :img-top: /images/contributor.svg
-
-        Contributor's Guide
-        ^^^^^^^^^^^^^^^^^^^
-
-        Saw a typo in the documentation?
-        Want to improve existing functionalities?
-        The contributing guidelines will guide you through the process of improving Fringes.
-
-        +++
-
-        .. button-ref:: contributor_guide/index
-            :expand:
-            :color: success
-            :click-parent:
-
-            To the contributor's guide
