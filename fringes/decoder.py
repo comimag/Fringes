@@ -67,7 +67,7 @@ def decode(
     verbose: bool = False,
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     """Temporal demodulation and spatial demodulation
-    by virtue of generalized temporal phase uwrapping
+    by virtue of generalized temporal phase unwrapping
     using directional statistics.
 
     Parameters
@@ -106,20 +106,20 @@ def decode(
         If 'Vmin' isn't reached at a pixel, spatial unwrapping is skipped for this very pixel.
 
     verbose : bool, default=False
-        Flag for additionally returning intermediate and verbose results: Phase maps 'phi' and residuals 'res'.
+        Flag for additionally returning intermediate and verbose results: Phase maps 'P' and residuals 'res'.
 
     Returns
     -------
-    bri : np.ndarray
+    A : np.ndarray
         Brightness.
 
-    mod : np.ndarray
+    B : np.ndarray
         Modulation.
 
-    phi : np.ndarray
+    P : np.ndarray
         Phase.
 
-    reg : np.ndarray
+    Xi : np.ndarray
         Registration.
 
     res : np.ndarray
@@ -137,10 +137,11 @@ def decode(
 
     # allocate return values
     dt = np.float32  # float32's precision is usually better than quantization noise in the phase shifting sequence
-    bri = np.empty((D, Y, X, C), dt)  # brightness should be identical for all sets, therefore we arverage them
-    mod = np.empty((D, K, Y, X, C), dt)
-    phi = np.empty((D, K, Y, X, C), dt)
-    reg = np.empty((D, Y, X, C), dt)
+    A = np.empty((D, Y, X, C), dt)  # brightness should be identical for all sets, therefore we arverage them
+    B = np.empty((D, K, Y, X, C), dt)
+    V = np.empty((D, K, Y, X, C), dt)
+    P = np.empty((D, K, Y, X, C), dt)
+    Xi = np.empty((D, Y, X, C), dt)
     res = np.empty((D, Y, X, C), dt)
 
     # looping
@@ -156,8 +157,7 @@ def decode(
                 t = n / N[d, i]  # temporal sampling points
                 cf[i, n] = np.exp(1j * (PI2 * f[d, i] * t + p0))  # complex filter
 
-        # initial weights of phase averaging are their inverse variances
-        # (must be multiplied with b**2 later on)
+        # initial weights of phase averaging are their inverse variances (must be multiplied with b**2 later on)
         w0 = N[d] * v[d] ** 2
 
         # choose reference phase, i.e. that v from which the other fringe orders of the remaining sets are derived
@@ -318,7 +318,7 @@ def decode(
                 # aa0_all_corr = 0
                 #
                 # false = []
-                for c in nb.prange(C):
+                for c in nb.prange(C):  # put fastest axis last
                     # temporal demodulation
                     zp = np.zeros(K, np.complex_)  # complex phasor
                     for i in range(K):
@@ -330,45 +330,60 @@ def decode(
                     p = np.arctan2(zp.imag, zp.real) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
                     # p = np.angle(zp) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
 
-                    bri[d, y, x, c] = a
-                    mod[d, :, y, x, c] = b
+                    A[d, y, x, c] = a
+                    B[d, :, y, x, c] = b
 
                     if verbose:
-                        phi[d, :, y, x, c] = p
+                        P[d, :, y, x, c] = p
 
-                    V = np.minimum(1, b / np.maximum(np.finfo(np.float_).eps, a))  # avoid division by zero
-                    if Vmin > 0 and np.any(V < Vmin):
-                        reg[d, y, x, c] = np.nan
+                    if verbose or Vmin > 0:
+                        V_ = np.empty(K, dt)
+
+                        for i in range(K):
+                            if b[i] == 0:
+                                V_[i] = 0  # cover case b == a == 0
+                            elif a == 0:
+                                V_[i] = 1  # avoid division by zero
+                            else:
+                                V_[i] = b[i] / a
+                                # note: b > a is possible
+                                # if an external light source modulates with the same frequency and phase
+
                         if verbose:
-                            res[d, y, x, c] = np.nan
+                            V[d, :, y, x, c] = V_
 
-                        continue  # skip spatial demodulation because signal is too weak for a reliable result
+                        if Vmin > 0 and np.any(V_ < Vmin):  # todo: V <= Vmin
+                            Xi[d, y, x, c] = np.nan
+                            if verbose:
+                                res[d, y, x, c] = np.nan
 
-                    # spatial demodulation i.e. unwrapping
+                            continue  # skip spatial demodulation because signal is too weak to yield a reliable result
+
+                    # spatial demodulation (unwrapping)
                     if K == 1:
                         if v[d, 0] == 0:  # no spatial modulation
                             if R[d] == 1:
-                                # the only possible value; however it makes no senso to encode a single coordinate only
-                                reg[d, y, x, c] = 0
+                                # the only possible value; however it makes no sense to encode a single coordinate only
+                                Xi[d, y, x, c] = 0
 
                                 if verbose:
                                     res[d, y, x, c] = 0
                             else:
                                 # no spatial modulation, therefore we can't compute value
-                                reg[d, y, x, c] = np.nan
+                                Xi[d, y, x, c] = np.nan
 
                                 if verbose:
                                     res[d, y, x, c] = np.nan
                         elif v[d, 0] <= 1:
                             # one period covers whole screen: no unwrapping required
-                            reg[d, y, x, c] = p[0] / PI2 * l[d, 0] - x0  # change codomain from [0, PI2) to [0, L)
+                            Xi[d, y, x, c] = p[0] / PI2 * l[d, 0] - x0  # change codomain from [0, PI2) to [0, L)
                             # xi = np.clip(xi, 0, R[d])  # todo: clip
 
                             if verbose:
                                 res[d, y, x, c] = 0
                         else:
                             # spatial phase unwrapping (to be done in a later step)
-                            reg[d, y, x, c] = p[0] - PI2 / l[d, 0] * x0
+                            Xi[d, y, x, c] = p[0] - PI2 / l[d, 0] * x0
                             # xi = np.clip(xi, 0, R[d])  # todo: clip
 
                             if verbose:
@@ -397,10 +412,10 @@ def decode(
                         #     r = np.abs(zmin)
                         #     if r > rmin:
                         #         rmin = r
-                        rmin = 1
+                        rmin = 1.0
 
                         # maximal phasor length: initialize with minimal value
-                        rmax = 0
+                        rmax = 0.0
 
                         # try in this order:
                         # 1.) CRT
@@ -471,7 +486,7 @@ def decode(
                         #         aa01_crt_corr += 1
                         # else:
                         #     r = 0
-                        r = 0
+                        r = 0.0
 
                         if r < rmin:
                             # aa02_der_tried += 1
@@ -481,18 +496,18 @@ def decode(
                             # max. time complexity O(ceil(vmin))
 
                             for k0 in kout[iref, : vmax[iref]]:  # fringe orders of reference set 'iref'
-                                arg0 = (k0 * PI2 + p[iref]) / v[d, iref]  # reference angle
-                                zi = w[iref] * np.exp(1j * arg0)
+                                a0 = (k0 * PI2 + p[iref]) / v[d, iref]  # reference angle
+                                zi = w[iref] * np.exp(1j * a0)
 
                                 for i in range(iref):
-                                    ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
+                                    ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
                                     ai = (ki * PI2 + p[i]) / v[d, i]
                                     zi += w[i] * np.exp(1j * ai)
 
                                 # leaving out reference set 'iref'
 
                                 for i in range(iref + 1, K):
-                                    ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
+                                    ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
                                     ai = (ki * PI2 + p[i]) / v[d, i]
                                     zi += w[i] * np.exp(1j * ai)
 
@@ -517,18 +532,18 @@ def decode(
                         #             i0 = np.argmax(w)
                         #
                         #             for k0 in kout[d, i0, : vmax[d, i0]]:  # fringe orders of set 'i0'
-                        #                 arg0 = (k0 * PI2 + p[i0]) / v[d, i0]  # reference angle
-                        #                 zi = w[i0] * np.exp(1j * arg0)
+                        #                 a0 = (k0 * PI2 + p[i0]) / v[d, i0]  # reference angle
+                        #                 zi = w[i0] * np.exp(1j * a0)
                         #
                         #                 for i in range(i0):
-                        #                     ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
+                        #                     ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
                         #                     ai = (ki * PI2 + p[i]) / v[d, i]
                         #                     zi += w[i] * np.exp(1j * ai)
                         #
                         #                 # leaving out reference set 'i0'
                         #
                         #                 for i in range(i0 + 1, K):
-                        #                     ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
+                        #                     ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
                         #                     ai = (ki * PI2 + p[i]) / v[d, i]
                         #                     zi += w[i] * np.exp(1j * ai)
                         #
@@ -617,9 +632,9 @@ def decode(
                         # xi = np.angle(z) % PI2 / PI2 * L - x0  # change codomain from [-PI, PI] to [0, L)
                         # xi = np.clip(xi, 0, R[d])  # todo: clip
 
-                        reg[d, y, x, c] = xi
+                        Xi[d, y, x, c] = xi
 
                         if verbose:
                             res[d, y, x, c] = np.sqrt(-2 * np.log(r.item()))  # circular standard deviation
 
-    return bri, mod.reshape(-1, Y, X, C), phi.reshape(-1, Y, X, C), reg, res
+    return A, B.reshape(-1, Y, X, C), V.reshape(-1, Y, X, C), P.reshape(-1, Y, X, C), Xi, res
