@@ -14,77 +14,83 @@ Fringes is an easy to use, pure-python tool.
 With it you can create customized fringe patterns
 and analyse them using phase shifting algorithms.
 
-.. grid:: 2
+.. figure:: /01_quickstart/coding-scheme.gif
+    :align: center
+    :alt: psa
 
-    .. grid-item-card::
-        :img-top: /images/rocket.png
+    Phase Shifting Coding Scheme.
 
-        Quickstart
-        ^^^^^^^^^^
+.. .. grid:: 2
 
-        - Installation
-        - Usage
+       .. grid-item-card::
+           :img-top: /images/rocket.png
 
-        +++
+           Quickstart
+           ^^^^^^^^^^
 
-        .. button-ref:: 01_quickstart/index
-            :expand:
-            :color: success
-            :click-parent:
+           - Installation
+           - Usage
 
-            To the quickstart guide
+           +++
 
-    .. grid-item-card::
-        :img-top: /images/user_guide.svg
+           .. button-ref:: 01_quickstart/index
+               :expand:
+               :color: success
+               :click-parent:
 
-        Examples
-        ^^^^^^^^
+               To the quickstart guide
 
-        - ...
+       .. grid-item-card::
+           :img-top: /images/user_guide.svg
 
-        +++
+           Examples
+           ^^^^^^^^
 
-        .. button-ref:: 02_examples/index
-            :expand:
-            :color: success
-            :click-parent:
+           - ...
 
-            To the examples
+           +++
 
-    .. grid-item-card::
-        :img-top: /images/user_guide.svg
+           .. button-ref:: 02_examples/index
+               :expand:
+               :color: success
+               :click-parent:
 
-        Tutorials
-        ^^^^^^^^^
+               To the examples
 
-        - Measurement setup
-        - Fundamentals
-        - Filters
+       .. grid-item-card::
+           :img-top: /images/user_guide.svg
 
-        +++
+           Tutorials
+           ^^^^^^^^^
 
-        .. button-ref:: 03_tutorials/index
-            :expand:
-            :color: success
-            :click-parent:
+           - Measurement setup
+           - Fundamentals
+           - Filters
 
-            To the tutorials
+           +++
 
-    .. grid-item-card::
-        :img-top: /images/api.svg
+           .. button-ref:: 03_tutorials/index
+               :expand:
+               :color: success
+               :click-parent:
 
-        API Reference
-        ^^^^^^^^^^^^^
+               To the tutorials
 
-        The reference guide contains a detailed description of the Fringes API.
-        The reference describes how the methods work and which parameters can be used.
-        It assumes that you have an understanding of the key concepts.
+       .. grid-item-card::
+           :img-top: /images/api.svg
 
-        +++
+           API Reference
+           ^^^^^^^^^^^^^
 
-        .. button-ref:: 04_api/index
-            :expand:
-            :color: success
-            :click-parent:
+           The reference guide contains a detailed description of the Fringes API.
+           The reference describes how the methods work and which parameters can be used.
+           It assumes that you have an understanding of the key concepts.
 
-            To the reference guide
+           +++
+
+           .. button-ref:: 04_api/index
+               :expand:
+               :color: success
+               :click-parent:
+
+               To the reference guide

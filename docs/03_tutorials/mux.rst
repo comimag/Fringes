@@ -1,7 +1,7 @@
 .. default-role:: math
 
-Multiplex
-=========
+Multiplexing
+============
 .. "Display lag is a phenomenon associated with most types of liquid crystal displays (LCDs)
    like smartphones and computers and nearly all types of high-definition televisions (HDTVs).
    It refers to latency, or lag between when the signal is sent to the display

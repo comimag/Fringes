@@ -748,11 +748,11 @@ class Fringes:
                         res[0, ..., c] = np.log(np.abs(I_FFT))  # J
                         # todo: I - J
         else:
-            bri, mod, phi, reg, res = decode(
+            bri, mod, vis, phi, reg, res = decode(
                 I,
                 self._N,
                 self._v,
-                self._f * (-1 if self.reverse else 1),
+                -self._f if self.reverse else self._f,
                 self.R,
                 self.UMR,
                 self.x0,
@@ -763,7 +763,7 @@ class Fringes:
 
         logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
-        return bri, mod, phi, reg, res
+        return bri, mod, vis, phi, reg, res
 
     def _multiplex(self, I: np.ndarray, rint: bool = True) -> np.ndarray:
         """Multiplex fringe patterns.
@@ -1041,7 +1041,9 @@ class Fringes:
         elif self.H == 2 and C in [1, 3] and solo and mono:
             # advanced indexing returns a copy, not a view
             if C == 1:
-                I = np.squeeze(I, )  # returns a view
+                I = np.squeeze(
+                    I,
+                )  # returns a view
                 I = np.moveaxis(I, 0, -1)  # returns a view
                 idx = np.argmax(self.h, axis=0)
                 I = I[..., idx]
@@ -1237,7 +1239,7 @@ class Fringes:
 
         Parameters
         ----------
-        I : np.ndarray
+        I : np.ndarray | list
             Fringe pattern sequence.
             It is reshaped to videoshape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
 
@@ -1310,8 +1312,8 @@ class Fringes:
         # transform to array
         if isinstance(I, list):
             I = np.array(I, dtype=I[0].dtype, copy=False)
-        elif isinstance(I, np.ndarray) and I.dtype.kind == 'O':
-            I = np.array([i for i in I], dtype=I[0].dtype, copy=True)
+        elif isinstance(I, np.ndarray) and I.dtype.kind == "O":
+            I = np.array([image for image in I], dtype=I[0].dtype, copy=True)
 
         # get and apply videoshape
         T, Y, X, C = vshape(I).shape  # extract Y, X, C from data as these parameters depend on the used camera
@@ -1322,7 +1324,7 @@ class Fringes:
             I[I >= self.y0] = I[I >= self.y0] - self.y0
             I[I < self.y0] = 0
 
-        # decolorize (fuse hues/colors) [for gray fringes, color fusion is not performed, but extended averaging is]
+        # decolorize (fuse hues/colors); for gray fringes, color fusion is not performed, but extended averaging is
         if self.H > 1 or not self._monochrome:
             I = self._decolorize(I)
 
@@ -1332,11 +1334,11 @@ class Fringes:
             I = self._demultiplex(I)
 
         # demodulate
-        bri, mod, phi, reg, res = self._demodulate(I, verbose)
+        bri, mod, vis, phi, reg, res = self._demodulate(I, verbose)
 
         # verbose
         if self.verbose or verbose:
-            unc, fid, vis, exp = self._verbose_(I, bri, mod, reg)
+            unc, fid, exp = self._verbose_(I, bri, mod, reg)
 
         # blacken where color value of hue was black
         if self.H > 1 and C == 3:
@@ -1425,7 +1427,7 @@ class Fringes:
             reg = bilateral(reg, k=3)
             # todo: denoise all channels
 
-        # create named tuple to return
+        # create named tuple
         if self.verbose or verbose:
             dec = namedtuple(
                 "decoded",
@@ -1458,7 +1460,7 @@ class Fringes:
         lessbits : bool, optional
             The fringe pattern sequence 'I' may contain fewer bits of information than its corresponding dtype.
             This occurs if e.g. a 10 or 12 bit camera is used, for which the corresponding dtype would be 'uint16'.
-            If 'lessbits' is True, the number of bits is estimated based on the maximal value of 'I'.
+            If 'lessbits' is True (the default), the number of bits is estimated based on the maximal value of 'I'.
             This affects the value of the exposure 'e'.
 
         Returns
@@ -1469,20 +1471,18 @@ class Fringes:
         k : np.ndarray
             Fringe orders.
 
-        V : np.ndarray
-            Visibility (fringe contrast).
-
         e : np.ndarray
             Exposure (relative average intensity).
         """
 
         Y, X, C = A.shape[1:]
 
+        # todo: uncertainty
         dark = self.gain * self.dark
-        quant = 0 if self.dark > 0 else self.quant
+        quant = 0 if self.dark > 0 else self.quant  # todo: def of quant & dark already deal with this?!
         shot = (
-            np.sqrt(self.gain * np.maximum(0, A - self.y0)) if self.gain != 0 else np.zeros_like(A)
-        )  # average intensity = brightness
+            np.sqrt(self.gain * A) if self.gain != 0 else np.zeros_like(A)
+        )  # average intensity = brightness  # todo: [... and Burke ...] !
         ui = np.sqrt(dark**2 + quant**2 + shot**2)  # intensity noise
         upi = (
             np.sqrt(2)
@@ -1495,28 +1495,27 @@ class Fringes:
         u = np.sqrt(1 / np.sum(1 / uxi**2, axis=1))  # global positional uncertainty
         u = u.astype(np.float32, copy=False)
 
-        k = xi[:, None, :, :, :] // self._l[:, :, None, None, None]
-        # p = (xi[:, None, :, :, :] / self._l[:, :, None, None, None] - k) * 2 * np.pi - self.p0
-        k = k.astype(int, copy=False).reshape(self.D * self.K, Y, X, C)
-        # p = p.astype(np.float32, copy=False).reshape(self.D * self.K, Y, X, C)
-
-        V = B.reshape(self.D, self.K, Y, X, C) / np.maximum(
-            A[:, None, :, :, :], np.finfo(np.float_).eps
-        )  # avoid division by zero
-        V = V.astype(np.float32, copy=False).reshape(self.D * self.K, Y, X, C)
+        w = self._N[:, :, None, None, None] * self._v[:, :, None, None, None]**2 * B.reshape(-1, Y, X, C)**2
+        w /= np.sum(w, axis=1)  # weights of phase measurements
+        # todo: k from WAVG p, l, xi
+        k = (
+            (xi[:, None, :, :, :] // self._l[:, :, None, None, None])
+            .reshape(self.D * self.K, Y, X, C)
+            .astype(int, copy=False)
+        )
 
         if I.dtype.kind in "ui":
-            if lessbits and np.iinfo(I.dtype).bits > 8:  # data may contain fewer bits of information
+            if np.iinfo(I.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
                 Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
-                Imax += -Imax % 2  # same or next power of two divisible by two
+                Imax += -Imax % 2  # same or next power of two which is divisible by two
             else:
                 Imax = np.iinfo(I.dtype).max
         else:  # float
-            Imax = 1
-        e = A / Imax
-        e = e.astype(np.float32, copy=False)
+            # Imax = 1
+            Imax = A.max()
+        e = (A / Imax).astype(np.float32, copy=False)
 
-        return u, k, V, e
+        return u, k, e
 
     def _unwrap(
         self, phi: np.ndarray, B: np.ndarray, func: str = "ski"
@@ -3633,9 +3632,7 @@ class Fringes:
         logger.debug(f"self.UMR = {str(self._UMR)}")
 
         if self._ambiguous:
-            logger.warning(
-                "UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map."
-            )
+            logger.warning("UMR < R. Unwrapping will not be spatially independent and only yield a relative phase map.")
 
         return self._UMR
 

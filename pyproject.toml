@@ -36,6 +36,7 @@ toml = "^0.10.2"
 matplotlib = "^3.7.1"
 pyqt6 = "^6.6.1"
 pyqtgraph = "^0.13.3"
+tqdm = "^4.66.4"
 black = "^24.2.0"
 
 [tool.poetry.group.docs.dependencies]  # ensure the "docs" group is mentioned in ".readthedocs.yml"

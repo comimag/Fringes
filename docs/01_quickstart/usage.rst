@@ -40,9 +40,9 @@ in videoshape (frames ``T``, width ``X``, height ``Y``, color channels ``C``).
 
     I = f.encode()              # encode fringe patterns
 
-record fringe pattern
-acquisition
-acquire:
+
+To record a fringe pattern sequence, you need 
+
 setup as in fig XXX
 use screen and camera to record fringe pattern sequentially
 take care to not use autoexposure, ensure constant exposure time for each capture

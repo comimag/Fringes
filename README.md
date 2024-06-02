@@ -23,7 +23,7 @@ link to  paper, please cite
 Easily create customized fringe patterns
 and analyse them using phase shifting algorithms.
 
-![coding-cheme}](https://raw.githubusercontent.com/comimag/fringes/main/docs/getting_started/coding-scheme.gif)\
+![coding-cheme}](https://raw.githubusercontent.com/comimag/fringes/main/docs/01_quickstart/coding-scheme.gif)\
 Figure 1: Phase Shifting Coding Scheme.
 
 ## Features

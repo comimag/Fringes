@@ -2,11 +2,14 @@ Troubleshooting / FAQ
 =====================
 
 - ``poetry install`` does not work
-  First, ensure that poetry is installed correctly as descibed on the [Poetry Website](https://python-poetry.org/docs/).\
-  Secondly, ensure the correct python version is installed on your system, as specified in the file `pyproject.toml`\
-  Third, this can be caused by a proxy which `pip` does not handle correctly.
-  Manually setting the proxy in the Windows settings
-  or even adding a system variable `https_proxy = http://YOUR_PROXY:PORT` can resolve this.
+
+  | First, ensure that poetry is installed correctly
+    as descibed on the `Poetry Website <https://python-poetry.org/docs/>`_.
+  | Secondly, ensure the correct python version is installed on your system,
+    as specified in the file `pyproject.toml`
+  | Third, this can be caused by a proxy which `pip` does not handle correctly.
+    Manually setting the proxy in the operating system settings can resolve this.
+
 
 - Decoding takes a long time
 

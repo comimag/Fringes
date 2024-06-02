@@ -33,7 +33,7 @@ To simplify finding and setting the optimal parameters, one can choose from the 
   This will automatically determine the optimal integer set of ``l``,
   based on the minimal resolvable wavelength ``lmin`` = ``L`` / ``vmax``.
 - ``T`` can be set directly, based on the desired acquisition time.
-  The optimal ``K``, ``N`` and  - if necessary - the :ref:`multiplexing <multiplex>` will be determined automatically.
+  The optimal ``K``, ``N`` and  - if necessary - the :ref:`multiplexing <multiplexing>` will be determined automatically.
 - Instead of the options above, one can simply use the function ``optimize()``:
   If ``umax`` is specified, the optimal parameters are determined
   that allow a maximal uncertainty of ``umax`` with a minimum number of frames.

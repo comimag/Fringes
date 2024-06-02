@@ -177,7 +177,7 @@ The following multiplexing methods can be activated by setting them to ``True``:
 ``TDM``: By default, the aforementioned multiplexing methods are deactivated,
 so we then only have Time Divison Multiplexing.
 
-For more details, please refer to :doc:`Multiplex </user_guide/mux>`.
+For more details, please refer to :doc:`Multiplexing </03_tutorials/mux>`.
 
 Unwrapping
 ----------
