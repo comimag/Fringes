@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Fringes"
-version = "1.1.1"
+version = "1.1.2"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 license = "CC-BY-NC-SA-4.0"
 authors = ["Christian Kludt"]
@@ -23,29 +23,31 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9,<3.13"  # ensure these python versions are in "/.github/workflows/python-package.yml" todo: test 3.9 for __annotations__
-numpy = "^1.26.1"
-numba = "0.59.0"
-scipy = "^1.10.0"
-sympy = "^1.11.1"
-scikit-image = "^0.22.0"
-opencv-contrib-python = "^4.7.0"
-pyyaml = "^6.0"
+numpy = "^1.23"
+numba = "0.59"
+scipy = "^1.8"
+sympy = "^1"
+scikit-image = "^0.22"
+opencv-contrib-python = "^4"
+pyyaml = "^6"
 toml = "^0.10.2"
 
-[tool.poetry.group.devs.dependencies]
+[tool.poetry.group.dev.dependencies]
+black = "^24.2.0"
 matplotlib = "^3.7.1"
 pyqt6 = "^6.6.1"
 pyqtgraph = "^0.13.3"
-tqdm = "^4.66.4"
-black = "^24.2.0"
 
 [tool.poetry.group.docs.dependencies]  # ensure the "docs" group is mentioned in ".readthedocs.yml"
-sphinx = "^7.2.6"
+sphinx = "^7.1.1"
+sphinx-copybutton = "^0.5.2"
 sphinx-design = "^0.5.0"
 sphinx-rtd-theme = "^2.0.0"
 
 [tool.poetry.group.test.dependencies]
+matplotlib = "^3.7.1"
 pytest = "^8.1.1"
+pytest-cov = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -53,3 +55,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = "examples"

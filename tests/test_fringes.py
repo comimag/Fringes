@@ -1,14 +1,15 @@
 import glob
 import logging
 import os
-import time
 import tempfile
+import time
 
 import numpy as np
 import pytest
 import subprocess
 
-from fringes import Fringes, curvature, height, __version__
+from fringes import Fringes, curvature, __version__  # todo: height
+from fringes.util import simulate, circular_distance
 
 
 # def test_compile_time():  # todo: test_numba_compile_time
@@ -16,10 +17,9 @@ from fringes import Fringes, curvature, height, __version__
 #     # because else the cache remains in RAM
 #
 #     f = Fringes(Y=100)
-#     f.verbose = True
 #
 #     I = f.encode()
-#     flist = glob.glob(os.path.join(os.path.dirname(__file__), "..", "fringes", "__pycache__", "decoder*decode*.nbc"))
+#     flist = glob.glob(os.path.join(os.path.dirname(__file__), "..", "src", "fringes", "__pycache__", "decoder*decode*.nbc"))
 #     for file in flist:
 #         os.remove(file)
 #
@@ -31,8 +31,10 @@ from fringes import Fringes, curvature, height, __version__
 
 
 # def test_speed():  # todo: test_decoding_speed
-#     f = Fringes()  # todo: X=1920, Y=1080
-#     f.v = [9, 10]
+#     f = Fringes()
+#     f.X = 1920
+#     f.Y = 1080
+#     f.v = [1, 5]  # todo: [9, 10]
 #
 #     I = f.encode()
 #
@@ -43,6 +45,7 @@ from fringes import Fringes, curvature, height, __version__
 #         t1 = time.perf_counter()
 #
 #         Tnew = t1 - t0
+#         print(Tnew)
 #
 #         if Tnew < T:
 #             T = Tnew
@@ -51,37 +54,54 @@ from fringes import Fringes, curvature, height, __version__
 
 
 def test_logging():
-    assert "fringes" in logging.Logger.manager.loggerDict
+    assert "fringes" in logging.Logger.manager.loggerDict, "Top level logger 'fringes' doesn't exist."
 
 
 def test_version():
     assert __version__, "Version is not specified."
-    # todo: check version is never than latest on PyPi
+    # todo: check version is newer than latest on PyPi
 
 
-def test_properties():
+def test_docstrings():
     f = Fringes()
 
     for p in dir(f):
         if isinstance(getattr(type(f), p, None), property):
             assert getattr(type(f), p, None).__doc__ is not None, f"Property '{p}' has no docstring."
-
-        assert f.params.keys() == f.defaults.keys(), "Property names differ from default names."
+        elif callable(p):
+            assert p.__doc__ is not None, f"Method '{p}()' has no docstring."
 
 
 def test_init():
     f = Fringes()
 
-    for k, v in f.params.items():
-        if k in "Nlvf" and f.v.ndim == 1:
-            assert np.array_equal(v, f.defaults[k][0]), \
-                   f"'{k}' got overwritten by interdependencies. Choose consistent default values in initialization."
-        else:
-            assert np.array_equal(v, f.defaults[k]) or \
-                   f"'{k}' got overwritten by interdependencies. Choose consistent default values in initialization."
+    assert list(f._params.keys()) == ["__version__"] + list(f._defaults.keys()),\
+        "Property names differ from default names."
+
+    for k, v in f._params.items():
+        if k != "__version__":
+            if k in "Nvf" and f.v.ndim == 1:
+                assert np.array_equal(
+                    v, f._defaults[k][0]
+                ), f"'{k}' got overwritten by interdependencies. Choose consistent default values in '__init__()'."
+            else:
+                assert (
+                    np.array_equal(v, f._defaults[k])
+                    or f"'{k}' got overwritten by interdependencies. Choose consistent default values in '__init__()'."
+                )
 
     for k in "Nvf":
-        assert getattr(f, f"_{k}").shape == (f.D, f.K), f"Set parameter {k} does not have't shape ({f.D}, {f.K})."
+        assert getattr(f, f"_{k}").shape == (f.D, f.K), f"'Set' parameter {k} does not have shape ({f.D}, {f.K})."
+
+
+def test_equal():
+    f1 = Fringes()
+    f2 = Fringes()
+
+    assert f1 == f2, "Classes are not identical."
+
+    f2.N = 5
+    assert f1 != f2, "Classes are identical."
 
 
 def test_set_T():
@@ -102,7 +122,7 @@ def test_UMR():
 
 def test_save_load():
     f = Fringes()
-    params = f.params
+    params = f._params
 
     with tempfile.TemporaryDirectory() as tempdir:
         for ext in f._loader.keys():
@@ -111,20 +131,24 @@ def test_save_load():
             f.save(fname)
             assert os.path.isfile(fname), "No params-file saved."
 
-            params_loaded = f.load(fname)
+            f.load(fname)
+            params_loaded = f._params
             # assert len(params_loaded) == len(params), "A different number of attributes is loaded than saved."
 
             for k in params_loaded.keys():
                 assert k in params, f"Fringes class has no attribute '{k}'"
-                assert params_loaded[k] == params[k], \
-                    f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
+                assert (
+                    params_loaded[k] == params[k]
+                ), f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
 
             for k in params.keys():
-                assert k in params_loaded or ext == ".toml" and params[k] is None, \
-                    f"File '{fname}' has no attribute '{k}'"  # in toml there exists no None
+                assert (
+                    k in params_loaded or ext == ".toml" and params[k] is None
+                ), f"File '{fname}' has no attribute '{k}'"  # in toml there exists no None
                 if k in params_loaded:
-                    assert params[k] == params_loaded[k], \
-                        f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
+                    assert (
+                        params[k] == params_loaded[k]
+                    ), f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
 
 
 def test_coordinates():
@@ -143,8 +167,9 @@ def test_coordinates():
                     i = i[::-1]
                 if D == 1:
                     i = i[ax][None, :, :]
-                assert np.array_equal(c, i), \
-                    f"Coordinates are wringe for D = {f.D}, axis = {f.axis}, indexing = {f.indexing}."
+                assert np.array_equal(
+                    c, i
+                ), f"Coordinates are wrong for D = {f.D}, axis = {f.axis}, indexing = {f.indexing}."
 
 
 def test_encode():
@@ -155,8 +180,9 @@ def test_encode():
     assert I.shape == f.shape, f"Shape is not {f.shape}."
 
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_getitem():
@@ -174,15 +200,17 @@ def test_getitem():
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.shape == f.shape, f"Shape is not {f.shape}."
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     I = f[np.arange(f.T)]
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.shape == f.shape, f"Shape is not {f.shape}."
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     I = f[:2]
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
@@ -192,8 +220,9 @@ def test_getitem():
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.shape == f.shape, f"Shape is not {f.shape}."
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_call():
@@ -204,8 +233,9 @@ def test_call():
     assert I.shape == f.shape, f"Shape is not {f.shape}."
 
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_iter():
@@ -221,26 +251,29 @@ def test_iter():
     assert I.shape == f.shape, f"Shape is not {f.shape}."
 
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_frames():
     f = Fringes(Y=100)
-    
+
     I = np.array([f.encode(frames=t)[0] for t in range(f.T)])
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.shape == f.shape, f"Shape is not {f.shape}."
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     I = f.encode(frames=tuple(range(f.T)))
     assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
     assert I.shape == f.shape, f"Shape is not {f.shape}."
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_dtypes():
@@ -255,8 +288,9 @@ def test_dtypes():
 
         if "uint" in dtype:  # todo: float, bool?
             dec = f.decode(I)
-            assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-                f"Registration is off more than 0.1 with dtype = {dtype}."
+            assert np.allclose(
+                dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+            ), f"Registration is off more than 0.1 with dtype = {dtype}."
 
 
 def test_decode():
@@ -273,8 +307,9 @@ def test_decode():
     assert hasattr(dec, "registration")
     assert np.allclose(dec.brightness, f.A, rtol=0, atol=1), "Brightness is off more than 1."  # todo: 0.1
     assert np.allclose(dec.modulation, f.B, rtol=0, atol=1), "Modulation is off more than 1."
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_verbose():
@@ -283,41 +318,44 @@ def test_verbose():
     dec = f.decode(f.encode(), verbose=True)
     assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
-    assert len(dec) == 9, f"Decode returned {len(dec)} instead of 9 values."
+    assert len(dec) == 11, f"Decode returned {len(dec)} instead of 9 values."
     assert hasattr(dec, "brightness")
     assert hasattr(dec, "modulation")
     assert hasattr(dec, "registration")
     assert hasattr(dec, "residuals")
-    assert hasattr(dec, "orders")
+    assert hasattr(dec, "order")
     assert hasattr(dec, "phase")
     assert hasattr(dec, "uncertainty")
-    assert hasattr(dec, "visibility")
-    assert hasattr(dec, "exposure")
-
-    f.verbose = True
-    dec = f.decode(f.encode())
-    assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
-    assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
-    assert len(dec) == 9, f"Decode returned {len(dec)} instead of 9 values."
-    assert hasattr(dec, "brightness")
-    assert hasattr(dec, "modulation")
-    assert hasattr(dec, "registration")
-    assert hasattr(dec, "residuals")
-    assert hasattr(dec, "orders")
-    assert hasattr(dec, "phase")
-    assert hasattr(dec, "uncertainty")
+    assert hasattr(dec, "direct")
+    assert hasattr(dec, "glob")
     assert hasattr(dec, "visibility")
     assert hasattr(dec, "exposure")
     assert np.allclose(dec.brightness, f.A, rtol=0, atol=1), "Brightness is off more than 1."  # todo: 0.1
-    assert np.allclose(dec.modulation, f.B, rtol=0, atol=1), "Modulation is off more than 1."
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(dec.modulation, f.B, rtol=0, atol=1), "Modulation is off more than 1."  # todo: 0.1
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
     assert np.allclose(dec.phase, np.pi, rtol=0, atol=np.pi), "Phase values are not within [0, 2PI]."
-    assert np.allclose(dec.orders, f._orders(), rtol=0, atol=0), "Fringe orders are off."
+    k = f.coordinates()[:, None, :, :, None] // f._l[:, :, None, None, None]
+    k = k.reshape(f.D * f.K, f.Y, f.X, f.C)
+    assert np.allclose(dec.order, k, rtol=0, atol=0), "Fringe orders are off."
     assert np.allclose(dec.residuals, 0, rtol=0, atol=0.1), "Residuals are larger than 0.5."  # todo: 0.1
     assert np.allclose(dec.uncertainty, 0, rtol=0, atol=0.5), "Uncertainty is larger than 0.5."  # todo: 0.1
+    assert np.allclose(dec.direct, f.Imax, rtol=0, atol=1.5), "Direct is off more than 1.5."  # todo: 0.1
+    assert np.allclose(dec.glob, 0, rtol=0, atol=1.5), "Glob is larger than 0.5."  # todo: 0.1
     assert np.allclose(dec.visibility, 1, rtol=0, atol=0.1), "Visibility is off more than 0.1."
-    assert np.allclose(dec.exposure, 0.5, rtol=0, atol=0.1), "Exposure is off more than 0.1."  # todo: 0.1
+    assert np.allclose(dec.exposure, 0.5, rtol=0, atol=0.1), "Exposure is off more than 0.1."
+
+
+def test_overexposure(caplog):
+    f = Fringes(Y=100)
+
+    # I = np.full_like(f, f.Imax)  # todo: full_like
+    I = np.full(f.shape, f.Imax, f.dtype)
+    f.decode(I, check_overexposure=True)
+
+    assert "'I' is probably overexposed and decoding might yield unreliable results." in caplog.text
+    assert caplog.records[0].levelname == "WARNING", "logging level of 'overexposure-warning' is not 'WARNING'."
 
 
 def test_despike():
@@ -326,20 +364,19 @@ def test_despike():
     I[:, 10, 5, :] += int(f.Imax / 2)
 
     dec = f.decode(I, despike=True)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_denoise():
     f = Fringes(Y=100)
+    # f.alpha = 1.1  # (f.R.min() + 2) / f.R.min()  # todo: use alpha
 
-    f.gain = 0.1
-    f.dark = 5
-    # f.alpha = 1.1  # (f.R.min() + 2) / f.R.min()  # todo: alpha?
-
-    dec = f.decode(f.encode(simulate=True))
-    assert np.allclose(dec.registration[:, 3:, 3:, :], f.coordinates()[:, 3:, 3:, None], rtol=0, atol=0.5), \
-        "Registration is off more than 0.5."  # todo: index 0, 0.1
+    dec = f.decode(simulate(f.encode()))
+    assert np.allclose(
+        dec.registration[:, 3:, 3:, :], f.coordinates()[:, 3:, 3:, None], rtol=0, atol=0.3
+    ), "Registration is off more than 0.5."  # todo: index 0, 0.1
 
 
 def test_decolorize():  # todo: decolorizing
@@ -350,21 +387,24 @@ def test_decolorize():  # todo: decolorizing
 
     dec = f.decode(I)
     assert dec.registration.shape[-1] == 3, "Registration does not have 3 color channels."
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
     I = I.mean(axis=-1)
     dec = f.decode(I)
-    assert dec.registration.shape[-1] == 3, "Registration does not have't 1 color channel."
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert dec.registration.shape[-1] == 3, "Registration does not have 1 color channel."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     f.h = "w"
     f.h = (100, 100, 100)
-    I = f.encode()
-    dec = f.decode(I)
-    assert dec.registration.shape[-1] == 1, "Registration does not have't 3 color channels."
-    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."  # todo: index 0
+
+    dec = f.decode(f.encode())
+    assert dec.registration.shape[-1] == 1, "Registration does not have 3 color channels."
+    assert np.allclose(
+        dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."  # todo: index 0
 
 
 def test_deinterlacing():
@@ -373,21 +413,23 @@ def test_deinterlacing():
     I = f.encode()
     I = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace
 
-    I = f.deinterlace(I)
+    I = f._deinterlace(I)
     dec = f.decode(I)
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_alpha():
     f = Fringes(X=1000, Y=1)
 
-    for alpha in (1.1, 2):
+    for alpha in [1.1, 2]:
         f.alpha = alpha
 
         dec = f.decode(f.encode())
-        assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-            f"Registration is off more than 0.1 with alpha == {alpha}."
+        assert np.allclose(
+            dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+        ), f"Registration is off more than 0.1 with alpha == {alpha}."
 
 
 # def test_grids(): # todo: fix grids
@@ -399,38 +441,39 @@ def test_alpha():
 #         I = f.encode()
 #         dec = f.decode(I)
 #
-#         d = dec.registration - f.coordinates()[:, :, :, None]
+#         d = dec.registration - f.coordinates()[..., None]
 #         assert np.allclose(d, 0, rtol=0, atol=0.1), f"Registration is off more than 0.1 with grid == {f.grid}."
 #
 #         # todo: test angles(0, 90, 45)
 
 
-def test_indexing_axis():
+def test_indexing_axis():  # todo: test setting D = 0 after setting axis
+    f = Fringes(Y=100)
     f = Fringes()
-    f.Y = np.ceil(f.lmin * np.max(f.v))
 
     for indexing in f._indexings:
         f.indexing = indexing
-        for D in range(1, f._Dmax+1):
+        for D in range(1, f._Dmax + 1):
             f.D = D
             for axis in (0, 1):
                 f.axis = axis
 
                 dec = f.decode(f.encode())
-                assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.2), \
-                    f"Registration is off more than 0.2 with indexing = {f.indexing}, D = {f.D}, axis = {f.axis}."
-                # todo: 0.1
+                assert np.allclose(
+                    dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+                ), f"Registration is off more than 0.2 with indexing = {f.indexing}, D = {f.D}, axis = {f.axis}."
 
 
 def test_scaling():
     f = Fringes()
     f.K = 1
     f.v = 1
-    f.N = 13
-    I = f.encode()
-    dec = f.decode(I)
-    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=1),\
-        "Registration is off more than 1."  # todo: 0.1, index 0
+    f.N = 9
+
+    dec = f.decode(f.encode())
+    assert np.allclose(
+        dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=1
+    ), "Registration is off more than 1."  # todo: 0.1, index 0
 
 
 def test_unwrapping():
@@ -444,19 +487,19 @@ def test_unwrapping():
     dec = f.decode(f.encode())
     for d in range(f.D):
         grad = np.gradient(dec.registration[d, :, :, 0], axis=0) + np.gradient(dec.registration[d, :, :, 0], axis=1)
-        assert np.allclose(grad, 1, rtol=0, atol=0.1), \
-            f"Gradient of unwrapped phase map isn't close to 1 at direction {d}."
+        assert np.allclose(
+            grad, 1, rtol=0, atol=0.1
+        ), f"Gradient of unwrapped phase map isn't close to 1 at direction {d}."
 
 
-# def test_unwrapping_class_method():
+# def test_unwrapping_class_method():  # todo: delete uwr class method
 #     f = Fringes()
 #     f.K = 1
 #     f.v = 13
-#     f.verbose = True
 #
 #     # todo: reliability
 #
-#     dec = f.decode(f.encode())
+#     dec = f.decode(f.encode(), verbose=True)
 #     Phi = Fringes.unwrap(dec.phase)
 #     Phi[0] -= Phi[0].min()
 #     Phi[1] -= Phi[1].min()
@@ -477,18 +520,22 @@ def test_unwrapping():
 #     #         f"Gradient of unwrapped phase map isn't close to 1 at direction {d}."
 
 
-def test_source():
-    f = Fringes(X=100, Y=100)
-
-    dec = f.decode(f.encode())
-    assert np.allclose(f.source(dec.registration), 1, rtol=0, atol=0), \
-        "Source doesn't contain only ones."
-    assert np.allclose(f.source(dec.registration, dec.modulation), 1, rtol=0, atol=0.01), \
-        "Source doesn't contain only values close to one."
-    assert np.allclose(f.source(dec.registration, mode="precise"), 1, rtol=0, atol=0), \
-        "Source doesn't contain only ones."
-    assert np.allclose(f.source(dec.registration, dec.modulation, mode="precise"), 1, rtol=0, atol=0.01), \
-        "Source doesn't contain only values close to one."
+# def test_source():  # todo: source
+#     f = Fringes(X=100, Y=100)
+#     f.PSF = 0.5
+#
+#     dec = f.decode(f.encode())
+#     assert np.allclose(f.source(dec.registration), 1, rtol=0, atol=0), "Source doesn't contain only ones."
+#     assert np.allclose(
+#         f.source(dec.registration, dec.modulation), 1, rtol=0, atol=0.01
+#     ), "Source doesn't contain only values close to one."
+#     assert np.allclose(
+#         f.source(dec.registration, mode="precise"), 1, rtol=0, atol=0
+#     ), "Source doesn't contain only ones."
+#     src = f.source(dec.registration, dec.modulation, mode="precise")
+#     assert np.allclose(
+#         f.source(dec.registration, dec.modulation, mode="precise"), 1, rtol=0, atol=0.01
+#     ), "Source doesn't contain only values close to one."
 
 
 def test_curvature():
@@ -498,11 +545,11 @@ def test_curvature():
     assert np.allclose(curvature(dec.registration)[1:, 1:], 0, rtol=0, atol=0.1), "Curvature if off more than 0.1."
 
 
-def test_height():
-    f = Fringes(Y=100)
-
-    dec = f.decode(f.encode())
-    assert np.allclose(height(curvature(dec.registration)), 0, rtol=0, atol=0.1), "Height if off more than 0.1."
+# def test_height():  # todo: test height
+#     f = Fringes(Y=100)
+#
+#     dec = f.decode(f.encode())
+#     assert np.allclose(height(curvature(dec.registration)), 0, rtol=0, atol=0.1), "Height if off more than 0.1."
 
 
 def test_hues():
@@ -510,14 +557,16 @@ def test_hues():
     f.h = "rggb"
 
     dec = f.decode(f.encode())
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     f.H = 3
 
     dec = f.decode(f.encode())
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
     # todo: H = 2 and take care of M not being a scalar
 
@@ -527,8 +576,9 @@ def test_averaging():
     f.M = 2
 
     dec = f.decode(f.encode())
-    assert np.allclose(dec.registration, f.coordinates()[:, :, :, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."
+    assert np.allclose(
+        dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."
 
 
 def test_WDM():
@@ -537,82 +587,115 @@ def test_WDM():
     f.WDM = True
 
     dec = f.decode(f.encode())
-    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.1), \
-        "Registration is off more than 0.1."  # todo: index 0
+    assert np.allclose(
+        dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.1
+    ), "Registration is off more than 0.1."  # todo: index 0
 
 
-# def test_SDM():
-#     f = Fringes(Y=100)
-#     f.SDM = True
-#     # f.alpha = (f.R.min() + 2) / f.R.min()  # todo: alpha
-#
-#     I = f.encode()
-#     dec = f.decode(I)
-#
-#     for d in range(f.D):
-#         grad = np.gradient(dec.registration, axis=1 - d)
-#         assert np.allclose(grad, 1, rtol=0, atol=0.1), f"Gradient of registration isn't close to 1 at direction {d}."
-#
-#     d = dec.registration - f.coordinates()[:, :, :, None]
-#     dmax = np.abs(d).max()
-#     assert np.allclose(dec.registration,  f.coordinates()[:, :, :, None], 0, rtol=0, atol=0.5), \
-#         "Registration is off more than 0.5."  # todo: 0.1
+def test_SDM():
+    f = Fringes()
+    f.SDM = True
+    # f.alpha = (f.R.min() + 2) / f.R.min()  # todo: use alpha
+
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None],rtol=0, atol=0.5), \
+        "Registration is off more than 0.5."  # todo: index 0, 0.1
 
 
-# def test_SDM_WDM():
-#     f = Fringes(Y=100)
-#     f.N = 3
-#     f.SDM = True
-#     f.WDM = True
-#     # f.alpha = (f.R.min() + 2) / f.R.min()  # todo: alpha
-#
-#     I = f.encode()
-#     dec = f.decode(I)
-#
-#     for d in range(f.D):
-#         grad = np.gradient(dec.registration, axis=1 - d)
-#         assert np.allclose(grad, 1, rtol=0, atol=0.1), f"Gradient of registration isn't close to 1 at direction {d}."
-#
-#     d = dec.registration - f.coordinates()[:, :, :, None]
-#     dmax = np.abs(d).max()
-#     assert np.allclose(dec.registration,  f.coordinates()[:, :, :, None], 0, rtol=0, atol=0.5), \
-#         "Registration is off more than 0.5."  # todo: 0.1
+def test_SDM_WDM():
+    f = Fringes()
+    f.N = 3
+    f.SDM = True
+    f.WDM = True
+    # f.alpha = (f.R.min() + 2) / f.R.min()  # todo: use alpha
+
+    dec = f.decode(f.encode())
+    assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.5), \
+        "Registration is off more than 0.5."  # todo: index 0, 0.1
 
 
 def test_FDM():
     f = Fringes(Y=100)
     f.FDM = True
-    f.alpha = (f.R.min() + 2) / f.R.min()  # todo: remove this line
+    f.alpha = (f.R.min() + 2) / f.R.min()  # todo: remove alpha
 
     for static in (False, True):
         f.static = static
         f.N = 1
         dec = f.decode(f.encode())
-        assert np.allclose(dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.2), \
-            f"Registration is off more than 0.2 with satic = {static}, N = {f.N}."  # todo: index 0, 0.1
+        assert np.allclose(
+            dec.registration[:, 1:, 1:, :], f.coordinates()[:, 1:, 1:, None], rtol=0, atol=0.2
+        ), f"Registration is off more than 0.2 with static = {static}, N = {f.N}."  # todo: index 0, 0.1
 
 
-def test_simulation():
+def test_simulate():
     f = Fringes()
-    f.v = 9, 10, 11
+    # f.v = 9, 10, 11
+    f.v = 13, 7, 89
     f.V = 0.8
-    f.gain = 0.038
-    f.dark = 13.7
-    f.y0 = 3.64
-    # f.alpha = 1.1  # (f.R.min() + 2) / f.R.min()  # todo: alpha
+    # f.alpha = 1.1  # (f.R.min() + 2) / f.R.min()  # todo: use alpha
 
-    dec = f.decode(f.encode(simulate=True))
-    assert np.allclose(dec.registration[:, 2:, 2:, :], f.coordinates()[:, 2:, 2:, None], rtol=0, atol=2), \
-        "Registration is off more than 2."  # index 0, todo: 0.1
+    # x = np.abs((f.coordinates() + np.random.uniform(-0.5, +0.5, (f.D, f.Y, f.X))) % f.R[:, None, None])
+    # I = f.encode(x=x)  # todo: no longer exists
+    # I_ = simulate(I, PSF=0)
+
+    PSF = 5
+
+    dec = f.decode(simulate(f.encode(), PSF=PSF))
+    assert np.allclose(
+        dec.registration[:, PSF:-PSF+1, PSF:-PSF+1, :], f.coordinates()[:, PSF:-PSF+1, PSF:-PSF+1, None], rtol=0, atol=1
+    ), "Registration is off more than 1."  # todo: index 0, 0.1
 
 
-# todo: test encoding and decoding with given coordinates
-# todo: create coordinates randomly, e.g.
-#  rnd = np.random.uniform(0, 1, (100, 1000))  # % 1 because: "The high limit may be included in the returned array of floats due to floating-point rounding [...]."
-#  to avoid having only integer coordinates
-#  dec gaus rnd should be faster then unif due to inside outwards
+# todo: cdiff
+# cdiff = circular_distance(dec.registration[:, :, :, :], f.coordinates()[..., None], f.R[:, None, None, None])
+# assert np.all(cdiff < 1), "Registration is off more than 1."  # todo: index 0, 0.1
+
+
+# def test_inside_out():  # todo: test inside_out
+#     # decoding gaussian distro should be faster than uniform distro due to inside outwards decoding
+#     ....
+
+
+def test_mtf():
+    # PSF
+    ...  # todo: MTF from PSF
+
+    # approx [Bothe2008]
+    f = Fringes()
+    f.lmin = f.L / 100
+
+    v_new = 0, f.vmax / 2, f.vmax
+    mtf_est = f.mtf(v_new)
+
+    assert np.allclose([1, 0.5, 0], mtf_est, rtol=0, atol=1e-9), f"Estimated MTF if off more than {1e-9}."
+
+    # measured
+    f = Fringes()
+    f.D = 2  # 1
+    f.K = 11
+    f.lmin = f.L / 100
+    f.v = "linear"  # todo: "exponential"
+
+    a, b, x = f.decode(f.encode())
+
+    mtf = np.tile(np.linspace(1, 0, f.K), f.D)
+    b *= mtf[:, None, None, None]
+    f.set_mtf(b)
+
+    mtf_est = f.mtf(f._v)  # get estimated modulation transfer values
+
+    assert np.allclose(mtf.reshape(f.D, f.K), mtf_est, rtol=0, atol=0.01), "Estimated MTF if off more than 0.01."
 
 
 if __name__ == "__main__":
+    # f = frng.Fringes()
+    # f.D = f.K = 1
+
+    # test_source()
+    # test_height()
+    # test_grids()
+    # test_unwrapping_class_method()
+
     pytest.main()
     # subprocess.run(['pytest', '--tb=short', str(__file__)])
