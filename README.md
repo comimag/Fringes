@@ -114,7 +114,7 @@ However, for any subsequent execution, the compiled code is cached and the code 
 approaching the speeds of code written in C.
 
 A minimal working example - including image recording - can be found in the
-[documentaion](https://fringes.readthedocs.io/en/main/01_start/usage.html#minimal-working-example).
+[documentation](https://fringes.readthedocs.io/en/main/01_start/usage.html#minimal-working-example).
 
 ## Graphical User Interface
 <!---

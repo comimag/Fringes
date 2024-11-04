@@ -8,7 +8,7 @@ before publishing new version to pypi:
     poetry run pytest   # todo: coverage
 
     git tag
-    git push
+    git push (with tags)
 
     check docs on read-the-docs
 
