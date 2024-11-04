@@ -27,14 +27,13 @@ and analyse them using phase shifting algorithms.
 Figure 1: Phase Shifting Coding Scheme.
 
 ## Features
-- [Parameterize](https://fringes.readthedocs.io/en/main/user_guide/params.html) the phase shifting algorithm
-- [Create](https://fringes.readthedocs.io/en/main/getting_started/fundamentals.html#encoding) and
-  [analyze](https://fringes.readthedocs.io/en/main/getting_started/fundamentals.html#decoding)
+- [Create](https://fringes.readthedocs.io/en/documentation/02_tutorial/fundamentals.html#encoding) and
+  [analyze](https://fringes.readthedocs.io/en/documentation/02_tutorial/fundamentals.html#decoding)
   customized fringe patterns
+- [Parameterize](https://fringes.readthedocs.io/en/documentation/02_tutorial/params.html) the phase shifting algorithm
 - Generalized Temporal Phase Unwrapping (GTPU)
-- [Multiplexing](https://fringes.readthedocs.io/en/main/user_guide/mux.html)
-- Compute [curvature maps](https://fringes.readthedocs.io/en/main/user_guide/filter.html#curvature)
-- Use many more [filter](https://fringes.readthedocs.io/en/main/user_guide/filter.html) methods
+- [Multiplexing](https://fringes.readthedocs.io/en/documentation/02_tutorial/mux.html) fringe patterns
+- [Filtering](https://fringes.readthedocs.io/en/documentation/02_tutorial/filter.html) methods
 
 <!---
 todo: add reference to GTPU-paper
@@ -59,7 +58,7 @@ import fringes as frng
 f = frng.Fringes()  # instantiate class
 ```
 
-All [parameters](https://fringes.readthedocs.io/en/main/user_guide/params.html)
+All [parameters](https://fringes.readthedocs.io/en/documentation/02_tutorial/params.html)
 are accessible as class properties (managed attributes) of the `Fringes` instance.
 
 ```python
@@ -80,7 +79,8 @@ I = f.encode()             # encode fringe patterns
 
 Now display each frame of the fringe pattern sequence on a screen and capture the scene with a camera
 according to the following pseudocode
-(a minimal working example is depicted [here](https://fringes.readthedocs.io/en/main/getting_started/usage.html#minimal-working-example)):
+(a minimal working example is depicted
+[here](https://fringes.readthedocs.io/en/documentation/01_start/usage.html#minimal-working-example)):
 
 ```python
 # allocate image stack
@@ -113,7 +113,8 @@ This can take several tens of seconds up to single digit minutes, depending on y
 However, for any subsequent execution, the compiled code is cached and the code of the function runs much faster,
 approaching the speeds of code written in C.
 
-A minimal working example - including image recording - can be found in the [documentaion](https://fringes.readthedocs.io/en/main/getting_started/usage.html#minimal-working-example).
+A minimal working example - including image recording - can be found in the
+[documentaion](https://fringes.readthedocs.io/en/documentation/01_start/usage.html#minimal-working-example).
 
 ## Graphical User Interface
 <!---
