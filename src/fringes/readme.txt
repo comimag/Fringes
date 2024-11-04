@@ -10,7 +10,10 @@ before publishing new version to pypi:
     git tag
     git push (with tags)
 
-    check docs on read-the-docs
+    GitHub new release (by tag)
+
+    read-the-docs check docs
+    read-the-docs activate version (not hidden)
 
     poetry build
     poetry publish
