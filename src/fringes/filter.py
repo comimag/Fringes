@@ -86,7 +86,9 @@ def visibility(a: np.ndarray, b: np.ndarray):
     D, Y, X, C = a.shape
     K = int(b.shape[0] / D)
 
-    V = np.minimum(1, b.reshape(D, K, Y, X, C) / np.maximum(a[:, None, :, :, :], np.finfo(np.float_).eps))  # avoid division by zero
+    V = np.minimum(
+        1, b.reshape(D, K, Y, X, C) / np.maximum(a[:, None, :, :, :], np.finfo(np.float_).eps)
+    )  # avoid division by zero
 
     return V.astype(np.float32, copy=False).reshape(D * K, Y, X, C)
 
@@ -117,7 +119,7 @@ def exposure(a: np.ndarray, I_rec: np.ndarray, lessbits: bool = True):
         if np.iinfo(I_rec.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
             B = int(np.ceil(np.log2(I_rec.max())))  # same or next power of two
             B += -B % 2  # same or next power of two which is divisible by two
-            Imax = 2 ** B - 1
+            Imax = 2**B - 1
         else:
             Imax = np.iinfo(I_rec.dtype).max
     else:  # float

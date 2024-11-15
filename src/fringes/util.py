@@ -269,6 +269,7 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
 
     return I
 
+
 # def degamma(I):  # todo degamma
 #     """Gamma correction.
 #
