@@ -22,12 +22,12 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.13"  # ensure these python versions are in "/.github/workflows/python-package.yml" todo: test 3.9 for __annotations__
+python = "^3.9,<3.14"  # ensure these python versions are in "/.github/workflows/python-package.yml"
 numpy = "^1.23"
-numba = "0.59"
+numba = "^0.59"
 scipy = "^1.8"
-sympy = "^1"
 scikit-image = "^0.22"
+sympy = "^1"
 opencv-contrib-python = "^4"
 pyyaml = "^6"
 toml = "^0.10.2"
@@ -35,14 +35,13 @@ toml = "^0.10.2"
 [tool.poetry.group.dev.dependencies]
 black = "^24.2.0"
 matplotlib = "^3.7.1"
-pyqt6 = "^6.6.1"
-pyqtgraph = "^0.13.3"
 
 [tool.poetry.group.docs.dependencies]  # ensure the "docs" group is mentioned in ".readthedocs.yml"
 sphinx = "^7.1.1"
 sphinx-copybutton = "^0.5.2"
 sphinx-design = "^0.5.0"
-sphinx-rtd-theme = "^2.0.0"
+sphinx-rtd-theme = "^3.0.0"
+toml = "^0.10.2"
 
 [tool.poetry.group.test.dependencies]
 matplotlib = "^3.7.1"

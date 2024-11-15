@@ -6,6 +6,7 @@ before publishing new version to pypi:
     poetry lock
     poetry run black src
     poetry run pytest   # todo: coverage
+    poetry run pytest src/ --doctest-modules
 
     git tag
     git push (with tags)

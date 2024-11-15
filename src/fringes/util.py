@@ -23,7 +23,7 @@ def _version():
     try:
         # in order not to confuse an installed version of a package with a local one,
         # first try the local one (not being installed)
-        meta = toml.load(os.path.join(os.path.dirname(__file__), "..", "pyproject.toml"))
+        meta = toml.load(os.path.join(os.path.dirname(__file__), "..", "..", "pyproject.toml"))
         version = meta["project"]["version"]  # Python Packaging User Guide expects version here
     except KeyError:
         version = meta["tool"]["poetry"]["version"]  # Poetry expects version here
@@ -33,7 +33,7 @@ def _version():
     return version
 
 
-def vshape(data: np.ndarray) -> np.ndarray:
+def vshape(data: np.ndarray, channels: list | tuple = (1, 3, 4)) -> np.ndarray:
     """Standardizes the input data shape.
 
     Transforms video data into the standardized shape (T, Y, X, C), where
@@ -45,6 +45,8 @@ def vshape(data: np.ndarray) -> np.ndarray:
     ----------
     data : ndarray
         Input data of arbitrary shape.
+    channels : list | tuple
+        Allowed number of color channels.
 
     Returns
     -------
@@ -55,48 +57,45 @@ def vshape(data: np.ndarray) -> np.ndarray:
     Notes
     -----
     Ensures that the array becomes 4-dimensional
-    and that the length of the last dimension is in (1, 3, 4).
+    and that the length of the last dimension is in 'channels').
     To do this, leading dimensions may be flattened.
 
     Examples
     --------
-    >>> import fringes as frng
+    >>> from fringes import vshape
 
     >>> data = np.ones(100)
-    >>> videodata = frng.vshape(data)
+    >>> videodata = vshape(data)
     >>> videodata.shape
     (100, 1, 1, 1)
 
-    >>> data = np.ones(1200, 1920)
-    >>> videodata = frng.vshape(data)
+    >>> data = np.ones((1200, 1920))
+    >>> videodata = vshape(data)
     >>> videodata.shape
-    (1, 1200, 1820, 1)
+    (1, 1200, 1920, 1)
 
-    >>> data = np.ones(1200, 1920, 3)
-    >>> videodata = frng.vshape(data)
+    >>> data = np.ones((1200, 1920, 3))
+    >>> videodata = vshape(data)
     >>> videodata.shape
-    (1, 1200, 1820, 3)
+    (1, 1200, 1920, 3)
 
-    >>> data = np.ones(100, 1200, 1920)
-    >>> videodata = frng.vshape(data)
+    >>> data = np.ones((100, 1200, 1920))
+    >>> videodata = vshape(data)
     >>> videodata.shape
-    (100, 1200, 1820, 1)
+    (100, 1200, 1920, 1)
 
-    >>> data = np.ones(100, 1200, 1920, 3)
-    >>> videodata = frng.vshape(data)
+    >>> data = np.ones((100, 1200, 1920, 3))
+    >>> videodata = vshape(data)
     >>> videodata.shape
-    (100, 1200, 1820, 3)
+    (100, 1200, 1920, 3)
 
-    >>> data = np.ones(2, 3, 4, 1200, 1920)
-    >>> videodata = frng.vshape(data)
+    >>> data = np.ones((2, 3, 4, 1200, 1920))
+    >>> videodata = vshape(data)
     >>> videodata.shape
-    (24, 1200, 1820, 1)
+    (24, 1200, 1920, 1)
     """
-
     if data.ndim == 0:
         data = data.reshape(1)  # returns a view
-
-    channels = (1, 3, 4)  # possible number of color channels
 
     if data.ndim > 4:
         if data.shape[-1] in channels:
@@ -105,6 +104,7 @@ def vshape(data: np.ndarray) -> np.ndarray:
         else:
             T = np.prod(data.shape[:-2])
             Y, X = data.shape[-2:]
+            C = 1
     elif data.ndim == 4:
         if data.shape[-1] in channels:
             T, Y, X, C = data.shape
@@ -120,11 +120,14 @@ def vshape(data: np.ndarray) -> np.ndarray:
             T, Y, X = data.shape
             C = 1
     elif data.ndim == 2:
-        T = C = 1
+        T = 1
         Y, X = data.shape
+        C = 1
     elif data.ndim == 1:
-        T = data.shape
-        Y = X = C = 1
+        T = data.shape[0]
+        Y = 1
+        X = 1
+        C = 1
 
     return data.reshape(T, Y, X, C)  # returns a view
 
@@ -251,7 +254,7 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
 
     # normalize to [0, 1]
     Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1 if I.max() < 1 else I.max()
-    I /= Imax
+    I = I / Imax
 
     # estimate gamma correction factor
     med = np.nanmedian(I)  # Median is a robust estimator for the mean.
@@ -266,10 +269,11 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
 
     return I
 
-
-def degamma(I):
-    """Gamma correction: Assume equal ..."""
-    NotImplemented
+# def degamma(I):  # todo degamma
+#     """Gamma correction.
+#
+#     Assumes equally distributed histogram."""
+#     NotImplemented
 
 
 def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) -> np.ndarray:
@@ -319,104 +323,6 @@ def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) ->
 #     return d
 
 
-def curvature(s: np.ndarray, calibrated: bool = False, normalize: bool = True) -> np.ndarray:  # todo: test
-    """Mean curvature map.
-
-    Computed by differentiating a slope map.
-
-    Parameters
-    ----------
-    s : np.ndarray
-        Slope map.
-        It is reshaped to video-shape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-    calibrated : bool, optional
-        Flag indicating whether the input data 's' originates from a calibrated measurement.
-        Default is False.
-        If this is False, the median value of the computed curvature map is added as an offset,
-        so the median value of the final curvature map becomes zero.
-    normalize : bool
-        Flag indicating whether to use the acrtangent function
-        to non-linearly map the codomain from [-inf, inf] to [-1, 1].
-        Default is True.
-
-    Returns
-    -------
-    c : np.ndarray
-        Curvature map.
-    """
-
-    t0 = time.perf_counter()
-
-    T, Y, X, C = vshape(s).shape
-    s = s.reshape(T, Y, X, C)  # returns a view
-
-    assert T == 2, "Number of direction doesn't equal 2."
-    assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
-
-    Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
-    Gx = np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
-    c = np.sqrt(Gx**2 + Gy**2)
-
-    if not calibrated:
-        # c -= np.mean(c, axis=(0, 1))
-        c -= np.median(c, axis=(0, 1))  # Median is a robust estimator for the mean.
-
-    if normalize:
-        c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
-
-    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
-
-    return c.reshape(-1, Y, X, C)
-
-
-def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
-    """Local height map.
-
-    It is computed by iterative local integration via an inverse laplace filter.
-    Think of it as a relief, where height is only relative to the local neighborhood.
-
-    Parameters
-    ----------
-    curv : np.ndarray
-        Curvature map.
-        It is reshaped to video-shape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-    iterations : int, optional
-        Number of iterations of the inverse Laplace filter kernel.
-        Default is 3.
-
-    Returns
-    -------
-    z : np.ndarray
-        Local height map.
-    """
-
-    t0 = time.perf_counter()
-
-    k = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], np.float32)
-    # k *= iterations  # todo
-
-    T, Y, X, C = vshape(curv).shape
-    curv = curv.reshape(T, Y, X, C)  # returns a view
-
-    if T == 1:
-        curv = np.squeeze(curv, axis=0)  # returns a view
-
-    if curv.min() == curv.max():
-        return np.zeros_like(curv)
-
-    z = np.zeros_like(curv)
-    for c in range(C):
-        for i in range(iterations):
-            z[..., c] = (cv2.filter2D(z[..., c], -1, k) - curv[..., c]) / 4
-
-    # todo: residuals
-    # filter2(kernel_laplace, z) - cature;
-
-    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
-
-    return z
-
-
 def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
     """Bilateral filter.
 
@@ -456,121 +362,6 @@ def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
     logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
     return out
-
-
-def variance(img: np.ndarray, k: int = 3):
-    """Local variance using Steiner's theorem."""
-
-    x2m = cv2.blur(img**2, (k, k), borderType=cv2.BORDER_REPLICATE)
-    xm2 = cv2.blur(img, (k, k), borderType=cv2.BORDER_REPLICATE) ** 2
-
-    return x2m - xm2  # todo: test variance
-
-
-@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-def _remap_legacy(
-    reg: np.ndarray,
-    mod: np.ndarray = np.ones(1),
-    scale: float = 1,
-    Y: int = 0,
-    X: int = 0,
-    C: int = 0,
-) -> np.ndarray:
-    if mod.ndim > 1:
-        assert reg.shape[1:] == mod.shape[1:]
-
-    if reg.shape[0] == 1:
-        # mod = np.vstack(mod, np.zeros_like(mod))
-        reg = np.vstack((reg, np.zeros_like(reg)))  # todo: axis
-
-    if X is None:
-        X = 0
-
-    if Y is None:
-        Y = 0
-
-    X = int(X)
-    Y = int(Y)
-
-    if scale <= 0:
-        scale = 1
-
-    if Y <= 0:
-        Y = max(1, int(np.nanmax(reg[1]) * scale + 0.5))
-    else:
-        Y = int(Y * scale + 0.5)
-
-    if X <= 0:
-        X = max(1, int(np.nanmax(reg[0]) * scale + 0.5))
-    else:
-        X = int(X * scale + 0.5)
-
-    if C not in [1, 3, 4]:
-        if reg.shape[-1] in [3, 4]:
-            C = reg.shape[-1]
-        else:
-            C = 1
-            # reg = reg.reshape([s for s in reg.shape] + [C])  # todo: how to get reg[..., 1] if C-axis doesn't exist?
-
-    src = np.zeros((Y, X, C), np.float32)
-
-    Xc = reg.shape[2]
-    Yc = reg.shape[1]
-    DK = mod.shape[0]
-    for xc in nb.prange(Xc):
-        for yc in nb.prange(Yc):
-            for c in nb.prange(C):
-                if not np.isnan(reg[0, yc, xc, c]):
-                    xs = int(reg[0, yc, xc, c] * scale + 0.5)  # i.e. rint()
-                    if xs < X:
-                        if not np.isnan(reg[1, yc, xc, c]):
-                            ys = int(reg[1, yc, xc, c] * scale + 0.5)  # i.e. rint()
-                            if ys < Y:
-                                for dk in nb.prange(DK):
-                                    if mod.ndim > 1:
-                                        m = mod[dk, yc, xc, c]
-                                        if not np.isnan(m):
-                                            src[ys, xs, c] += m
-                                    else:
-                                        src[ys, xs, c] += 1
-
-    mx = src.max()
-    if mx > 0:
-        src /= mx
-
-    return src
-
-
-@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-def _remap(
-    src: np.ndarray,
-    reg: np.ndarray,
-    mod: np.ndarray = np.ones(1),
-) -> np.ndarray:
-    Ys, Xs, Cs = src.shape
-    Yc, Xc, Cc = reg.shape[1:]
-
-    for xc in nb.prange(Xc):
-        for yc in nb.prange(Yc):
-            for c in nb.prange(Cs):
-                if not np.isnan(reg[0, yc, xc, c]):
-                    xs = int(reg[0, yc, xc, c] + 0.5)  # i.e. rint()
-
-                    if xs < Xs:
-                        if not np.isnan(reg[1, yc, xc, c]):
-                            ys = int(reg[1, yc, xc, c] + 0.5)  # i.e. rint()
-
-                            if ys < Ys:
-                                # if mod.ndim > 1 and not np.isnan(mod[yc, xc, c]):  # todo: test shape
-                                #     m = mod[yc, xc, c]
-                                #     src[ys, xs, c] += m
-                                # else:
-                                #     src[ys, xs, c] += 1
-
-                                if not np.isnan(mod[yc, xc, c]):
-                                    m = mod[yc, xc, c]
-                                    src[ys, xs, c] += m
-    return src
 
 
 # # @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)  # todo
@@ -739,7 +530,3 @@ def _remap(
 #     y : Modular multiplicative inverse.
 #     """
 #     return pow(x, -1, p)
-
-
-if __name__ == "__main__":
-    pass

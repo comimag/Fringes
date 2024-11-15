@@ -72,7 +72,7 @@ of the recording camera.
 
 .. literalinclude:: /../../examples/direct_global.py
    :language: python
-   :emphasize-lines: 8, 14, 20, 21
+   :emphasize-lines: 5, 9, 17, 18
    :linenos:
 
 .. figure:: filter/direct.png
@@ -135,7 +135,7 @@ The visibility `V` of the fringes is influenced by:
 
 .. literalinclude:: /../../examples/visibility_exposure.py
    :language: python
-   :emphasize-lines: 11, 17, 18
+   :emphasize-lines: 4, 14, 15
    :linenos:
 
 .. figure:: filter/visibility.png
@@ -249,7 +249,7 @@ and does not require accurate prior knowledge of the distance to the object." [B
 
 .. literalinclude:: /../../examples/curvature.py
    :language: python
-   :emphasize-lines: 13
+   :emphasize-lines: 4, 14
    :linenos:
 
 .. figure:: filter/curvature.jpg

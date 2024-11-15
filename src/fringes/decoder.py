@@ -87,32 +87,24 @@ def decode(
     I : np.ndarray
         Fringe pattern sequence.
         Must be in video-shape (frames `T`, height `Y`, width `X`, color channels `C`).
-
     N : np.ndarray
         Number of phase shifts.
         Must be in shape (number of directions 'D', number of sets 'K').
-
     v : np.ndarray
         Spatial frequencies.
         Must be in shape (number of directions 'D', number of sets 'K').
-
     f : np.ndarray
         Temporal frequencies.
         Must be in shape (number of directions 'D', number of sets 'K').
-
     R : np.ndarray
         Decoding range, i.e. length of fringe patterns for each direction.
         Must be of length 'D'.
-
     UMR : np.ndarray
         Unambiguous measurement range.
-
     x0 : np.ndarray
         Coordinate offset.
-
     p0 : np.ndarray, default=np.pi
         Phase offset.
-
     Vmin : float, default=0
         Minimum visibility for measurement to be valid.
         If 'Vmin' isn't reached at a pixel, spatial unwrapping is skipped for this very pixel.
@@ -124,19 +116,16 @@ def decode(
     -------
     bri : np.ndarray
         Brightness.
-
     mod : np.ndarray
         Modulation.
-
     phi : np.ndarray
         Phase.
-
     reg : np.ndarray
         Registration.
-
     res : np.ndarray
         Residuals.
     """
+    # todo: return fringe orders
 
     PI2 = 2 * np.pi
 

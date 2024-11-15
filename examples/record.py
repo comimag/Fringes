@@ -11,7 +11,7 @@ logger.addHandler(handler)
 logger.setLevel("INFO")
 
 import cv2
-import fringes as frng
+from fringes import Fringes
 import numpy as np
 
 # prepare window in which the fringe pattern sequence will be shown in fullscreen mode
@@ -39,7 +39,7 @@ camera.set(cv2.CAP_PROP_AUTO_WB, 0)  # turn off whitebalance
 camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)  # turn off autoexposure
 
 # configure and create fringe pattern sequence
-f = frng.Fringes()
+f = Fringes()
 f.X = width
 f.Y = height
 I = f.encode()

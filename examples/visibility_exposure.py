@@ -1,21 +1,18 @@
 """Visibility and Exposure."""
 
-import fringes as frng
+from fringes import Fringes
+from fringes.filter import visibility, exposure
 import matplotlib.pyplot as plt
 
-f = frng.Fringes()
+f = Fringes()
 I = f.encode()
 
 I_rec = I  # todo: replace this line with recording data as in 'record.py'
 
-res = f.decode(I_rec, verbose=True)
+a, b, x = f.decode(I_rec)
 
-# make use of namedtuple:
-a = res.brightness
-b = res.modulation
-x = res.registration
-E = res.exposure
-V = res.visibility
+V = visibility(a, b)
+E = exposure(a, I_rec)
 
 plt.figure("exposure 'E'")
 plt.imshow(E[0, :, :, 0])

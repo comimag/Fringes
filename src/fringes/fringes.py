@@ -22,7 +22,7 @@ import yaml
 
 from fringes import grid
 from fringes.decoder import decode
-from fringes.util import _version, vshape, bilateral, _remap
+from fringes.util import _version, vshape, bilateral
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,7 @@ class Fringes:
 
         .. warning:: The parameters are only loaded if the config file provides the section `fringes`.
 
-        Parametersf
+        Parameters
         ----------
         fname : str, optional
             File name of the file to load.
@@ -220,12 +220,12 @@ class Fringes:
         >>> import os
         >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
+        >>> from fringes import Fringes
+        >>> f = Fringes()
         >>> f.N += 1
         >>> f.save(fname)
 
-        >>> f2 = frng.Fringes()
+        >>> f2 = Fringes()
         >>> f2.load(fname)
 
         >>> f2 == f
@@ -277,8 +277,8 @@ class Fringes:
         >>> import os
         >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
+        >>> from fringes import Fringes
+        >>> f = Fringes()
 
         >>> f.save(fname)
         """
@@ -286,7 +286,7 @@ class Fringes:
             fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
 
         if not os.path.isdir(os.path.dirname(fname)):
-            logger.warning(f"File directory does not exist.")
+            logger.error(f"File directory does not exist.")
             return
 
         name, ext = os.path.splitext(fname)
@@ -294,10 +294,10 @@ class Fringes:
             name, ext = ext, name
 
         if ext not in self._loader.keys():
-            logger.warning(f"File extension is unknown. Must be one of {self._loaders.keys()}")
+            logger.error(f"File extension is unknown. Must be one of {self._loaders.keys()}")
             return
 
-        with open(fname, "w") as f:
+        with open(fname, "w") as f:  # todo: file gets overwritten or only section 'fringes'?
             if ext == ".json":
                 json.dump({"fringes": self._params}, f, indent=4)
             elif ext == ".yaml":
@@ -305,7 +305,7 @@ class Fringes:
             elif ext == ".toml":
                 toml.dump({"fringes": self._params}, f)
 
-        logger.debug(f"Saved parameters to {fname}.")  # todo: info?
+        logger.info(f"Saved parameters to {fname}.")
 
     def reset(self) -> None:
         """Reset parameters of the `Fringes` instance to default values."""
@@ -321,7 +321,6 @@ class Fringes:
             Number of frames.
             If `T` is not provided, the number of frames from the `Fringes` instance is used.
             Then, the `Fringes` instance's number of shifts `N` is distributed optimally over the directions and sets.
-
          umax : float, optional
             Maximum allowable uncertainty.
             Must be greater than zero.
@@ -396,8 +395,8 @@ class Fringes:
 
         Examples
         --------
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
+        >>> from fringes import Fringes
+        >>> f = Fringes()
         >>> I = f.encode()
         >>> I_rec = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace; this is how a line camera would record  # todo: replace this line with recording data as in '../examples/record.py'
         >>> I_rec = f._deinterlace(I_rec)
@@ -560,15 +559,12 @@ class Fringes:
         I : np.ndarray
             Fringe pattern sequence.
             It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-
         Vmin : float
             Minimum visibility for measurement to be valid
             (can accelerate decoding).
-
         verbose : bool, optional
             If this or the argument `verbose` of the Fringes instance is set to True,
             intermediate and verbose results are returned as well.
-
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
 
@@ -580,13 +576,10 @@ class Fringes:
         -------
         brightness : np.ndarray
             Local background signal.
-
         modulation : np.ndarray
             Local amplitude of the cosine signal.
-
         phase : np.ndarray, optional
             Local phase.
-
         registration : np.ndarray
             Decoded coordinates.
 
@@ -762,6 +755,7 @@ class Fringes:
         ----------
         I : np.ndarray
             Base fringe patterns.
+
         Returns
         -------
         I : np.ndarray
@@ -1080,8 +1074,8 @@ class Fringes:
 
         Examples
         --------
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
+        >>> from fringes import Fringes
+        >>> f = Fringes()
 
         Encode the complete fringe pattern sequence.
 
@@ -1173,22 +1167,17 @@ class Fringes:
         Vmin : float
             Minimum visibility for measurement to be valid
             (can accelerate decoding).
-
         verbose : bool or str, optional
             If this or the argument `verbose` of the Fringes instance is set to True,
             intermediate and verbose results are returned as well.
-
         check_overexposure: bool, optional
             If this flag is set to True, 'I' is checked for overexposure
             and if so a warning is logged.
-
         deinterlace : bool, optional
             If this flag is set to True, deinterlacing is activated.
-
         despike: bool, optional
             If this flag is set to True, single pixel outliers in the unwrapped phase map are replaced
             by their local neighborhood using a median filter.
-
         denoise: bool, optional
             If this flag is set to True, the unwrapped phase map is smoothened
             by a bilateral filter which is edge-preserving.
@@ -1197,10 +1186,8 @@ class Fringes:
         -------
         brightness : np.ndarray
             Local background signal.
-
         modulation : np.ndarray
             Local amplitude of the cosine signal.
-
         registration : np.ndarray
             Decoded coordinates.
 
@@ -1210,39 +1197,31 @@ class Fringes:
 
         phase : np.ndarray, optional
             Local phase.
-
         orders : np.ndarray, optional
             Fringe orders.
-
         residuals : np.ndarray, optional
             Residuals from the optimization-based unwrapping process.
-
         uncertainty : np.ndarray, optional
             uncertainty of positional decoding in pixel units
-
-        visibility : np.ndarray, optional
-            Local visibility (fringe contrast).
-
-        exposure : np.ndarray, optional
-            Local exposure (relative average intensity).
 
         Raises
         ------
         ValueError
             If the number of frames of `I` and the attribute `T` of the `Fringes` instance don't match.
-
         ValueError
             If 'WDM' is active but 'I' does not have 3 color channels.
 
         Examples
         --------
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
+        >>> from fringes import Fringes
+        >>> f = Fringes()
         >>> I = f.encode()
 
         >>> a, b, x = f.decode(I)
 
-        >>> a, b, x, p, k, r, u, d, g, V, E = f.decode(I, verbose=True)
+        Also return interediate and verbose results:
+
+        >>> a, b, x, p, k, r, u = f.decode(I, verbose=True)
         """
         t0 = time.perf_counter()
 
@@ -1301,7 +1280,7 @@ class Fringes:
 
         # verbose
         if verbose:
-            unc, fid, dir, glo, vis, exp = self._verbose(I, bri, mod, reg)
+            unc, fid = self._verbose(mod, reg)
 
         # # blacken where color value of hue was black
         # if self.H > 1 and C == 3:
@@ -1395,8 +1374,8 @@ class Fringes:
         if verbose:
             dec = namedtuple(
                 "decoded",
-                "brightness modulation registration residuals uncertainty phase order direct glob visibility exposure",  # naming it global is not allowed
-            )(bri, mod, reg, res, unc, phi, fid, dir, glo, vis, exp)
+                "brightness modulation registration residuals uncertainty phase order",
+            )(bri, mod, reg, res, unc, phi, fid)
         else:
             dec = namedtuple("decoded", "brightness modulation registration")(bri, mod, reg)
 
@@ -1404,52 +1383,26 @@ class Fringes:
 
         return dec
 
-    def _verbose(self, I: np.ndarray, a: np.ndarray, b: np.ndarray, x: np.ndarray, lessbits: bool = False):
+    def _verbose(self, b: np.ndarray, x: np.ndarray):
         """Compute verbose output.
 
         Parameters
         ----------
-        I : np.ndarray
-            Fringe pattern sequence.
-
-        a : np.ndarray
-            Brightness.
-
         b : np.ndarray
             Modulation.
-
         x : np.ndarray
             Registration.
-
-        lessbits : bool, optional
-            The fringe pattern sequence 'I' may contain fewer bits of information than its corresponding dtype.
-            This occurs if e.g. a 10 or 12 bit camera is used, for which the corresponding dtype would be 'uint16'.
-            If 'lessbits' is True (the default), the number of bits is estimated based on the maximal value of 'I'.
-            This affects the value of the exposure 'e'.
 
         Returns
         -------
         u : np.ndarray
             Uncertainty of positional decoding, in pixel units.
-
         k : np.ndarray
             Fringe orders.
-
-        d : np.ndarray
-            Direct illumination component.
-
-        g : np.ndarray
-            Global illumination component.
-
-        V : np.ndarray
-            Visibility (fringe contrast).
-
-        E : np.ndarray
-            Exposure (relative average intensity).
         """
         t0 = time.perf_counter()
 
-        Y, X, C = a.shape[1:]
+        Y, X, C = b.shape[1:]
 
         upi = (
             np.sqrt(2)
@@ -1468,31 +1421,9 @@ class Fringes:
         # p = (x[:, None, :, :, :] / self._l[:, :, None, None, None] - k) * 2 * np.pi - self.p0
         # p = p.astype(np.float32, copy=False).reshape(self.D * self.K, Y, X, C)
 
-        d = 2 * b  # direct illumination component
-        g = 2 * (a.reshape(self.D, 1, -1) - b.reshape(self.D, self.K, -1)).reshape(b.shape).clip(
-            0
-        )  # global illumination component
-
-        V = np.minimum(
-            1, b.reshape(self.D, self.K, Y, X, C) / np.maximum(a[:, None, :, :, :], np.finfo(np.float_).eps)
-        )  # avoid division by zero
-        V = V.astype(np.float32, copy=False).reshape(self.D * self.K, Y, X, C)
-
-        if I.dtype.kind in "ui":
-            if np.iinfo(I.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
-                Imax = int(np.ceil(np.log2(I.max())))  # same or next power of two
-                Imax += -Imax % 2  # same or next power of two which is divisible by two
-            else:
-                Imax = np.iinfo(I.dtype).max
-        else:  # float
-            # todo: attention: this should never happen, except when decolorized or averaged
-            Imax = 1
-        E = a / Imax
-        E = E.astype(np.float32, copy=False)
-
         logger.debug(f"{1000 * (time.perf_counter() - t0)}ms")
 
-        return u, k, d, g, V, E
+        return u, k
 
     def _unwrap(
         self, phi: np.ndarray, b: np.ndarray, func: str = "ski", verbose: bool = False
@@ -1506,11 +1437,9 @@ class Fringes:
             It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
             The frames (first dimension) as well the color channels (last dimension)
             are unwrapped separately.
-
         b : np.ndarray, optional
             Modulation of the decoded phase.
             It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-
         func : str, optional
             Unwrapping function to use. The default is 'ski'.
 
@@ -1680,304 +1609,6 @@ class Fringes:
     #
     #     return uwr
 
-    def source(
-        self,
-        x: np.ndarray,
-        b: np.ndarray | None = None,
-        u: np.ndarray | float = 0,
-        dx: float = 1,
-        mode: str = "fast",
-    ) -> np.ndarray:
-        """Source activation heatmap.
-
-        The decoded coordinates (having sub-pixel accuracy)
-        are mapped from the camera grid
-        to integer positions on the screen grid
-        with weights from the modulation.
-
-        This yields the source activation heatmap:
-        a grid representing the screen (light source)
-        with the pixel values being a relative measure
-        of how much a screen (light source) pixel contributed
-        to the exposure of the camera sensor.
-
-        The dimensions of the screen are taken from the `Fringes` instance.
-
-        Parameters
-        ----------
-        x : np.ndarray
-            Registration, i.e. the decoded screen coordinates as seen by the camera.
-            It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-
-        b : np.ndarray, optional
-            Modulation. Used for weighting.
-            It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-            If `b` is an array, it must have the same height `Y`, width `X` and color channels `C` as `x`.
-            If `b` is not given, equal weights are used.
-
-        u : np.ndarray | float, optional
-            Uncertainty.
-            It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-            If `u` is an array, it must have the same height `Y`, width `X` and color channels `C` as `x`.
-            Default is zero.
-
-        dx : float, optional
-            Size of one camera pixel, projected onto the screen, in units of screen pixels.
-            Default is one.
-
-        mode : str, optional
-            By default, fast remapping is applied.
-            Else, inverse distance weighted remapping is applied,
-            which is more precise but also more time-consuming.
-
-        Returns
-        -------
-        src : np.ndarray
-            Source activation heatmap.
-
-        Notes
-        -----
-        In fact, this is the inverse function of OpenCV’s remap() [3]_.
-
-        References
-        ----------
-        .. [3] `OpenCV,
-               "remap()",
-               OpenCV,
-               2024.
-               <https://docs.opencv.org/4.9.0/da/d54/group__imgproc__transform.html#gab75ef31ce5cdfb5c44b6da5f3b908ea4>`_
-
-        Examples
-        --------
-        >>> import fringes as frng
-        >>> f = frng.Fringes()
-        >>> I = f.encode()
-
-        >>> I_rec = I  # todo: replace this line with recording data as in '../examples/record.py'
-        >>> a, b, x = f.decode(I_rec)
-
-        >>> src = f.source(x, b)
-        """
-        # b = = cv2.remap(src, x[0], x[1], cv2.INTER_LINEAR)  # this is the inverse function of what we want
-
-        t0 = time.perf_counter()
-
-        T, Y, X, C = vshape(x).shape
-
-        # trim x
-        x = x.reshape((-1, Y, X, C))
-        if self.D == 1:
-            if self.axis == 0:
-                # x = np.vstack((x, np.zeros_like(x)))
-                x = np.concatenate((x, np.zeros_like(x)), axis=0)
-            else:
-                # x = np.vstack((np.zeros_like(x), x))
-                x = np.concatenate((np.zeros_like(x), x), axis=0)
-        elif self.indexing == "ij":
-            x = x[::-1]  # returns a view
-            # b does not need to be changed because there is only one fused value for each (x, y)-coordinate
-            # u does not need to be changed because there is only one value for each (x, y)-coordinate
-        valid = (x[0] <= self.X) * (x[1] <= self.Y)
-
-        # trim b
-        if isinstance(b, np.ndarray):
-            assert x.shape[1:] == b.shape[1:], "'x' and 'b' have different width, height or number of color channels"
-            b = b.reshape((-1, Y, X, C))
-            # b = np.max(b, axis=0)
-            b = np.mean(b, axis=0)
-            # todo: remap for each b?
-
-        if mode == "fast":
-            if not isinstance(b, np.ndarray):
-                b = np.ones((Y, X, C), np.uint8)
-
-            # trim u
-            if isinstance(u, np.ndarray):
-                assert (
-                    x.shape[1:] == u.shape[1:]
-                ), "'x' and 'u' have different width, height or number of color channels"
-                u = u.reshape((-1, Y, X, C))
-                u = np.maximum(u, self.u)
-
-            src = np.zeros((self.Y, self.X, C), np.float32)
-
-            # x = x[::-1]  # returns a view
-            # idx = np.rint(x).astype(int, copy=False)
-            # for c in range(C):  # looping through color channels reduces memory consumption
-            #     src[idx[1].ravel(), idx[0].ravel(), c] += b[..., c].ravel()  # ravel() returns a view
-            # todo: advanced indexing with nan?
-            b[~valid] = 0
-            src = _remap(src, x, b)  # todo: if u is array -> also increment region around rint pixel
-
-            # blurring due to uncertainty and PSF
-            u = self.u if self.indexing == "ij" else self.u[::-1]  # todo: D = 1, i.e. shape of sigma equal to axes?
-            sigma = np.sqrt(u**2 + self.PSF**2)
-            src = sp.ndimage.gaussian_filter(src, sigma, mode="nearest", axes=(0, 1))
-
-            # blurring due to pixel size
-            dx = 3
-            dx_ = int(dx + 0.5)
-            if dx > 1:
-                src = sp.ndimage.uniform_filter(src, size=dx_, mode="reflect", axes=(0, 1))
-        else:
-            x = x[:, valid].reshape(2, -1, C).swapaxes(0, 1)  # n data points of dimension m
-            if b is not None:
-                b = b[valid].reshape(-1, C)  # n data points of dimension m
-
-            # todo: use U if given as an array (but how?)
-
-            u = np.prod(self.u, axis=0) ** (
-                1 / self.D
-            )  # geometric mean averages the semi-axes of the uncertainty ellipses
-            sigma = np.sqrt(u**2 + self.PSF**2)
-            dr = dx / np.sqrt(np.pi)  # mapping radius of square (=dx/2) to radius of circle (dr) with same area
-            a = 3  # number of standard deviations
-            R = dr + a * sigma
-
-            src = np.empty((self.Y, self.X, C), np.float32)
-            for c in range(C):
-                kdtree = sp.spatial.KDTree(x[:, :, c])
-                for xs in range(self.X):
-                    for ys in range(self.Y):
-                        # todo: choose r pixel individually
-                        i = kdtree.query_ball_point(x=(xs, ys), r=R, p=2)  # , workers=-1)  # list of indices
-
-                        if not i:  # empty list, i.e. no points found within distance R
-                            v = 0
-                        elif b is None:
-                            # v = np.sum(np.ones(len(idx)) * w)
-                            # v = np.sum(np.ones(len(idx)))
-                            v = len(i)
-                        else:
-                            xr = x[i, 0, c]  # returns a view
-                            yr = x[i, 1, c]  # returns a view
-                            d = np.sqrt((xs - xr) ** 2 + (ys - yr) ** 2)  # distance
-
-                            # inverse distance weighting using modified Shepard's method:
-                            # https://en.wikipedia.org/wiki/Inverse_distance_weighting
-                            if 0 in d:
-                                # z = d == 0
-                                # w[z] = 1
-                                # w[~z] = 0
-                                w = (d == 0).astype(float, copy=False)
-                            else:
-                                w = 1 / (d**2)
-
-                            # v = np.sum(b[i, c] * w)
-                            v = np.dot(b[i, c], w)
-
-                        src[ys, xs, c] = v
-
-        mx = src.max()
-        if mx > 0 and mx != 1:
-            src /= mx
-
-        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
-
-        return src
-
-    def brightfield_inverse(self, src: np.ndarray, t: float = 0.1, k: int = 3) -> np.ndarray:
-        """Inverse bright-field
-
-        with radiomatric compensation
-        assuming a linear response function for display/projector and camera.
-
-        Parameters
-        ----------
-        src : np.ndarray
-            Source activation heatmap.
-
-        t : float
-            Threshold within [0, 1].
-
-        k : int
-            Edge ength of morphological operator.
-
-        Returns
-        -------
-        bfi : Inverse bright-field.
-        """
-        t = np.clip(t, 0, 1)
-        t = 0.2
-        src[src < t] = np.nan  # 0
-
-        # radiometric compensation
-        bfi = 1 / src  #  - 1
-        bfi /= np.nanmax(bfi)
-        bfi *= self.Imax
-        bfi[bfi == np.nan] = 0
-        bfi = bfi.astype(self.dtype, copy=False)
-
-        # blurring due to uncertainty and PSF
-        # u = self.u if self.indexing == "ij" else self.u[::-1]  # todo: D = 1, i.e. shape of sigma equal to axes?
-        # sigma = np.sqrt(u ** 2 + self.PSF ** 2)
-        # a = 3
-        # k = 1 + dx + 2 * a * sigma  # 2: both sides
-        # k = np.ceil(k).astype(int)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-        T, Y, X, C = vshape(bfi).shape
-        for t in range(T):
-            for c in range(C):
-                bfi[t, :, :, c] = cv2.dilate(bfi[t, :, :, c], kernel)
-
-        return bfi  # todo: brightfield_inverse
-
-    def brightfield(self, src: np.ndarray, t: float = 0.1, k: int = 3) -> np.ndarray:
-        """Bright-field.
-
-        Parameters
-        ----------
-        src : np.ndarray
-            Source activation heatmap.
-
-        t : float
-            Threshold within [0, 1].
-
-        Returns
-        -------
-        bf : Bright-field.
-        """
-        t = np.clip(t, 0, 1)
-        bf = (src > t).astype(self.dtype, copy=False) * self.Imax
-
-        if k:
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-
-            T, Y, X, C = vshape(bf).shape
-            for t in range(T):
-                for c in range(C):
-                    bf[t, :, :, c] = cv2.dilate(bf[t, :, :, c], kernel)
-
-        return bf
-
-    def darkfield(self, src: np.ndarray, t: float = 0.1, k: int = 3) -> np.ndarray:
-        """Dark-field.
-
-        Parameters
-        ----------
-        src : np.ndarray
-            Source activation heatmap.
-
-        t : float
-            Threshold within [0, 1].
-
-        Returns
-        -------
-        df : Dark-field.
-        """
-        t = np.clip(t, 0, 1)
-        df = (src <= t).astype(self.dtype, copy=False) * self.Imax
-
-        if k:
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-
-            T, Y, X, C = vshape(df).shape
-            for t in range(T):
-                for c in range(C):
-                    df[t, :, :, c] = cv2.dilate(df[t, :, :, c], kernel)
-
-        return df
-
     def _trim(self, a: np.ndarray) -> np.ndarray:
         """Change ndim of `a` to 2 and limit its shape."""
         if a.ndim == 0:
@@ -1998,10 +1629,6 @@ class Fringes:
         ----------
         b : np.ndarray
             Measured modulation.
-
-        Returns
-        -------
-        None
 
         Raises
         ______
@@ -3160,7 +2787,7 @@ class Fringes:
 
     @property
     def mode(self) -> str:
-        """Mode for remapping.
+        """Mode for decoding.
 
         The following values can be set:\n
         - 'fast'\n

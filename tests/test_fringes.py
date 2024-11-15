@@ -8,20 +8,22 @@ import numpy as np
 import pytest
 import subprocess
 
-from fringes import Fringes, curvature, __version__  # todo: height
-from fringes.util import simulate, circular_distance
+from fringes import Fringes, __version__
+from fringes.util import vshape, simulate, gamma_auto_correct, circular_distance
+from fringes.filter import direct, indirect, visibility, exposure, curvature  # todo: height
 
 
 # def test_compile_time():  # todo: test_numba_compile_time
 #     # attention: this function must be the first within this module if running in debugging mode,
 #     # because else the cache remains in RAM
 #
-#     f = Fringes(Y=100)
-#
-#     I = f.encode()
 #     flist = glob.glob(os.path.join(os.path.dirname(__file__), "..", "src", "fringes", "__pycache__", "decoder*decode*.nbc"))
 #     for file in flist:
 #         os.remove(file)
+#
+#     f = Fringes(Y=100)
+#
+#     I = f.encode()
 #
 #     t0 = time.perf_counter()
 #     dec = f.decode(I)
@@ -318,18 +320,14 @@ def test_verbose():
     dec = f.decode(f.encode(), verbose=True)
     assert isinstance(dec, tuple) and hasattr(dec, "_fields"), "Return value isn't a 'namedtuple'."
     assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
-    assert len(dec) == 11, f"Decode returned {len(dec)} instead of 9 values."
+    assert len(dec) == 7, f"Decode returned {len(dec)} instead of 7 values."
     assert hasattr(dec, "brightness")
     assert hasattr(dec, "modulation")
     assert hasattr(dec, "registration")
     assert hasattr(dec, "residuals")
     assert hasattr(dec, "order")
     assert hasattr(dec, "phase")
-    assert hasattr(dec, "uncertainty")
-    assert hasattr(dec, "direct")
-    assert hasattr(dec, "glob")
-    assert hasattr(dec, "visibility")
-    assert hasattr(dec, "exposure")
+
     assert np.allclose(dec.brightness, f.A, rtol=0, atol=1), "Brightness is off more than 1."  # todo: 0.1
     assert np.allclose(dec.modulation, f.B, rtol=0, atol=1), "Modulation is off more than 1."  # todo: 0.1
     assert np.allclose(
@@ -341,10 +339,33 @@ def test_verbose():
     assert np.allclose(dec.order, k, rtol=0, atol=0), "Fringe orders are off."
     assert np.allclose(dec.residuals, 0, rtol=0, atol=0.1), "Residuals are larger than 0.5."  # todo: 0.1
     assert np.allclose(dec.uncertainty, 0, rtol=0, atol=0.5), "Uncertainty is larger than 0.5."  # todo: 0.1
-    assert np.allclose(dec.direct, f.Imax, rtol=0, atol=1.5), "Direct is off more than 1.5."  # todo: 0.1
-    assert np.allclose(dec.glob, 0, rtol=0, atol=1.5), "Glob is larger than 0.5."  # todo: 0.1
-    assert np.allclose(dec.visibility, 1, rtol=0, atol=0.1), "Visibility is off more than 0.1."
-    assert np.allclose(dec.exposure, 0.5, rtol=0, atol=0.1), "Exposure is off more than 0.1."
+
+
+def test_direct_indirect():
+    f = Fringes(Y=100)
+
+    a, b, x = f.decode(f.encode())
+
+    d = direct(b)
+    assert np.allclose(d, f.Imax, rtol=0, atol=1.5), "Direct is off more than 1.5."  # todo: 0.1
+
+    g = indirect(a, b)
+    assert np.all(g >= 0), "Global contains negative values."
+    assert np.allclose(g, 0, rtol=0, atol=1.5), "Global is larger than 1.5."  # todo: 0.1
+
+
+def test_visibility_exposure():
+    f = Fringes(Y=100)
+
+    I = f.encode()
+    a, b, x = f.decode(I)
+
+    V = visibility(a, b)
+    assert np.all(V >= 0), "Visibility contains negative values."
+    assert np.allclose(V, 1, rtol=0, atol=0.01), "Visibility is off more than 0.01."
+
+    E = exposure(a, I)
+    assert np.allclose(E, 0.5, rtol=0, atol=0.01), "Exposure is off more than 0.01."
 
 
 def test_overexposure(caplog):
@@ -520,24 +541,6 @@ def test_unwrapping():
 #     #         f"Gradient of unwrapped phase map isn't close to 1 at direction {d}."
 
 
-# def test_source():  # todo: source
-#     f = Fringes(X=100, Y=100)
-#     f.PSF = 0.5
-#
-#     dec = f.decode(f.encode())
-#     assert np.allclose(f.source(dec.registration), 1, rtol=0, atol=0), "Source doesn't contain only ones."
-#     assert np.allclose(
-#         f.source(dec.registration, dec.modulation), 1, rtol=0, atol=0.01
-#     ), "Source doesn't contain only values close to one."
-#     assert np.allclose(
-#         f.source(dec.registration, mode="precise"), 1, rtol=0, atol=0
-#     ), "Source doesn't contain only ones."
-#     src = f.source(dec.registration, dec.modulation, mode="precise")
-#     assert np.allclose(
-#         f.source(dec.registration, dec.modulation, mode="precise"), 1, rtol=0, atol=0.01
-#     ), "Source doesn't contain only values close to one."
-
-
 def test_curvature():
     f = Fringes(Y=100)
 
@@ -628,6 +631,23 @@ def test_FDM():
         ), f"Registration is off more than 0.2 with static = {static}, N = {f.N}."  # todo: index 0, 0.1
 
 
+def test_gamma_auto_correct():
+    f = Fringes(Y=100)
+
+    I = f.encode()
+
+    f.gamma = 2.2
+    f.dtype = "float32"
+
+    I_gamma = f.encode() * 255
+    I_ = gamma_auto_correct(I_gamma)
+
+    assert np.allclose(I, I_, rtol=0, atol=0.5), "Gamma correction is off more than 0.5."
+
+
+# todo: test degamma
+
+
 def test_simulate():
     f = Fringes()
     # f.v = 9, 10, 11
@@ -689,7 +709,11 @@ def test_mtf():
 
 
 if __name__ == "__main__":
-    # f = frng.Fringes()
+    data = np.ones(100)
+    videodata = vshape(data)
+    videodata.shape
+
+    # f = Fringes()
     # f.D = f.K = 1
 
     # test_source()

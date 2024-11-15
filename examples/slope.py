@@ -1,9 +1,9 @@
 """Slope."""
 
-import fringes as frng
+from fringes import Fringes
 import matplotlib.pyplot as plt
 
-f = frng.Fringes()
+f = Fringes()
 
 I = f.encode()
 

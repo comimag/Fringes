@@ -1,9 +1,9 @@
 """Decode fringe pattern sequence."""
 
-import fringes as frng
+from fringes import Fringes
 import matplotlib.pyplot as plt
 
-f = frng.Fringes()
+f = Fringes()
 I = f.encode()
 
 I_rec = I  # todo: replace this line with recording data as in 'record.py'

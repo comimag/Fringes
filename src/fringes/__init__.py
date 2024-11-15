@@ -3,7 +3,7 @@
 import logging
 
 from .fringes import Fringes
-from .util import _version, vshape, curvature  # todo: height, ...
+from .util import _version, vshape
 
 logger = logging.getLogger(__name__)
 

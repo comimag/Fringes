@@ -11,9 +11,9 @@ You instantiate, parameterize and deploy the :class:`~fringes.fringes.Fringes` c
 
 .. code-block:: python
 
-   import fringes as frng      # import the fringes package
+   from fringes import Fringes  # import the Fringes class
 
-   f = frng.Fringes()          # instantiate the Fringes class
+   f = Fringes()                # instantiate the Fringes class
 
 
 All :ref:`parameters <parameters>` are accessible by the respective attributes
@@ -31,13 +31,13 @@ Circular dependencies are resolved automatically.
 
 .. code-block:: python
 
-   f.X = 1920                  # set width of fringe patterns to screen width
-   f.Y = 1080                  # set height of fringe patterns to screen height
-   f.K = 2                     # set number of sets
-   f.N = 4                     # set number of shifts
-   f.v = [9, 10]               # set spatial frequencies
+   f.X = 1920                   # set width of fringe patterns to screen width
+   f.Y = 1080                   # set height of fringe patterns to screen height
+   f.K = 2                      # set number of sets
+   f.N = 4                      # set number of shifts
+   f.v = [9, 10]                # set spatial frequencies
 
-   T = f.T                     # get number of frames
+   T = f.T                      # get number of frames
 
 For generating the fringe pattern sequence ``I``, use the method :meth:`~fringes.fringes.Fringes.encode`.
 It returns a `Numpy array <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_
@@ -46,7 +46,7 @@ height :attr:`~fringes.fringes.Fringes.Y`, color channels :attr:`~fringes.fringe
 
 .. code-block:: python
 
-   I = f.encode()              # encode fringe patterns
+   I = f.encode()               # encode fringe patterns
 
 Now display each frame of the fringe pattern sequence on a screen
 and capture the scene with a camera
@@ -73,7 +73,7 @@ It returns the Numpy arrays brightness ``a``, modulation ``b`` and coordinate ``
 
 .. code-block:: python
 
-   a, b, x = f.decode(I_rec)       # decode fringe patterns
+   a, b, x = f.decode(I_rec)    # decode fringe patterns
 
 .. note::
   For the computationally expensive :meth:`~fringes.fringes.Fringes.encode`-function

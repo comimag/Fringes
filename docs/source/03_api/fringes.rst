@@ -4,6 +4,14 @@ fringes package
 Submodules
 ----------
 
+fringes.filter module
+---------------------
+
+.. automodule:: fringes.filter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 fringes.fringes module
 ----------------------
 

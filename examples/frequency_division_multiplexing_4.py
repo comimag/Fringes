@@ -2,10 +2,10 @@
 https://publikationen.bibliothek.kit.edu/1000088264
 """
 
-import fringes as frng
+from fringes import Fringes
 from matplotlib import pyplot as plt
 
-f = frng.Fringes()
+f = Fringes()
 f.X = f.Y = 1024
 f.v = [[5, 13],
        [7, 11]]

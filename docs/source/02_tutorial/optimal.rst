@@ -111,9 +111,9 @@ b) As an approximation, a linear MTF is assumed [Bot08]_:
 
    .. code-block:: python
 
-      import fringes as frng     # import the fringes package
+      from fringes import Fringes     # import the Fringes class
 
-      f = frng.Fringes()         # instantiate the Fringes class
+      f = Fringes()         # instantiate the Fringes class
       # f.magnification = ...
       f.PSF = 5                  # set standard deviation of the point spread function
 
