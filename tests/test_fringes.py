@@ -709,10 +709,6 @@ def test_mtf():
 
 
 if __name__ == "__main__":
-    data = np.ones(100)
-    videodata = vshape(data)
-    videodata.shape
-
     # f = Fringes()
     # f.D = f.K = 1
 

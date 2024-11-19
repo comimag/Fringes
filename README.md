@@ -55,7 +55,7 @@ You instantiate, parameterize and deploy the `Fringes` class:
 
 from fringes import Fringes
 
-f = Fringes()  # instantiate class
+f = Fringes()              # instantiate class
 ```
 
 All [parameters](https://fringes.readthedocs.io/en/main/02_tutorial/params.html)

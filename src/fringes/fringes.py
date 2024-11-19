@@ -174,7 +174,7 @@ class Fringes:
         return self.encode(frames=frames)
 
     def __iter__(self):
-        self._t = 0
+        self._t: int = 0
         return self
 
     def __next__(self) -> np.ndarray:
@@ -372,10 +372,10 @@ class Fringes:
     def _deinterlace(self, I: np.ndarray) -> np.ndarray:
         """Deinterlace fringe patterns.
 
-        This for fringe patterns
-        which were recorded with a line scan camera
-        while each frame has been displayed and captured
-        while the object was moving by one pixel.
+        This applies for fringe patterns
+        recorded with a line scan camera,
+        where each frame has been displayed and captured
+        as the object moved one pixel.
 
         Parameters
         ----------
@@ -1216,12 +1216,13 @@ class Fringes:
         >>> from fringes import Fringes
         >>> f = Fringes()
         >>> I = f.encode()
+        >>> I_rec = I  # todo: replace this line with recording data as in 'record.py'
 
-        >>> a, b, x = f.decode(I)
+        >>> a, b, x = f.decode(I_rec)
 
         Also return interediate and verbose results:
 
-        >>> a, b, x, p, k, r, u = f.decode(I, verbose=True)
+        >>> a, b, x, p, k, r, u = f.decode(I_rec, verbose=True)
         """
         t0 = time.perf_counter()
 

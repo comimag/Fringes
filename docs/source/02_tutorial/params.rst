@@ -128,7 +128,7 @@ It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
 :attr:`~fringes.fringes.Fringes.V` is the fringe :ref:`visibility <visibility and Exposure>` (also called fringe contrast).
 :attr:`~fringes.fringes.Fringes.V` = :attr:`~fringes.fringes.Fringes.A` / :attr:`~fringes.fringes.Fringes.B`, with :attr:`~fringes.fringes.Fringes.V` `\in [0, 1]`.
 
-:attr:`~fringes.fringes.Fringes.beta` is the :ref:`exposure <visibility and Exposure>` (relative brightness) and is within the range `[0, 1]`.
+:attr:`~fringes.fringes.Fringes.E` is the :ref:`exposure <visibility and Exposure>` (relative brightness) and is within the range `[0, 1]`.
 
 :attr:`~fringes.fringes.Fringes.gamma` denotes the gamma correction factor and can be used to compensate non-linearities of the display response curve.
 
