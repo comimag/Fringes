@@ -78,7 +78,7 @@ Combined, this results in the following main effects:
    The camera sight ray originating from the camera pixel `x_c`
    gets deflected by the test object onto a screen coordinate `x`.
    Depending on the object shape and slope, the spatial alignment of the fringe pattern `I` is altered.
-   For specular surfaces, the test object basically becomes part of the imaging optics.
+   For specular surfaces, the test object becomes part of the imaging optics.
 
 .. _blur:
 

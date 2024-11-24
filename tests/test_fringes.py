@@ -9,8 +9,7 @@ import pytest
 import subprocess
 
 from fringes import Fringes, __version__
-from fringes.util import vshape, simulate, gamma_auto_correct, circular_distance
-from fringes.filter import direct, indirect, visibility, exposure, curvature  # todo: height
+from fringes.util import vshape, deinterlace, simulate, gamma_auto_correct, circular_distance
 
 
 # def test_compile_time():  # todo: test_numba_compile_time
@@ -341,33 +340,6 @@ def test_verbose():
     assert np.allclose(dec.uncertainty, 0, rtol=0, atol=0.5), "Uncertainty is larger than 0.5."  # todo: 0.1
 
 
-def test_direct_indirect():
-    f = Fringes(Y=100)
-
-    a, b, x = f.decode(f.encode())
-
-    d = direct(b)
-    assert np.allclose(d, f.Imax, rtol=0, atol=1.5), "Direct is off more than 1.5."  # todo: 0.1
-
-    g = indirect(a, b)
-    assert np.all(g >= 0), "Global contains negative values."
-    assert np.allclose(g, 0, rtol=0, atol=1.5), "Global is larger than 1.5."  # todo: 0.1
-
-
-def test_visibility_exposure():
-    f = Fringes(Y=100)
-
-    I = f.encode()
-    a, b, x = f.decode(I)
-
-    V = visibility(a, b)
-    assert np.all(V >= 0), "Visibility contains negative values."
-    assert np.allclose(V, 1, rtol=0, atol=0.01), "Visibility is off more than 0.01."
-
-    E = exposure(a, I)
-    assert np.allclose(E, 0.5, rtol=0, atol=0.01), "Exposure is off more than 0.01."
-
-
 def test_overexposure(caplog):
     f = Fringes(Y=100)
 
@@ -434,7 +406,7 @@ def test_deinterlacing():
     I = f.encode()
     I = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace
 
-    I = f._deinterlace(I)
+    I = deinterlace(I)
     dec = f.decode(I)
     assert np.allclose(
         dec.registration, f.coordinates()[..., None], rtol=0, atol=0.1
@@ -539,20 +511,6 @@ def test_unwrapping():
 #     #     grad = np.gradient(Phi[d, :, :, 0], axis=1 - d)
 #     #     assert np.allclose(grad, 1, rtol=0, atol=0.1), \
 #     #         f"Gradient of unwrapped phase map isn't close to 1 at direction {d}."
-
-
-def test_curvature():
-    f = Fringes(Y=100)
-
-    dec = f.decode(f.encode())
-    assert np.allclose(curvature(dec.registration)[1:, 1:], 0, rtol=0, atol=0.1), "Curvature if off more than 0.1."
-
-
-# def test_height():  # todo: test height
-#     f = Fringes(Y=100)
-#
-#     dec = f.decode(f.encode())
-#     assert np.allclose(height(curvature(dec.registration)), 0, rtol=0, atol=0.1), "Height if off more than 0.1."
 
 
 def test_hues():

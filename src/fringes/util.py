@@ -132,6 +132,55 @@ def vshape(data: np.ndarray, channels: list | tuple = (1, 3, 4)) -> np.ndarray:
     return data.reshape(T, Y, X, C)  # returns a view
 
 
+def deinterlace(self, I: np.ndarray, T_: int) -> np.ndarray:
+    """Deinterlace pattern sequences.
+
+    This applies for pattern sequences
+    recorded with a line scan camera,
+    where each frame has been displayed and captured
+    as the object moved one pixel.
+
+    Parameters
+    ----------
+    I : np.ndarray
+        Pattern sequence.
+        It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
+    T_ : int
+        Number of frames of the pattern sequence.
+
+    Returns
+    -------
+    I : np.ndarray
+        Deinterlaced pattern sequence.
+
+    Raises
+    ------
+    ValueError
+        If the number of frames of `I` and the number of frames of the pattern sequence 'T_' don't match.
+
+    Examples
+    --------
+    >>> from fringes import Fringes
+    >>> from fringes.util import deinterlace
+    >>> f = Fringes()
+    >>> I = f.encode()
+    >>> I_rec = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace; this is how a line camera would record
+    >>> I_rec = deinterlace(I_rec)
+    """
+    t0 = time.perf_counter()
+
+    T, Y, X, C = vshape(I).shape
+    if T * Y % T_ != 0:
+        raise ValueError("Number of frames of data and keyword parameter 'T_' don't match.")
+
+    # I = I.reshape((T * Y, X, C))  # concatenate
+    I = I.reshape((-1, T_, X, C)).swapaxes(0, 1)  # returns a view
+
+    logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
+
+    return I
+
+
 def simulate(
     I: np.ndarray,
     # M: float = 1,

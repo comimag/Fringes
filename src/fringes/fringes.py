@@ -369,50 +369,6 @@ class Fringes:
 
         logger.info("Optimized parameters.")
 
-    def _deinterlace(self, I: np.ndarray) -> np.ndarray:
-        """Deinterlace fringe patterns.
-
-        This applies for fringe patterns
-        recorded with a line scan camera,
-        where each frame has been displayed and captured
-        as the object moved one pixel.
-
-        Parameters
-        ----------
-        I : np.ndarray
-            Fringe pattern sequence.
-            It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-
-        Returns
-        -------
-        I : np.ndarray
-            Deinterlaced fringe pattern sequence.
-
-        Raises
-        ------
-        AssertionError
-            If the number of frames of `I` and the attribute `T` of the `Fringes` instance don't match.
-
-        Examples
-        --------
-        >>> from fringes import Fringes
-        >>> f = Fringes()
-        >>> I = f.encode()
-        >>> I_rec = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace; this is how a line camera would record  # todo: replace this line with recording data as in '../examples/record.py'
-        >>> I_rec = f._deinterlace(I_rec)
-        """
-        t0 = time.perf_counter()
-
-        T, Y, X, C = vshape(I).shape
-        assert T * Y % self.T == 0, "Number of frames of parameters and data don't match."
-
-        # I = I.reshape((T * Y, X, C))  # concatenate
-        I = I.reshape((-1, self.T, X, C)).swapaxes(0, 1)  # returns a view
-
-        logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
-
-        return I
-
     def coordinates(self) -> np.ndarray:
         """Generate the coordinate matrices of the coordinate system defined in `grid`.
 
@@ -1106,7 +1062,6 @@ class Fringes:
 
         # frames
         if frames is None:
-            # frames = np.arange(np.sum(self._N))
             frames = np.arange(self.H * np.sum(self._N))
         else:
             if not hasattr(frames, "__iter__"):
@@ -1150,7 +1105,6 @@ class Fringes:
         Vmin: float = 0,  # todo: Emin
         verbose: bool | str = False,
         check_overexposure: bool = False,
-        deinterlace: bool = False,
         despike: bool = False,
         denoise: bool = False,
     ) -> namedtuple:
@@ -1173,8 +1127,6 @@ class Fringes:
         check_overexposure: bool, optional
             If this flag is set to True, 'I' is checked for overexposure
             and if so a warning is logged.
-        deinterlace : bool, optional
-            If this flag is set to True, deinterlacing is activated.
         despike: bool, optional
             If this flag is set to True, single pixel outliers in the unwrapped phase map are replaced
             by their local neighborhood using a median filter.
@@ -1252,10 +1204,6 @@ class Fringes:
 
                 if np.count_nonzero(I == Imax) > 0.1 * I.size:
                     logger.warning("'I' is probably overexposed and decoding might yield unreliable results.")
-
-        # deinterlace
-        if deinterlace:
-            I = I._deinterlace(I)
 
         # check number of frames
         if len(I) != self.T:
@@ -2730,7 +2678,7 @@ class Fringes:
 
         It can be used to e.g. let the fringe patterns start (at the origin) with a gray value of zero.
         """
-        return self._p0
+        return 0 if self.mode.lower() == "mrd" else self._p0
 
     @p0.setter
     def p0(self, p0: float):
@@ -3299,7 +3247,7 @@ class Fringes:
         for k, v in sorted(vars().items())
         if not k.startswith("_") and isinstance(v, property)
     }
-    _defaults: dict = dict(sorted(__init__.__kwdefaults__.items()))
+    _defaults = dict(sorted(__init__.__kwdefaults__.items()))
 
     # restrict instance attributes to the ones listed here
     # (commend the next line out to prevent this)

@@ -239,7 +239,7 @@ def decode(
                     a = np.mean(I_)
 
                     # todo: replace zp by z and z by Z
-                    zp = np.zeros(K, np.complex_)  # complex phasor
+                    zp = np.empty(K, np.complex_)  # complex phasor
                     for i in range(K):
                         I_ = I[t_start[i] : t_end[i], y, x, c]
                         zp[i] = np.sum(I_ * cf[i])  # weighted sum

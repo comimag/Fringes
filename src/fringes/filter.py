@@ -130,7 +130,7 @@ def exposure(a: np.ndarray, I_rec: np.ndarray, lessbits: bool = True):
     return E.astype(np.float32, copy=False)
 
 
-def curvature(s: np.ndarray, calibrated: bool = False, normalize: bool = True) -> np.ndarray:  # todo: test
+def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> np.ndarray:  # todo: test
     """Mean curvature map.
 
     Computed by differentiating a slope map.
@@ -140,15 +140,13 @@ def curvature(s: np.ndarray, calibrated: bool = False, normalize: bool = True) -
     s : np.ndarray
         Slope map.
         It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-    calibrated : bool, optional
-        Flag indicating whether the input data `s` originates from a calibrated measurement.
+    center : bool, optional
+        If this flag is set to True, the curvature values are centered to zero using the median.
         Default is False.
-        If this is False, the median value of the computed curvature map is added as an offset,
-        so the median value of the final curvature map becomes zero.
     normalize : bool
-        Flag indicating whether to use the acrtangent function
+        Flag indicating whether to use the acr-tangent function
         to non-linearly map the codomain from [-inf, inf] to [-1, 1].
-        Default is True.
+        Default is False.
 
     Returns
     -------
@@ -164,11 +162,12 @@ def curvature(s: np.ndarray, calibrated: bool = False, normalize: bool = True) -
     assert T == 2, "Number of direction doesn't equal 2."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
-    Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
-    Gx = np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
-    c = np.sqrt(Gx**2 + Gy**2)
+    # Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
+    # Gx = np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
+    # c = np.sqrt(Gx**2 + Gy**2)  # here only positive values!
+    c = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0) + np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
 
-    if not calibrated:
+    if center:
         # c -= np.mean(c, axis=(0, 1))
         c -= np.median(c, axis=(0, 1))  # Median is a robust estimator for the mean.
 
