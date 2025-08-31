@@ -55,7 +55,7 @@ def rot(uu, vv, a):
         # R = np.matrix([[c, -s], [s, c]])
         ur = R[0, 0] * uu + R[0, 1] * vv
         vr = R[1, 0] * uu + R[1, 1] * vv
-        # u = np.dot(uu, R)  # todo: matrix multiplication
+        # u = np.dot(uu, R)  # todo: matrix multiplication: @
         # v = np.dot(vv, R)
     else:
         ur = uu - vv * np.tan(t)
@@ -64,6 +64,6 @@ def rot(uu, vv, a):
     return ur, vr
 
 
-def innercirc(Y: int = 720, X: int = 720):
+def inner_circ(Y: int = 720, X: int = 720):
     """Boolean mask with True values inside inscribed circle."""
     return pol(Y, X)[1] <= 0.5

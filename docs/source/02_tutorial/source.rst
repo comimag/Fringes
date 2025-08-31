@@ -2,7 +2,15 @@
 
 Source
 ======
-The registration (:ref:`decoded coordinates <decoding>`) `\boldsymbol{\Xi}` is a function
+The registration `\hat{x}` is a mapping from camera pixels to screen coordinates `\hat{x}`
+(with subpixel accuracy).
+It contains the screen position where each camera pixel, i.e. each camera sight ray,
+was looking at during the fringe pattern recording.
+The decoded coordinates `\hat{x}(x_c, y_c)` constitute the registration,
+which is a mapping in the same pixel grid as the camera sensor
+and contains the information where each camera pixel `(x_c, y_c)`, i.e. each camera sight ray,
+was looking onto the screen during the fringe pattern recording.
+The registration (:ref:`decoded screen coordinates <decoding>`) `\boldsymbol{\Xi}` is a function
 
 `\boldsymbol{\Xi} : \mathcal{C} \mapsto \mathcal{S} \cup \varnothing,
 \quad \mathcal{C} \subseteq \mathbb{Z}^2,

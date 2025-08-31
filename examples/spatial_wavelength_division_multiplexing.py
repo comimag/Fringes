@@ -16,5 +16,6 @@ f.WDM = True
 
 I = f.encode()
 
+# show first frame
 plt.imshow(I[0])
 plt.show()

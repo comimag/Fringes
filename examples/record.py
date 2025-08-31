@@ -1,15 +1,5 @@
 """Use the `Fringes` package to encode, record and decode data."""
 
-import logging
-
-# configure logging (this is optional)
-formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s.%(funcName)s: %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-logger = logging.getLogger("fringes")
-logger.addHandler(handler)
-logger.setLevel("INFO")
-
 import cv2
 from fringes import Fringes
 import numpy as np
@@ -45,7 +35,7 @@ f.Y = height
 I = f.encode()
 
 # allocate empty image stack
-I_rec = np.empty((f.T,) + image.shape, image.dtype)
+Irec = np.empty((f.T,) + image.shape, image.dtype)
 
 # record
 try:
@@ -60,13 +50,10 @@ try:
 
         if ret:
             # save captured fringe pattern to image stack
-            I_rec[t] = image
+            Irec[t] = image
 finally:
     # close window
     cv2.destroyWindow("Fringes")
 
     # release camera resources
     camera.release()
-
-# analyze recorded fringe pattern sequence
-a, b, x = f.decode(I_rec)

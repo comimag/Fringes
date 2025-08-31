@@ -1,0 +1,49 @@
+digraph G {
+    //concentrate=true
+    //compound=true  // allow edges between clusters
+
+    D, K -> N, v, f
+    l -> v
+    v -> l
+    N, v, f -> D, K
+    reverse -> f
+    static -> f
+    f -> N
+
+    bits -> Imax, dtype
+    dtype -> bits
+    g
+    Imax -> A, B
+    Imax, dtype, SDM, FDM -> _Kmax -> K  // implemented?
+
+    h -> H, M
+    H, D, K, N, SDM, WDM, FDM -> T
+    T, Y, X, C -> shape
+    Y, X -> D
+    WDM, h -> C
+    X, Y, indexing, D, axis -> L
+    L -> Lmax
+    a, Lmax -> x0
+    a, L -> Lext
+    D, grid, FDM -> SDM
+    N, h, FDM -> WDM
+    D, K, SDM, WDM -> FDM
+    FDM -> f, N, v //(fmax fmin)
+    SDM, FDM, K -> B
+    axis -> L
+    WDM -> N
+    static -> v, f
+    FDM, f -> _Nmin -> N
+    FDM -> N  // all equal
+    K -> uwr  // FTM: K := 1
+    Lext, v, lmin -> l -> _mtf
+    // lmin, Lext, K -> l  // close, small, exponential, linear
+    Lext, lmin -> vmax
+    // vmax, N, M, Lext, Lopt, vmax -> vopt
+
+
+
+
+    X, Y, axis, N -> UMR  // N -> fmax -> f -> v -> UMR
+    a -> UMR, crt
+}

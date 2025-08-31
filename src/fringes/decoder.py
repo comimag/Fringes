@@ -1,547 +1,326 @@
-import glob
 import logging
-import os
 
-import numba as nb
+import cv2  # only for spu()
 import numpy as np
+import scipy as sp  # only for ftm()
+import skimage as ski  # only for spu()
+
+from fringes.decoder_numba import decode
 
 logger = logging.getLogger(__name__)
 
-flist = glob.glob(os.path.join(os.path.dirname(__file__), "__pycache__", "decoder*decode*.nbc"))
-if not flist or os.path.getmtime(__file__) > max(os.path.getmtime(file) for file in flist):
-    logger.warning(
-        "The 'decode()'-function has not been compiled yet. "
-        "This will take a few minutes (the time depends on your CPU and energy settings)."
-    )
+
+PI2: float = 2 * np.pi
 
 
-# @nb.jit(
-#     [
-#         nb.types.UniTuple(nb.float32[:, :, :, :], 5)(
-#             nb.uint8[:, :, :, :],
-#             nb.int_[:, :],
-#             nb.float64[:, :],
-#             nb.float64[:, :],
-#             nb.int_[:],
-#             nb.int_[:],
-#             nb.float64[:],
-#             nb.float64[:],
-#             nb.float64,
-#             nb.float64,
-#             nb.types.unicode_type,
-#             nb.float64,
-#             nb.bool_,
-#         ),
-#         nb.types.UniTuple(nb.float32[:, :, :, :], 5)(
-#             nb.uint16[:, :, :, :],
-#             nb.int_[:, :],
-#             nb.float64[:, :],
-#             nb.float64[:, :],
-#             nb.int_[:],
-#             nb.int_[:],
-#             nb.float64[:],
-#             nb.float64[:],
-#             nb.float64,
-#             nb.float64,
-#             nb.types.unicode_type,
-#             nb.float64,
-#             nb.bool_,
-#         ),
-#         nb.types.UniTuple(nb.float32[:, :, :, :], 5)(
-#             nb.float_[:, :, :, :],
-#             nb.int_[:, :],
-#             nb.float64[:, :],
-#             nb.float64[:, :],
-#             nb.int_[:],
-#             nb.int_[:],
-#             nb.float64[:],
-#             nb.float64[:],
-#             nb.float64,
-#             nb.float64,
-#             nb.types.unicode_type,
-#             nb.float64,
-#             nb.bool_,
-#         ),
-#     ],
-#     cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-@nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
-def decode(
-    I: np.ndarray,
-    N: np.ndarray,
-    v: np.ndarray,
-    f: np.ndarray,
-    R: np.ndarray,
-    UMR: np.ndarray,
-    MM_: np.ndarray,
-    x0: np.ndarray,
-    p0: float = np.pi,
-    Vmin: float = 0.0,
-    verbose: bool = False,
-) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-    """Temporal demodulation and spatial demodulation
-    by virtue of generalized temporal phase unwrapping
-    using directional statistics.
+def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Temporal demodulation using `numpy`.
 
     Parameters
     ----------
     I : np.ndarray
         Fringe pattern sequence.
-        Must be in video-shape (frames `T`, height `Y`, width `X`, color channels `C`).
+        Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
     N : np.ndarray
         Number of phase shifts.
-        Must be in shape (number of directions 'D', number of sets 'K').
-    v : np.ndarray
-        Spatial frequencies.
-        Must be in shape (number of directions 'D', number of sets 'K').
-    f : np.ndarray
-        Temporal frequencies.
-        Must be in shape (number of directions 'D', number of sets 'K').
-    R : np.ndarray
-        Decoding range, i.e. length of fringe patterns for each direction.
-        Must be of length 'D'.
-    UMR : np.ndarray
-        Unambiguous measurement range.
-    x0 : np.ndarray
-        Coordinate offset.
-    p0 : np.ndarray, default=np.pi
+        Must be in shape (number of directions `D`, number of sets `K`).
+    p0 : float, default=np.pi
         Phase offset.
-    Vmin : float, default=0
-        Minimum visibility for measurement to be valid.
-        If 'Vmin' isn't reached at a pixel, spatial unwrapping is skipped for this very pixel.
-
-    verbose : bool, default=False
-        Flag for additionally returning intermediate and verbose results: Phase maps 'phi' and residuals 'res'.
 
     Returns
     -------
-    bri : np.ndarray
-        Brightness.
-    mod : np.ndarray
-        Modulation.
-    phi : np.ndarray
-        Phase.
-    reg : np.ndarray
-        Registration.
-    res : np.ndarray
-        Residuals.
+    a : np.ndarray
+            Brightness: average signal.
+        b : np.ndarray
+            Modulation: amplitude of the cosine signal.
+        p : np.ndarray, optional
+            Local phase.
     """
-    # todo: return fringe orders
-
-    PI2 = 2 * np.pi
-
     T, Y, X, C = I.shape
-    # I = I.reshape(Y * X * C)  # only possible for continuous arrays, but we have multiplexing and deinterlacing
     D, K = N.shape
-
-    L = np.max(R + 2 * x0)  # coding range
-    l = L / v  # lambda i.e. period lengths in [px]
-
-    # allocate return values
-    dt = np.float32  # float32's precision is usually better than quantization noise in the phase shifting sequence
-    bri = np.empty((D, Y, X, C), dt)  # brightness should be identical for all sets, therefore we average them
-    mod = np.empty((D, K, Y, X, C), dt)
-    phi = np.empty((D, K, Y, X, C), dt)
-    reg = np.empty((D, Y, X, C), dt)
-    res = np.empty((D, Y, X, C), dt)
-
-    # looping
+    a = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    b = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
+    p = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
+    t0 = 0
     for d in range(D):
-        # time indices (for when decoding shifts of each set)
-        t_end = np.cumsum(N)[d * K : (d + 1) * K]
-        t_start = t_end - N[d]
-
-        # complex filter coefficients
-        cf = np.empty((K, np.max(N[d])), np.complex_)  # discrete complex filter
         for i in range(K):
-            for n in range(N[d, i]):
-                t = n / N[d, i]  # temporal sampling points
-                cf[i, n] = np.exp(1j * (PI2 * f[d, i] * t + p0))  # complex filter
+            I_ = I[t0 : t0 + N[d, i]]  # real signal -> spectrum is Hermitian ("conjugate symmetric")
+            # c = np.fft.fft(I_, axis=0)
+            c = np.fft.rfft(I_, axis=0)
+            avg = np.abs(c)
+            # a[d] += np.sum(I_)
+            a[d] += avg[0]
+            idx = np.argmax(avg[1:], axis=0)
+            idx = int(np.median(idx)) + 1  # median is a robust estimator for the mean
+            cidx = c[idx]  # usually frequency '1'
+            b[d, i] = np.abs(cidx) / N[d, i]  # todo: * 2  # * 2: also add amplitudes of frequencies with opposite sign
+            # p[d, i] = -np.angle(cidx * np.exp(-1j * (p0 - np.pi))) % PI2  # todo: why p0 - PI???
+            cidx *= np.exp(1j * p0)  # shift back by p0
+            p[d, i] = np.angle(cidx) % PI2
+            t0 += N[d, i]
+    return a, b, p
 
-        # initial weights of phase averaging are their inverse variances
-        # (must be multiplied with b**2 later on)
-        w0 = N[d] * v[d] ** 2
 
-        # choose reference phase, i.e. that v from which the other fringe orders of the remaining sets are derived
-        iref = np.argmin(v[d])  # fast
-        # iref = np.argmax(w0)  # precise  # todo: iref
+def temp_demod_numpy(I, N, f, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Temporal demodulation using `numpy`.
 
-        # usually, camera sees only the central part of the screen
-        # -> try central fringe orders first and move outwards
-        # (this only accelerates if a break criterion is used and reached)
-        Rx0 = R[d] + x0[d]
-        R2x0 = Rx0 + x0[d]
-        vmax = np.ceil(v[d] * R2x0 / L).astype(np.int_)
-        kout = np.empty((K, np.max(vmax)), np.int_)  # indices for traversing v from the center outwards
+    Parameters
+    ----------
+    I : np.ndarray
+        Fringe pattern sequence.
+        Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
+    N : np.ndarray
+        Number of phase shifts.
+        Must be in shape (number of directions `D`, number of sets `K`).
+    f : np.ndarray
+        Temporal frequencies.
+        Must be in shape (number of directions `D`, number of sets `K`).
+    p0 : float, default=np.pi
+        Phase offset.
+
+    Returns
+    -------
+    a : np.ndarray
+        Brightness: average signal.
+    b : np.ndarray
+        Modulation: amplitude of the cosine signal.
+    p : np.ndarray, optional
+        Local phase.
+    """
+    T, Y, X, C = I.shape
+    D, K = N.shape
+    a = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    b = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
+    p = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
+    t0 = 0
+    for d in range(D):
         for i in range(K):
-            kc = (vmax[i] - 1) // 2  # central fringe order
-            for k in range(vmax[i]):
-                if k % 2 == 0:
-                    kout[i, k] = kc - (k + 1) // 2
-                else:
-                    kout[i, k] = kc + (k + 1) // 2
+            I_ = I[t0 : t0 + N[d, i]]
+            a[d] += np.sum(I_)
+            t_ = np.arange(N[d, i]) / N[d, i]  # temporal sampling points
+            s = np.exp(1j * (PI2 * f[d, i] * t_ + p0))  # complex filter i.e. sampling points on unit circle
+            # z = np.sum(I_ * c[:, None, None, None], axis=0)  # weighted sum -> complex phasor
+            z = np.dot(
+                np.moveaxis(I_, 0, -1), s
+            )  # 'If a is an N-D array and b is a 1-D array, it is a sum product over the last axis of a and b.'
+            b[d, i] = z / N[d, i] * 2  # * 2: also add amplitudes of frequencies with opposite sign
+            p[d, i] = np.angle(z) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)  # todo: test p0
+            t0 += N[d, i]
+    return a, b, p
 
-        # gcd = np.mean(l / m[d, :], axis=1)
-        # S = UMR / gcd  # number of steps (intervals) for unwrapping
-        # dev = np.exp(1j * np.pi / S)  # unit deviation vector
 
-        # # fringe order combinations
-        # gcd = np.ones(D, np.int_)  # todo: from CRT?!
-        # # xi = np.arange(R[d], step=gcd[d])  # todo: x0[d]
-        # xi = np.arange(x0[d], Rx0[d], gcd[d])
-        # kp = (xi[None, :] // l[d, :, None]).astype(np.int_)
-        # Kp = set(tuple(k) for k in kp.T)  # matching combinations
-        #
-        # Kn = set()  # neighbouring combinations (to account for noise)
-        # for i in range(K):
-        #     for j in (-1, +1):
-        #         kn = kp.copy()
-        #         kn[i] = np.roll(kn[i], j)
-        #         Kn.update(tuple(k) for k in kn.T)
-        # Kn -= Kp  # neighbouring without matching combinations
-        #
-        # args = (range(int(np.ceil(vmax[i]))) for i in range(K))
-        # pools = (tuple(pool) for pool in args)
-        # Ka = [()]
-        # for pool in pools:  # combinatorial product
-        #     Ka = [x + (y,) for x in Ka for y in pool]
-        # Kr = set(Ka) - Kn - Kp  # remaining combinations, i.e. all without neighbouring and also without matching one
-        #
-        # Kp = np.array(sorted(Kp))
-        # Kn = np.array(sorted(Kn))
-        # Kr = np.array(sorted(Kr))
+def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarray:
+    """Unwrap phase maps spatially.
 
-        # for index in np.ndindex(Y, X, C):  # todo: parallel loops with ndindex
-        #     ...
+    Parameters
+    ----------
+    p : np.ndarray
+        Phase maps to unwrap spatially, stacked along the first dimension.
+        Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
+        The frames (first dimension) as well the color channels (last dimension)
+        are unwrapped separately.
+    verbose : bool, default=False
+        Flag for computing InverseReliabilityMap if `uwr_func` is 'cv2'.
+    uwr_func : {'ski', 'cv2'}, optional
+        Unwrapping function to use. The default is 'ski'.
 
-        for x in nb.prange(X):  # numba's prange affects only outer prange-loop, so we put largest direction first
-            for y in nb.prange(Y):
-                # aa01_crt_tried = 0
-                # aa02_der_tried = 0
-                # aa03_der_tried = 0
-                # aa04_nei_tried = 0
-                # aa05_nei_tried = 0
-                # aa06_exh_tried = 0
-                #
-                # aa01_crt_corr = 0
-                # aa02_der_corr = 0
-                # aa03_der_corr = 0
-                # aa04_nei_corr = 0
-                # aa05_nei_corr = 0
-                # aa06_exh_corr = 0
-                #
-                # aa0_all_tried = X
-                # aa0_all_corr = 0
-                #
-                # false = []
-                for c in nb.prange(C):
-                    # temporal demodulation
-                    I_ = I[t_start[0] : t_end[-1], y, x, c]
-                    a = np.mean(I_)
+        - 'ski': `Scikit-image[1]_ <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
 
-                    # todo: replace zp by z and z by Z
-                    zp = np.empty(K, np.complex_)  # complex phasor
-                    for i in range(K):
-                        I_ = I[t_start[i] : t_end[i], y, x, c]
-                        zp[i] = np.sum(I_ * cf[i])  # weighted sum
-                        # zp[i] = np.dot(I_, cf[i])  # weighted sum  # not yet supported by numba as of 2024-10-01
+        - 'cv2': `OpenCV[2]_ <https://docs.opencv.org/4.7.0/df/d3a/group__phase__unwrapping.html>`_
 
-                    b = np.abs(zp) / N[d] * 2  # * 2: also add amplitudes of frequencies with opposite sign
-                    p = np.arctan2(zp.imag, zp.real) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
-                    # p = np.angle(zp) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
+    Returns
+    -------
+    x : np.ndarray
+        Unwrapped phase maps.
 
-                    bri[d, y, x, c] = a
-                    mod[d, :, y, x, c] = b
+    References
+    ----------
+    .. [1] `Herráez et al.,
+            "Fast two-dimensional phase-unwrapping algorithm based on sorting by reliability following a noncontinuous path",
+            Applied Optics,
+            2002.
+            <https://doi.org/10.1364/AO.41.007437>`_
 
-                    if verbose:
-                        phi[d, :, y, x, c] = p
+    .. [2] `Lei et al.,
+            “A novel algorithm based on histogram processing of reliability for two-dimensional phase unwrapping”,
+            Optik - International Journal for Light and Electron Optics,
+            2015.
+            <https://doi.org/10.1016/j.ijleo.2015.04.070>`_
+    """
+    T, Y, X, C = p.shape
 
-                    if Vmin > 0:
-                        V = np.minimum(1, b / np.maximum(a, np.finfo(np.float_).eps))  # avoid division by zero
-                        if np.any(V < Vmin):  # todo: only if UMR < L
-                            reg[d, y, x, c] = np.nan
-                            if verbose:
-                                res[d, y, x, c] = np.nan
-                            continue  # skip spatial demodulation because signal is too weak for a reliable result
+    if uwr_func in "cv2":  # OpenCV unwrapping
+        params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
+        params.height = Y
+        params.width = X
+        unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
 
-                    # spatial demodulation i.e. unwrapping
-                    if K == 1:
-                        if v[d, 0] == 0:  # no spatial modulation
-                            if R[d] == 1:
-                                # the only possible value; however it makes no senso to encode a single coordinate only
-                                reg[d, y, x, c] = 0
+    x = np.empty((T, Y, X, C), np.float32)
+    if verbose:
+        r = np.empty((T, Y, X, C), np.float32)
 
-                                if verbose:
-                                    res[d, y, x, c] = 0
-                            else:
-                                # no spatial modulation, therefore we can't compute value
-                                reg[d, y, x, c] = np.nan
+    # todo: 3D phase unwrapping / fuse unwrapped phase maps?
+    for t in range(T):
+        for c in range(C):
+            if uwr_func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
+                # dtype must be np.float32  # todo: test this
+                x[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[t, :, :, c])
 
-                                if verbose:
-                                    res[d, y, x, c] = np.nan
-                        elif v[d, 0] <= 1:
-                            # one period covers whole screen: no unwrapping required
-                            reg[d, y, x, c] = p[0] / PI2 * l[d, 0] - x0[d]  # change codomain from [0, PI2) to [0, L)
-                            # xi = np.clip(xi, 0, R[d])  # todo: clip
+                if verbose:
+                    r[t, :, :, c] = unwrapping_instance.getInverseReliabilityMap()
+            else:  # Scikit-image algorithm is slower but delivers better results on edges
+                x[t, :, :, c] = ski.restoration.unwrap_phase(p[t, :, :, c])
 
-                            if verbose:
-                                res[d, y, x, c] = 0
-                        else:
-                            # spatial phase unwrapping (to be done in a later step)
-                            reg[d, y, x, c] = p[0] - PI2 / l[d, 0] * x0[d]
-                            # xi = np.clip(xi, 0, R[d])  # todo: clip
+                if verbose:
+                    r[t, :, :, c] = np.nan
 
-                            if verbose:
-                                # attention: residuals are to be received from SPU
-                                pass  # todo
-                    else:
-                        # generalized temporal phase unwrapping
+        xmin = x[t].min()
+        if xmin < 0:
+            x[t] -= xmin
 
-                        # weights of phase measurements
-                        w = w0 * b**2  # weights for inverse variance weighting
-                        w /= np.sum(w)  # normalize weights
-                        # todo: use zp: it already contains N and b  # N v^2 b^2
+    return x
 
-                        # criterion for when correct solution is found,
-                        # which is when the phasor is large enough
-                        # i.e. the circular variance is small enough
-                        # todo: other criterion than all phasors aligned and smallest one inbetween two fringe orders?
-                        # rmin = 0  # minimal phasor length for unwrapping to be successful:
-                        # for i in range(K):
-                        #     zmin = 0
-                        #     for j in range(K):
-                        #         if i == j:
-                        #             zmin += w[j] * dev[d]
-                        #         else:
-                        #             zmin += w[j]
-                        #
-                        #     r = np.abs(zmin)
-                        #     if r > rmin:
-                        #         rmin = r
-                        rmin = 1
 
-                        # maximal phasor length: initialize with minimal value
-                        rmax = 0
+def ftm(I, D) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Fourier-transform method.
 
-                        # try in this order:
-                        # 1.) CRT
-                        # new: KDTree
-                        # 2.) derive(vmin), derive(wmax)
-                        # 3.) matching, their neighbors
-                        # 4.) exhaustive
+    Parameters
+    ----------
+    I : np.ndarray
+        Fringe pattern.
+        Must be in image shape: (height `Y`, width `X`) or (height `Y`, width `X`, color channels `C`).
 
-                        # # KDTree
-                        # anker = (np.arange(lcm[d]) + 1 / 2) * gcd[d]
+    Returns
+    -------
+    a : np.ndarray
+        Brightness: average signal.
+    b : np.ndarray
+        Modulation: amplitude of the cosine signal.
+    p : np.ndarray, optional
+        Local phase.
 
-                        # if CRT[d]:  # CRT is applicable
-                        #     aa01_crt_tried += 1
-                        #
-                        #     # apply Chinese Remainder Theorem
-                        #     # time complexity O(1)
-                        #
-                        #     p_int, p_fract = np.divmod(p / PI2 * m[d], 1)
-                        #     p_int3, p_fract3 = np.divmod(p / PI2 * l[d], gcd[d])
-                        #
-                        #     # refine
-                        #     #
-                        #     # The validity of the absolute phase measurement
-                        #     # depends on the correct outcome of the INT operations,
-                        #     # which means that the measurement noise should not cause any p_ to cross an INT boundary.
-                        #     # It is very interesting and useful to realize
-                        #     # that p_fract is theoretically the same for all i,
-                        #     # so that we can average them to suppress random errors
-                        #     # and to obtain a more reliable xi_est.
-                        #
-                        #     p_fract_circ_mean = (
-                        #         np.angle(np.sum(w * np.exp(1j * PI2 * p_fract))) % PI2 / PI2
-                        #     )  # weighted circular mean
-                        #     p_fract_circ_mean3 = (
-                        #         np.angle(np.sum(w * np.exp(1j * PI2 * p_fract3))) % PI2 / PI2
-                        #     )  # weighted circular mean
-                        #
-                        #     d_p = p_fract - p_fract_circ_mean > 0.5
-                        #     d_m = p_fract_circ_mean - p_fract > 0.5
-                        #     p_int[p_fract - p_fract_circ_mean > 0.5] += 1
-                        #     # p_int[p_fract - p_fract_circ_mean < - 0.5] -= 1
-                        #     p_int[p_fract_circ_mean - p_fract > 0.5] -= 1
-                        #
-                        #     a000 = np.sum(MM_[d] * p_int.astype(np.int_))
-                        #     b000 = p_fract_circ_mean
-                        #     c000 = a000 + b000
-                        #     d000 = c000 % lcm[d]
-                        #     e000 = d000 * gcd[d]
-                        #
-                        #     xi_crt_ = np.sum(MM_[d] * p_int.astype(np.int_))
-                        #     xi_crt = (np.sum(MM_[d] * p_int.astype(np.int_)) % lcm[d] + p_fract_circ_mean) * gcd[
-                        #         d
-                        #     ]  # lcm * gcd = UMR
-                        #     xi_crt3 = (
-                        #         np.sum(MM_[d] * p_int3.astype(np.int_)) % lcm[d] * gcd[d] + p_fract_circ_mean3
-                        #     )  # lcm * gcd = UMR
-                        #
-                        #     xi_uc = np.angle(w * np.exp(1j * p / v[d])) % PI2 / PI2 * L - x0[d]
-                        #     xi_uc3 = np.angle(np.exp(1j * np.sum(p / v[d] * MM_[d]) / lcm[d])) % PI2 / PI2 * L - x0[d]
-                        #
-                        #     x_ = x
-                        #     xi_ = xi_crt
-                        #     xi = xi_crt
-                        #     z = np.exp(1j * PI2 * xi / L)
-                        #
-                        #     # xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]  # todo: L or UMR[d]?
-                        #     if np.round(xi) == x:
-                        #         aa01_crt_corr += 1
-                        # else:
-                        #     r = 0
-                        r = 0
+    Raises
+    ------
+    ValueError
+        If number of dimensions of `I` is neither '2' nor '3'.
 
-                        if r < rmin:
-                            # aa02_der_tried += 1
+    References
+    ----------
+    .. [1] `Takeda et al.,
+            "Fourier-transform method of fringe-pattern analysis for computer-based topography and interferometry",
+            J. Opt. Soc. Am.,
+            1982.
+            <https://doi.org/10.1364/JOSA.72.000156>`_
 
-                            # derive fringe orders from the reference set,
-                            # i.e. the one with the least number of periods
-                            # max. time complexity O(ceil(vmin))
+    .. [2] `Massig et al.,
+            "Fringe-pattern analysis with high accuracy by use of the Fourier-transform method: theory and experimental tests",
+            Appl. Opt.,
+            2001.
+            <https://doi.org/10.1364/AO.40.002081>`_
+    """
+    if I.ndim == 2:
+        Y, X = I.shape
+        C = 1
+    elif I.ndim == 3:
+        Y, X, C = I.shape
+    else:
+        raise ValueError("Number of dimensions must be '2' or '3'.")
+    I.shape = Y, X, C
 
-                            for k0 in kout[iref, : vmax[iref]]:  # fringe orders of reference set 'iref'
-                                arg0 = (k0 * PI2 + p[iref]) / v[d, iref]  # reference angle
-                                zi = w[iref] * np.exp(1j * arg0)
+    a = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    b = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    x = np.empty(shape=(D, Y, X, C), dtype=np.float32)
 
-                                for i in range(iref):
-                                    ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                                    ai = (ki * PI2 + p[i]) / v[d, i]
-                                    zi += w[i] * np.exp(1j * ai)
+    # todo: make passband symmetrical around carrier frequency?
+    if D == 2:
+        fx = np.fft.fftshift(np.fft.fftfreq(X))  # todo: hfft
+        fy = np.fft.fftshift(np.fft.fftfreq(Y))
+        fxx, fyy = np.meshgrid(fx, fy)
+        mx = np.abs(fxx) > np.abs(fyy)  # mask for x-frequencies
+        # todo: make left and right borders round (symmetrical around base band)
+        my = np.abs(fxx) < np.abs(fyy)  # mask for y-frequencies
+        # todo: make lower and upper borders round (symmetrical around base band)
 
-                                # leaving out reference set 'iref'
+        W = 100  # assume window width for filtering out baseband
+        W = min(max(3, W), min(X, Y) / 20)  # clip to ensure plausible value
+        a_pos = int(min(max(0, W), X / 4) + 0.5)  # todo: find good upper cut off frequency
+        # a_pos = X // 4
+        mx[:, :a_pos] = 0  # remove high frequencies
+        b_pos = int(X / 2 - W / 2 + 0.5)
+        mx[:, b_pos:] = 0  # remove baseband and positive frequencies
 
-                                for i in range(iref + 1, K):
-                                    ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                                    ai = (ki * PI2 + p[i]) / v[d, i]
-                                    zi += w[i] * np.exp(1j * ai)
+        H = 100  # assume window height for filtering out baseband
+        H = min(max(3, H), min(X, Y) / 20)  # clip to ensure plausible value
+        c = int(min(max(0, H), Y / 4) + 0.5)  # todo: find good upper cut off frequency
+        # c = Y // 4
+        my[:c, :] = 0  # remove high frequencies
+        d = int(Y / 2 - H / 2 + 0.5)
+        my[d:, :] = 0  # remove baseband and positive frequencies
 
-                                r = np.abs(zi)
-                                if r >= rmax:
-                                    rmax = r
-                                    z = zi
+        # todo: smooth edges of filter masks, i.e. make them Hann-Windows
 
-                        #             if r > rmin:
-                        #                 xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        #                 if np.round(xi) == x:
-                        #                     aa02_der_corr += 1
-                        #                 break  # optimal solution found, stop loop
-                        #
-                        #         if r < rmin and i0 != np.argmax(w):
-                        #             aa03_der_tried += 1
-                        #
-                        #             # derive fringe orders from the reference set,
-                        #             # i.e. the one with the most precise phases
-                        #             # max. time complexity O(ceil(vmax[d]))
-                        #
-                        #             i0 = np.argmax(w)
-                        #
-                        #             for k0 in kout[d, i0, : vmax[d, i0]]:  # fringe orders of set 'i0'
-                        #                 arg0 = (k0 * PI2 + p[i0]) / v[d, i0]  # reference angle
-                        #                 zi = w[i0] * np.exp(1j * arg0)
-                        #
-                        #                 for i in range(i0):
-                        #                     ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                        #                     ai = (ki * PI2 + p[i]) / v[d, i]
-                        #                     zi += w[i] * np.exp(1j * ai)
-                        #
-                        #                 # leaving out reference set 'i0'
-                        #
-                        #                 for i in range(i0 + 1, K):
-                        #                     ki = np.rint((arg0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                        #                     ai = (ki * PI2 + p[i]) / v[d, i]
-                        #                     zi += w[i] * np.exp(1j * ai)
-                        #
-                        #                 r = np.abs(zi)
-                        #
-                        #                 if r >= rmax:
-                        #                     rmax = r
-                        #                     z = zi
-                        #
-                        #                     if r > rmin:
-                        #                         xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        #                         if np.round(xi) == x:
-                        #                             aa03_der_corr += 1
-                        #                         break  # optimal solution found, stop loop
-                        #
-                        #             if r < rmin:
-                        #                 aa04_nei_tried += 1
-                        #
-                        #                 # try natching fringe order combinations
-                        #                 # max. time complexity O(ceil(R[d] / gcd[d]))
-                        #
-                        #                 for k in Kp[d]:
-                        #                     arg = (k * PI2 + p) / v[d]
-                        #                     zm = np.sum(w * np.exp(1j * arg))
-                        #                     r = np.abs(zm)
-                        #
-                        #                     if r >= rmax:
-                        #                         rmax = r
-                        #                         z = zm
-                        #
-                        #                         if r > rmin:
-                        #                             xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        #                             if np.round(xi) == x:
-                        #                                 aa04_nei_corr += 1
-                        #                             break  # optimal solution found, stop loop
-                        #
-                        #                 if r < rmin:
-                        #                     aa05_nei_tried += 1
-                        #
-                        #                     # try neighbors of matching fringe order combinations to account for noise
-                        #                     # max. time complexity O(ceil(R[d] / gcd[d]) * K * 2 - ceil(R[d] / gcd[d]))
-                        #
-                        #                     for k in Kn[d]:
-                        #                         arg = (k * PI2 + p) / v[d]
-                        #                         zn = np.sum(w * np.exp(1j * arg))
-                        #                         r = np.abs(zn)
-                        #
-                        #                         if r >= rmax:
-                        #                             rmax = r
-                        #                             z = zn
-                        #
-                        #                             if r > rmin:
-                        #                                 xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        #                                 if np.round(xi) == x:
-                        #                                     aa05_nei_corr += 1
-                        #                                 break  # optimal solution found, stop loop
-                        #
-                        #                     if r < rmin:
-                        #                         aa06_exh_tried += 1
-                        #
-                        #                         # exhaustive search (without matching and their neighborng fringe order combinations)
-                        #                         # max. time complexity O(prod(v[d] - ceil(R[d] / gcd[d]) * K * 2 - ceil(R[d] / gcd[d]))
-                        #
-                        #                         for k in Ka[d]:
-                        #                             arg = (k * PI2 + p) / v[d]
-                        #                             ze = np.sum(w * np.exp(1j * arg))
-                        #                             r = np.abs(ze)
-                        #
-                        #                             if r >= rmax:
-                        #                                 rmax = r
-                        #                                 z = ze
-                        #
-                        #                                 if r > rmin:
-                        #                                     break  # optimal solution found, stop loop
-                        #
-                        #                         xi = np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        #                         if np.round(xi) == x:
-                        #                             aa06_exh_corr += 1
-                        #
-                        # if np.round(xi) == x:
-                        #     aa0_all_corr += 1
-                        # else:
-                        #     false.append(x)
+        for c in range(C):
+            # todo: hfft
+            I_FFT = np.fft.fftshift(np.fft.fft2(I[:, :, c]))
 
-                        xi = (
-                            np.arctan2(z.imag, z.real) % PI2 / PI2 * L - x0[d]
-                        )  # change codomain from [-PI, PI] to [0, L)
-                        # xi = np.angle(z) % PI2 / PI2 * L - x0[d]  # change codomain from [-PI, PI] to [0, L)
-                        # xi = np.clip(xi, 0, R[d])  # todo: clip
+            I_FFT_x = I_FFT * mx
+            ixy, ixx = np.unravel_index(I_FFT_x.argmax(), I_FFT_x.shape)  # get indices of carrier frequency
+            I_FFT_x = np.roll(I_FFT_x, X // 2 - ixx, 1)  # move to center
 
-                        reg[d, y, x, c] = xi
+            I_FFT_y = I_FFT * my
+            iyy, iyx = np.unravel_index(I_FFT_y.argmax(), I_FFT_y.shape)  # get indices of carrier frequency
+            I_FFT_y = np.roll(I_FFT_y, Y // 2 - iyy, 0)  # move to center
 
-                        if verbose:
-                            res[d, y, x, c] = np.sqrt(-2 * np.log(r.item()))  # circular standard deviation
+            Jx = np.fft.ifft2(np.fft.ifftshift(I_FFT_x))
+            Jy = np.fft.ifft2(np.fft.ifftshift(I_FFT_y))
 
-    return bri, mod.reshape(-1, Y, X, C), phi.reshape(-1, Y, X, C), reg, res
+            x[0, :, :, c] = np.angle(Jx)
+            x[1, :, :, c] = np.angle(Jy)
+            # todo: a: local average of I ?!
+            b[0, :, :, c] = np.abs(Jx) * 2  # factor 2 because one sideband is filtered out
+            b[1, :, :, c] = np.abs(Jy) * 2  # factor 2 because one sideband is filtered out
+            # if verbose:
+            #     r[0, ..., c] = np.log(np.abs(I_FFT))  # J  # todo: hfft
+            #     r[1, ..., c] = np.log(np.abs(I_FFT))  # J
+            # todo: I - J
+    elif D == 1:
+        Lmax = max(X, Y)
+        fx = np.fft.fftshift(np.fft.fftfreq(X)) * X * Y / Lmax  # todo: hfft
+        fy = np.fft.fftshift(np.fft.fftfreq(Y)) * Y * X / Lmax
+        fxx, fyy = np.meshgrid(fx, fy)
+        frr = np.sqrt(fxx**2 + fyy**2)  # todo: normalization of both directions
+
+        mr = frr <= Lmax / 2  # ensure same sampling in all directions
+        W = 10
+        W = min(max(1, W / 2), Lmax / 20)
+        mr[frr < W] = 0  # remove baseband
+        mr[frr > Lmax / 4] = 0  # remove too high frequencies
+
+        mh = np.empty([Y, X])
+        mh[:, : X // 2] = 1
+        mh[:, X // 2 :] = 0
+
+        for c in range(C):
+            # todo: hfft
+            I_FFT = np.fft.fftshift(np.fft.fft2(I[:, :, c]))
+
+            I_FFT_r = I_FFT * mr
+            iy, ix = np.unravel_index(I_FFT_r.nanargmax(), I_FFT_r.shape)  # get indices of carrier frequency
+            y_, x_ = Y / 2 - iy, X / 2 - ix
+            angle = np.degrees(np.arctan2(y_, x_))
+            mhr = sp.ndimage.rotate(mh, angle, reshape=False, order=0, mode="nearest")
+
+            I_FFT_r *= mhr  # remove one sideband
+            I_FFT_r = np.roll(I_FFT_r, X // 2 - ix, 1)  # move to center
+            I_FFT_r = np.roll(I_FFT_r, Y // 2 - iy, 0)  # move to center
+
+            J = np.fft.ifft2(np.fft.ifftshift(I_FFT_r))
+
+            x[0, :, :, c] = np.angle(J)
+            # todo: a
+            b[0, :, :, c] = np.abs(J) * 2  # factor 2 because one sideband is filtered out
+            # if verbose:
+            #     r[0, ..., c] = np.log(np.abs(I_FFT))  # J
+            # todo: I - J
+
+    return a, b, x

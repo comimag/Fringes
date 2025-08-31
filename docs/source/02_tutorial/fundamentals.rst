@@ -67,7 +67,7 @@ The transmission channel consists of the following components with their associa
 
 - screen (light source): photon shot noise
 - surrounding: ambient light sources (increasing `a`)
-- test object: distortion (deflection), absorption (decreasing `a`), scattering (decreasing `b`)
+- test object: distortion (deflection), absorption (decreasing `a` and `b`), scattering (decreasing `b`)
 - camera lens: defocus / blurring (decreasing `b`)
 - camera: electronic shot noise, temporal dark noise, quantization noise
 
@@ -77,7 +77,7 @@ Combined, this results in the following main effects:
 
    The camera sight ray originating from the camera pixel `x_c`
    gets deflected by the test object onto a screen coordinate `x`.
-   Depending on the object shape and slope, the spatial alignment of the fringe pattern `I` is altered.
+   Depending on the object's shape and slope, the spatial alignment of the fringe pattern `I` is altered.
    For specular surfaces, the test object becomes part of the imaging optics.
 
 .. _blur:
@@ -95,7 +95,7 @@ Combined, this results in the following main effects:
        :width: 60%
 
        Projecting the scattering lobe of the surface onto the screen results in a point spread function (PSF).
-       From [Höf13]_.
+       Source: [Höf13]_.
 
    We assume the transmission system to be a linear, shift invariant system `\mathcal{L}\{ \cdot \}`.
    The PSF is the spatial impuls response `h` of the system, blurring the original fringe pattern `I`:
@@ -107,9 +107,9 @@ Combined, this results in the following main effects:
    where `*` denotes the convolution operator.
 
    The modulation transfer function `MTF` is the normalized magnitude of the Fourier-transformed PSF;
-   `b'` denotes the measured modulation.
+   `\hat{b}` denotes the measured modulation.
 
-   `MTF(\nu) = | \mathcal{F}\{h(x)\} | = H(\nu) = \frac{b'(\nu)}{b(\nu)} \le 1`
+   `MTF(\nu) = | \mathcal{F}\{h(x)\} | = H(\nu) = \frac{\hat{b}(\nu)}{b(\nu)} \le 1`
 
    The `MTF` indicates how well a structure with spatial frequency `\nu` is transmitted by an optical system.
    More precisely: it indicates how well the amplitude of a sinusoidal object is retained in the image,
@@ -159,7 +159,7 @@ Decoding
    From the transmitted phase shifting sequence `I^*` we compute for each set `i` the average
    `\hat{a_i} = \frac{\sum_n I^*_{i,n}}{N_i}`
    (the indices `i,n` represent the shifts `n` per set `i`).
-   It should be identical for all sets, so we can average all `\hat{a}_i`
+   It is identical for all sets, so we can average all `\hat{a}_i`
    or simply average all `I^*`.
    This yields the offset (also called brightness)
 
@@ -173,7 +173,7 @@ Decoding
    `z_i = \sum_n I^*_{i,n} c_{i,n}`
    with the measured irradiance readings `I^*_{i,n}` as the weights for the complex sampling points `c_{i,n}`.
 
-   From the complex phasor, we compute the modulation (average signal amplitude)
+   From the complex phasor, we compute the modulation (signal amplitude of frequency `f_{i, n}`)
 
    `\hat{b_i} = \frac{|z_i|}{N_i} 2`.
 
@@ -216,7 +216,7 @@ Decoding
    iii Fuse the `K` coordinate maps
        by weighted averaging:
 
-       `\hat{x} = \frac{\sum_i w_i \hat{x}_i}{\sum_i w_i}`
+       `\hat{x} = \frac{\sum_i w_i \hat{x}_i}{\sum_i w_i}`.
 
        .. _ivw:
 
@@ -229,7 +229,7 @@ Decoding
 
    .. _uwr:
 
-   Depending on the coding parameterization,
+   Depending on the coding configuration,
    one of the following unwrapping methods is deployed:
 
   a) No Unwrapping
@@ -256,11 +256,6 @@ Decoding
      .. warning::
        This only yields a relative phase map, therefore absolute positions remain unknown.
 
-..   The decoded coordinates `\hat{x}(x_c, y_c)` constitute the registration,
-  which is a mapping in the same pixel grid as the camera sensor
-  and contains the information where each camera pixel `(x_c, y_c)`, i.e. each camera sight ray,
-  was looking onto the screen during the fringe pattern recording.
-
 .. tip::
   For a deeper study of fringe pattern analysis, please refer to [Ser14]_.
 
@@ -285,7 +280,7 @@ Now we can state how the transmission impairments are adressed by the phase shif
   .. _eigenfunction:
 
   Sinusoidal fringe patterns have the advantage over binary ones
-  in that they are are Eigenfunctions of the optical system,
+  in that they are Eigenfunctions of the optical system,
   i.e. they have no higher harmonics and therefore remain unchanged even for blurred imaging.
   Although their modulation `b` is attenuated,
   the desired coordinate `x` is determined with sub-pixel precision [Bey16]_.
@@ -298,7 +293,9 @@ The :ref:`decoding <decoding>` yields the following information about the observ
    It depends on the used spatial frequency `\nu_i`
    and can be used to determine the local :ref:`modulation transfer function <mtf>` `MTF`.
 
-3. The decoded coordinate `\hat{x}` contains the information about the test object's local shape or slope.
+3. The coordinate `\hat{x}` is a measure for the local shape or slope of the surface.
+   It is the screen position where each camera pixel, i.e. each camera sight ray,
+   was looking at (got deflected to) during the fringe pattern recording.
 
 .. [Bey16]
    `Beyerer et al.,

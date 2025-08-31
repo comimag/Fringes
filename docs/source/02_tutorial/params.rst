@@ -3,20 +3,22 @@
 Parameters
 ==========
 All parameters are implemented as
-class `properties <https://docs.python.org/3/library/functions.html#property>`_ (managed attributes).
-They are parsed when setting, so usually several input types are accepted,
-e.g. ``bool``, ``int``, ``float`` for ``number``
-and additionally ``list``, ``tuple``, ``numpy.ndarray`` for ``array``.
+`properties <https://docs.python.org/3/library/functions.html#property>`_ (managed attributes).
+They are parsed when set, so usually several input types are accepted,
+e.g. ``bool``, ``int``, ``float`` for `numbers <https://docs.python.org/3.13/library/numbers.html#module-numbers>`_
+and additionally ``list``, ``tuple``, ``numpy.ndarray`` for `sequences <https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence>`_.
 
-Note that some attributes have sub-dependencies (cf. :numref:`interdependencies`), hence dependent attributes might change as well.
+Note that some attributes have sub-dependencies,
+hence dependent attributes might change as well.
 Circular dependencies are resolved automatically.
 
-.. _interdependencies:
-.. figure:: params/interdependencies.svg
-    :align: center
-    :alt: interdependencies
+.. (cf. :numref:`interdependencies`),
+   .. _interdependencies:
+   .. figure:: params/interdependencies.svg
+       :align: center
+       :alt: interdependencies
 
-    Parameters and their Interdependencies.
+    Parameters and their interdependencies.
 
 Video Shape
 -----------
@@ -28,14 +30,13 @@ Video Shape
 - :attr:`~fringes.fringes.Fringes.Y`: height (in pixel units)
 - :attr:`~fringes.fringes.Fringes.X`: width (in pixel units)
 - :attr:`~fringes.fringes.Fringes.C`: number of color channels
+  (depends on the :ref:`coloring <coloring and averaging>` and `multiplexing`_ schemes activated).
 
 .. :attr:`~fringes.fringes.Fringes.T` = :attr:`~fringes.fringes.Fringes.H` `\cdot \sum` :attr:`~fringes.fringes.Fringes.N`.
    If a `multiplexing`_ scheme is activated, :attr:`~fringes.fringes.Fringes.T` reduces further.
 
 :attr:`~fringes.fringes.Fringes.L` is the maximum of :attr:`~fringes.fringes.Fringes.X` and :attr:`~fringes.fringes.Fringes.Y` and denotes the length (in pixel units) to be encoded.
-It can be extended by the factor :attr:`~fringes.fringes.Fringes.alpha`.
-
-:attr:`~fringes.fringes.Fringes.C` depends on the :ref:`coloring <coloring and averaging>` and `multiplexing`_ schemes activated.
+It can be extended by the factor :attr:`~fringes.fringes.Fringes.a` to :attr:`~fringes.fringes.Fringes.Lext`.
 
 .. :attr:`~fringes.fringes.Fringes.size` is the product of :attr:`~fringes.fringes.Fringes.shape`.
 
@@ -48,10 +49,7 @@ The following coordinate systems can be used by setting :attr:`~fringes.fringes.
 .. - ``'Cartesian'``: The center of grid is the origin (0, 0) and positive directions are right- resp. upwards.
    - ``'polar'``: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
    - ``'log-polar'``: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
-
-- ``'spiral'``: The origin (0, 0) resides in the center of the generated grid
-  and positive directions are counterclockwise,
-  cf. [Klu18]_.
+   - ``'spiral'``: The origin (0, 0) resides in the center of the generated grid and positive directions are counterclockwise, cf. [Klu18]_.
 
 :attr:`~fringes.fringes.Fringes.indexing` denotes the indexing convention.
 Possible values are:
@@ -64,11 +62,14 @@ Possible values are:
 :attr:`~fringes.fringes.Fringes.axis` is used to define along which axis of the coordinate system (index 0 or 1)
 the fringe pattern is modulated and shifted if :attr:`~fringes.fringes.Fringes.D` = 1.
 
-:attr:`~fringes.fringes.Fringes.angle` can be used to tilt the coordinate system. The origin remains the same.
+..
+    :attr:`~fringes.fringes.Fringes.angle` can be used to tilt the coordinate system. The origin remains the same.
 
 Set
 ---
-Each set consists of the following attributes (cf. black box in :numref:`interdependencies`):
+Each set consists of the following attributes:
+
+.. (cf. black box in :numref:`interdependencies`):
 
 - :attr:`~fringes.fringes.Fringes.N`: number of shifts
 - :attr:`~fringes.fringes.Fringes.l`: wavelength (in pixel units)
@@ -97,7 +98,9 @@ e.g. let the fringe patterns start (at the origin) with a gray value of zero.
 
 Intensity Values
 ----------------
-:attr:`~fringes.fringes.Fringes.dtype` denotes the data type of the fringe pattern sequence.
+:attr:`~fringes.fringes.Fringes.bits` is the number of bits.
+
+:attr:`~fringes.fringes.Fringes.dtype` denotes the data type which can hold `2` ** :attr:`~fringes.fringes.Fringes.bits` of information.
 Possible values are:
 
 - ``'uint8'`` (default)
@@ -117,7 +120,7 @@ Possible values are:
    and `2^r - 1` for ``unsigned integers`` with r bits.
 
 :attr:`~fringes.fringes.Fringes.Imax` is the maximum gray value and equals 1 for ``float``
-and `2^r - 1` for ``unsigned integers`` with r bits.
+and `2` ** :attr:`~fringes.fringes.Fringes.bits` for ``unsigned integers``.
 
 :attr:`~fringes.fringes.Fringes.A` is the offset, also called brightness (of the background).
 It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
@@ -130,15 +133,14 @@ It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
 
 :attr:`~fringes.fringes.Fringes.E` is the :ref:`exposure <visibility and Exposure>` (relative brightness) and is within the range `[0, 1]`.
 
-:attr:`~fringes.fringes.Fringes.gamma` denotes the gamma correction factor and can be used to compensate non-linearities of the display response curve.
+:attr:`~fringes.fringes.Fringes.g` denotes the gamma correction factor and can be used to compensate non-linearities of the display response curve.
 
 Coloring and Averaging
 ----------------------
-The fringe patterns can be colorized by setting the hue :attr:`~fringes.fringes.Fringes.h` to any RGB color triple within the interval [0, 255].
+The fringe patterns can be colorized by setting the hue :attr:`~fringes.fringes.Fringes.h` to any RGB color triplet within the interval [0, 255].
 However, black (0, 0, 0) is not allowed.
-:attr:`~fringes.fringes.Fringes.h` must be in shape (:attr:`~fringes.fringes.Fringes.H`, 3):
-
-:attr:`~fringes.fringes.Fringes.H` is the number of hues and can be set directly; 3 is the length of the RGB color triple.
+:attr:`~fringes.fringes.Fringes.h` must be in shape (:attr:`~fringes.fringes.Fringes.H`, 3),
+where :attr:`~fringes.fringes.Fringes.H` is the number of hues and 3 is the length of the RGB color triplet.
 
 The hues :attr:`~fringes.fringes.Fringes.h` can also be set by assigning any combination of the following characters as a string:
 
@@ -156,7 +158,7 @@ For example, if all hues are monochromatic, i.e. the RGB values are identical fo
 
 Repeating hues will be fused by averaging them before decoding.
 
-:attr:`~fringes.fringes.Fringes.M` is the number of averaged intensity samples and can be set directly.
+:attr:`~fringes.fringes.Fringes.M` is the number of averaged intensity samples.
 
 Multiplexing
 ------------
@@ -181,34 +183,20 @@ The following multiplexing methods can be activated by setting them to ``True``:
   It can only be activated if :attr:`~fringes.fringes.Fringes.D` > 1 or :attr:`~fringes.fringes.Fringes.K` > 1.
   If one wants a static pattern, i.e. one that remains congruent when shifted, set :attr:`~fringes.fringes.Fringes.static` to ``True``.
 
-:attr:`~fringes.fringes.Fringes.SDM` and :attr:`~fringes.fringes.Fringes.WDM` can be used together (reducing :attr:`~fringes.fringes.Fringes.T` by a factor of 2 * 3 = 6), :attr:`~fringes.fringes.Fringes.FDM` with neither.
-
-.. :attr:`~fringes.fringes.Fringes.TDM`: By default, the aforementioned multiplexing methods are deactivated,
-  so we then only have Time Divison Multiplexing.
+:attr:`~fringes.fringes.Fringes.SDM` and :attr:`~fringes.fringes.Fringes.WDM` can be used together
+(reducing :attr:`~fringes.fringes.Fringes.T` by a factor of 2 * 3 = 6),
+:attr:`~fringes.fringes.Fringes.FDM` with neither.
 
 For more details, please refer to :doc:`Multiplex <mux>`.
 
-Unwrapping
-----------
+.. Unwrapping
+   ----------
 
-:attr:`~fringes.fringes.Fringes.uwr` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
-See :ref:`unwrapping <uwr>` for more details.
+   :attr:`~fringes.fringes.Fringes.uwr` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
+   See :ref:`unwrapping <uwr>` for more details.
 
 .. :attr:`~fringes.fringes.Fringes.mode` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
    Choose either ``'fast'`` (the default) or ``'precise'``.
-
-.. :attr:`~fringes.fringes.Fringes.Vmin` denotes the minimal fringe visibility for the measurement to be balid and is in the interval [0, 1].
-   During decoding, pixels with less are discarded, which can speed up the computation.
-
-.. :attr:`~fringes.fringes.Fringes.umax` denotes the maximal uncertainty required for the measurement to be valid and is in the interval [0, `L`].
-   During decoding, pixels with less are discarded, which can speed up the computation.
-
-.. :attr:`~fringes.fringes.Fringes.verbose` can be set to ``True`` to also receive from decoding
-   the wrapped phase maps `\varphi_i`, the fringe orders `k_i`, the residuals `r`, the uncertainty `u`,
-   the visibility `V` and the exposure `E`.
-
-:attr:`~fringes.fringes.Fringes.FTM` denotes :ref:`Fourier-transform method <Fourier Transform Method>` and is deployed if :attr:`~fringes.fringes.Fringes.T` = 1
-and the `coordinate system`_ is eighter ``'image'`` or ``'Cartesian'``.
 
 Quality Metrics
 ---------------
@@ -223,36 +211,42 @@ The :attr:`~fringes.fringes.Fringes.UMR` is derived from :attr:`~fringes.fringes
 - Else, if :attr:`~fringes.fringes.Fringes.v` `\lor` :attr:`~fringes.fringes.Fringes.l` `\in \mathbb{Q}` , `lcm` resp. `gcd` are extended to rational numbers.
 - Else, if :attr:`~fringes.fringes.Fringes.v` `\land` :attr:`~fringes.fringes.Fringes.l` `\in \mathbb{R} \setminus \mathbb{Q}` , :attr:`~fringes.fringes.Fringes.UMR` = `prod(` :attr:`~fringes.fringes.Fringes.l` `)`, with `prod` being the product operator.
 
-:attr:`~fringes.fringes.Fringes.eta` denotes the coding efficiency :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.UMR`.
+.. :attr:`~fringes.fringes.Fringes.u` denotes the minimum possible uncertainty of the measurement in pixels.
+   It is based on the phase noise model from [Sur97]_
+   and propagated through the unwrapping process and the phase fusion.
+   It is influenced by the parameters
+
+   - :attr:`~fringes.fringes.Fringes.M`: number of averaged intensity samples,
+   - :attr:`~fringes.fringes.Fringes.N`: number of phase shifts,
+   - :attr:`~fringes.fringes.Fringes.l`: wavelengths,
+   - `\hat{B}`: measured modulation and
+   - `\hat{u_I}`: intensity noise (caused by the measurement hardware [EMV]_, [Bot08]_).
+
+   .. - :attr:`~fringes.fringes.Fringes.quant`: quantization noise of the light source or camera,
+      - :attr:`~fringes.fringes.Fringes.dark`: dark noise of the used camera,
+      - :attr:`~fringes.fringes.Fringes.shot`: photon noise of light itself,
+      - :attr:`~fringes.fringes.Fringes.gain`: system gain of the used camera.
+
+   :attr:`~fringes.fringes.Fringes.SNR` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.u`
+   is the signal-to-noise ratio of the phase shift coding
+   and is a measure of how many points can be distinguished within the screen length [0, :attr:`~fringes.fringes.Fringes.L`).
+   It remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
+
+   :attr:`~fringes.fringes.Fringes.DR` = :attr:`~fringes.fringes.Fringes.UMR` / :attr:`~fringes.fringes.Fringes.u`
+   is the dynamic range of the phase shift coding
+   and is a measure of how many points can be distinguished within the unambiguous measurement range `[0,` :attr:`~fringes.fringes.Fringes.UMR` `)`.
+   Again, it remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
+
+:attr:`~fringes.fringes.Fringes.eta` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.UMR`
+is the spatial coding efficiency
+and is a measure of how well the coding range :attr:`~fringes.fringes.Fringes.UMR` fits the screen length :attr:`~fringes.fringes.Fringes.L`.
 It makes no sense to choose :attr:`~fringes.fringes.Fringes.UMR` much larger than :attr:`~fringes.fringes.Fringes.L`,
-because then a significant part of the coding range is not used.
+because then a significant part of the coding range remains unused.
 
-:attr:`~fringes.fringes.Fringes.u` denotes the minimum possible uncertainty of the measurement in pixels.
-It is based on the phase noise model from [Sur97]_
-and propagated through the unwrapping process and the phase fusion.
-It is influenced by the parameters
-
-- :attr:`~fringes.fringes.Fringes.M`: number of averaged intensity samples,
-- :attr:`~fringes.fringes.Fringes.N`: number of phase shifts,
-- :attr:`~fringes.fringes.Fringes.l`: wavelengths of the fringes,
-- :attr:`~fringes.fringes.Fringes.B`: measured amplitude
-
-and the measurement hardware [EMV]_, [Bot08]_
-
-.. - :attr:`~fringes.fringes.Fringes.quant`: quantization noise of the light source or camera,
-   - :attr:`~fringes.fringes.Fringes.dark`: dark noise of the used camera,
-   - :attr:`~fringes.fringes.Fringes.shot`: photon noise of light itself,
-   - :attr:`~fringes.fringes.Fringes.gain`: system gain of the used camera.
-
-:attr:`~fringes.fringes.Fringes.SNR` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.u` is the signal-to-noise ratio of the phase shift coding
-and is a measure of how many points can be distinguished within the screen length [0, :attr:`~fringes.fringes.Fringes.L`).
-It remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
-
-:attr:`~fringes.fringes.Fringes.DR` = :attr:`~fringes.fringes.Fringes.UMR` / :attr:`~fringes.fringes.Fringes.u` is the dynamic range of the phase shift coding
-and is a measure of how many points can be distinguished within the unambiguous measurement range `[0,` :attr:`~fringes.fringes.Fringes.UMR` `)`.
-Again, it remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
-
-.. todo: _efficiency
+.. :attr:`~fringes.fringes.Fringes.eta_temp` = :attr:`~fringes.fringes.Fringes.SNR` / :attr:`~fringes.fringes.Fringes.T`
+   is the temporal coding efficiency
+   and is a measure of how many code words, i.e. frames :attr:`~fringes.fringes.Fringes.T`,
+   can distinguish how many screen points :attr:`~fringes.fringes.Fringes.SNR`.
 
 .. [Bot08]
    `Bothe,

@@ -16,5 +16,6 @@ f.FDM = True
 
 I = f.encode()
 
+# show first frame
 plt.imshow(I[0], cmap="gray")
 plt.show()

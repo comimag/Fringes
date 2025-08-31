@@ -9,7 +9,7 @@ from fringes.util import vshape
 logger = logging.getLogger(__name__)
 
 
-def direct(b: np.ndarray):
+def direct(b: np.ndarray) -> np.ndarray:
     """Direct illumination component.
 
     Parameters
@@ -24,16 +24,16 @@ def direct(b: np.ndarray):
 
     References
     ----------
-    ..  [#] `Nayar et al.,
-            “Fast separation of direct and global components of a scene using high frequency illumination”,
-            SIGGRAPH,
-            2006.
-            <https://dl.acm.org/doi/abs/10.1145/1179352.1141977>`_
+    .. [#] `Nayar et al.,
+           “Fast separation of direct and global components of a scene using high frequency illumination”,
+           SIGGRAPH,
+           2006.
+           <https://dl.acm.org/doi/abs/10.1145/1179352.1141977>`_
     """
     return 2 * b
 
 
-def indirect(a: np.ndarray, b: np.ndarray):
+def indirect(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Indirect (global) illumination component.
 
     Parameters
@@ -50,11 +50,11 @@ def indirect(a: np.ndarray, b: np.ndarray):
 
     References
     ----------
-    ..  [#] `Nayar et al.,
-            “Fast separation of direct and global components of a scene using high frequency illumination”,
-            SIGGRAPH,
-            2006.
-            <https://dl.acm.org/doi/abs/10.1145/1179352.1141977>`_
+    .. [#] `Nayar et al.,
+           “Fast separation of direct and global components of a scene using high frequency illumination”,
+           SIGGRAPH,
+           2006.
+           <https://dl.acm.org/doi/abs/10.1145/1179352.1141977>`_
     """
     # todo: assert videoshape of a and b
 
@@ -66,7 +66,7 @@ def indirect(a: np.ndarray, b: np.ndarray):
     return g
 
 
-def visibility(a: np.ndarray, b: np.ndarray):
+def visibility(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Visibility.
 
     Parameters
@@ -87,23 +87,23 @@ def visibility(a: np.ndarray, b: np.ndarray):
     K = int(b.shape[0] / D)
 
     V = np.minimum(
-        1, b.reshape(D, K, Y, X, C) / np.maximum(a[:, None, :, :, :], np.finfo(np.float_).eps)
+        1, b.reshape(D, K, Y, X, C) / np.maximum(a[:, None, :, :, :], np.finfo(np.float64).eps)
     )  # avoid division by zero
 
     return V.astype(np.float32, copy=False).reshape(D * K, Y, X, C)
 
 
-def exposure(a: np.ndarray, I_rec: np.ndarray, lessbits: bool = True):
+def exposure(a: np.ndarray, Irec: np.ndarray, lessbits: bool = True) -> np.ndarray:
     """Exposure.
 
     Parameters
     ----------
     a : np.ndarray
         Brightness.
-    I_rec : np.ndarray
+    Irec : np.ndarray
         Fringe pattern sequence.
     lessbits: bool, optional
-        The camera recorded `I_rec` may contain fewer bits of information than its data type can hold,
+        The camera recorded `Irec` may contain fewer bits of information than its data type can hold,
         e.g. 12 bits for dtype `uint16`.
         If this flag is activated, it looks for the maximal value in `I`
         and sets `Imax` to the same or next power of two which is divisible by two.
@@ -115,13 +115,13 @@ def exposure(a: np.ndarray, I_rec: np.ndarray, lessbits: bool = True):
         Exposure.
     """
 
-    if I_rec.dtype.kind in "ui":
-        if np.iinfo(I_rec.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
-            B = int(np.ceil(np.log2(I_rec.max())))  # same or next power of two
-            B += -B % 2  # same or next power of two which is divisible by two
-            Imax = 2**B - 1
+    if Irec.dtype.kind in "ui":
+        if np.iinfo(Irec.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
+            bits = int(np.ceil(np.log2(Irec.max() + 1)))  # same or next power of two
+            bits += -bits % 2  # same or next power of two which is divisible by two
+            Imax = 2**bits - 1
         else:
-            Imax = np.iinfo(I_rec.dtype).max
+            Imax = np.iinfo(Irec.dtype).max
     else:  # float
         Imax = 1  # assume
 
@@ -141,7 +141,7 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
         Slope map.
         It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
     center : bool, optional
-        If this flag is set to True, the curvature values are centered to zero using the median.
+        If this flag is set to True, the curvature values get centered around zero using the median.
         Default is False.
     normalize : bool
         Flag indicating whether to use the acr-tangent function
@@ -153,7 +153,6 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
     c : np.ndarray
         Curvature map.
     """
-
     t0 = time.perf_counter()
 
     T, Y, X, C = vshape(s).shape
@@ -165,18 +164,31 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
     # Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
     # Gx = np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
     # c = np.sqrt(Gx**2 + Gy**2)  # here only positive values!
-    c = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0) + np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
+
+    xdx = np.gradient(s[0], axis=0)  # 0
+    xdy = np.gradient(s[0], axis=1)  # 1
+    ydx = np.gradient(s[1], axis=0)  # 1
+    ydy = np.gradient(s[1], axis=1)  # 0
+    c = xdx + xdy + ydx + ydy
+
+    # xdx2 = np.gradient(s[0], axis=0, edge_order=2)  # 0
+    # xdy2 = np.gradient(s[0], axis=1, edge_order=2)  # 1
+    # ydx2 = np.gradient(s[1], axis=0, edge_order=2)  # 1
+    # ydy2 = np.gradient(s[1], axis=1, edge_order=2)  # 0
+    # c2 = xdx2 + xdy2 + ydx2 + ydy2
+
+    # todo: derivative of gaussian, LoG
 
     if center:
         # c -= np.mean(c, axis=(0, 1))
-        c -= np.median(c, axis=(0, 1))  # Median is a robust estimator for the mean.
+        c -= np.median(c, axis=(0, 1))  # Median is a robust estimator of the mean.
 
     if normalize:
         c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
 
-    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
 
-    return c.reshape(-1, Y, X, C)
+    return c  # .reshape(-1, Y, X, C)
 
 
 # def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
@@ -199,14 +211,13 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #     z : np.ndarray
 #         Local height map.
 #     """
-#
 #     t0 = time.perf_counter()
 #
 #     kernel = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], np.float32)
 #     # kernel *= iterations  # todo
 #
-#     T, Y, X, C = vshape(curv).shape
-#     curv = curv.reshape(T, Y, X, C)  # returns a view
+#     curv = vshape(curv)
+#     T, Y, X, C = curv.shape  # returns a view
 #
 #     if T == 1:
 #         curv = np.squeeze(curv, axis=0)  # returns a view
@@ -222,6 +233,6 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #     # todo: residuals
 #     # filter2(kernel_laplace, z) - curvature;
 #
-#     logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
+#     logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
 #
 #     return z.reshape(-1, Y, X, C)

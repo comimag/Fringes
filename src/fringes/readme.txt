@@ -1,20 +1,25 @@
 before publishing new version to pypi:
-    docs
 
-    poetry version ... (patch, minor, major, prepatch, preminor, premajor, prerelease)
-    poetry update
-    poetry lock
-    poetry run black src
-    poetry run pytest   # todo: coverage
-    poetry run pytest src/ --doctest-modules
+update docs
 
-    git tag
-    git push (with tags)
+uv self update
+uv python upgrade
+uv python pin
+uv version --bump patch/minor/major  # https://docs.astral.sh/uv/reference/cli/#uv-version
+uv sync -U --all-groups
+uv run black tests src examples
+uv run pytest --cov  # speed, speed, compile_time
+uv run pytest src/ --doctest-modules
 
-    GitHub new release (by tag)
+git tag
+git push (with tags)
 
-    read-the-docs check docs
-    read-the-docs activate version (not hidden)
+GitHub new release (by tag)
 
-    poetry build
-    poetry publish
+read-the-docs check docs
+read-the-docs activate version (not hidden)
+
+uv build
+uv publish
+
+pip install fringes -U  # test

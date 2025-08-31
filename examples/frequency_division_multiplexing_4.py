@@ -7,8 +7,7 @@ from matplotlib import pyplot as plt
 
 f = Fringes()
 f.X = f.Y = 1024
-f.v = [[5, 13],
-       [7, 11]]
+f.v = [[5, 13], [7, 11]]
 f.f = f.v
 f.D = 2
 f.K = 2
@@ -18,5 +17,6 @@ f.static = True
 
 I = f.encode()
 
+# show first frame
 plt.imshow(I[0], cmap="gray")
 plt.show()

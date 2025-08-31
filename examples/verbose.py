@@ -6,21 +6,21 @@ import matplotlib.pyplot as plt
 f = Fringes()
 I = f.encode()
 
-I_rec = I  # todo: replace this line with recording data as in 'record.py'
+Irec = I  # todo: replace this line with the recorded data, cf. example in 'record.py' as in 'record.py'
 
 # decode and return additional results:
-dec = f.decode(I_rec, verbose=True)
+dec = f.decode(Irec, verbose=True)
 
 # make use of namedtuple:
-a = dec.brightness
-b = dec.modulation
-x = dec.registration
-p = dec.phase
-k = dec.order
-r = dec.residuals
-u = dec.uncertainty
+a = dec.a
+b = dec.b
+x = dec.x
+p = dec.p
+k = dec.k
+r = dec.r
+u = dec.u
 
-# display first frame of results
+# show first frame and first color channel of results
 plt.figure("uncertainty 'u'")
 plt.imshow(u[0, :, :, 0])
 plt.colorbar()

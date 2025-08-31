@@ -4,14 +4,11 @@ Filter
 ======
 The :ref:`decoding <decoding>` yields the following results:
 
-The brightness `\hat{a}` is a measure for the reflectance (resp. absorption) of the surface.
-
-The modulation `\hat{b}` is a measure for the glossiness (resp. scattering) of the surface.
-
-The registration `\hat{x}` is a mapping from camera pixels to screen positions `\hat{x}`
-(with subpixel accuracy).
-It contains the information where each camera pixel, i.e. each camera sight ray,
-looked onto the screen during the fringe pattern recording.
+- The brightness `\hat{a}` is a measure for the reflectance (resp. absorption) of the surface.
+- The modulation `\hat{b}` is a measure for the glossiness (resp. scattering) of the surface.
+- The coordinate `\hat{x}` is a measure for the local shape or slope of the surface.
+  It is the screen position where each camera pixel, i.e. each camera sight ray,
+  was looking at (got deflected to) during the fringe pattern recording.
 
 .. literalinclude:: /../../examples/decode.py
    :language: python
@@ -19,21 +16,21 @@ looked onto the screen during the fringe pattern recording.
    :linenos:
 
 These results are in :ref:`video shape <video shape>`,
-so for the brightness `\hat{a}` and the registration `\hat{x}`,
+so for the brightness `\hat{a}` and the coordinate `\hat{x}`,
 the usually two directions :attr:`~fringes.fringes.Fringes.D`
-are along the the first i.e. the time axis.
+are along the first i.e. the time axis.
 For the modulation `\hat{b}`,
-the modulation of the sets :attr:`~fringes.fringes.Fringes.K` of the directions :attr:`~fringes.fringes.Fringes.D`
+the modulation of the sets :attr:`~fringes.fringes.Fringes.K` for the directions :attr:`~fringes.fringes.Fringes.D`
 are flattened into the first dimension;
 you may reshape them as follows:
 
 .. code-block:: python
    :linenos:
-   :lineno-start: 25
+   :lineno-start: 24
 
-   T, Y, X, C = b.shape
-   b = b.reshape(f.D, f.K, Y, X, C)
+   b = b.reshape(f.D, f.K, *b.shape[1:])
 
+.. _brightness:
 .. figure:: filter/brightness.png
    :scale: 75%
    :align: center
@@ -41,6 +38,7 @@ you may reshape them as follows:
 
    Brightness.
 
+.. _modulation:
 .. figure:: filter/modulation.png
    :scale: 75%
    :align: center
@@ -48,12 +46,13 @@ you may reshape them as follows:
 
    Modulation.
 
-.. figure:: filter/registration.png
+.. _coordinate:
+.. figure:: filter/coordinate.png
    :scale: 75%
    :align: center
-   :alt: registration
+   :alt: coordinate
 
-   Registration.
+   Coordinate.
 
 Direct and Global Illumination Component
 ----------------------------------------
@@ -123,7 +122,7 @@ The exposure `E` is affected by additional, constant light (not modulating the s
 - the absorption of optical elements (e.g. filters),
 - the exposure time and the aperture setting of the camera.
 
-The visibility `V` of the fringes is influenced by:
+The visibility `V` is influenced by:
 
 .. - the modulation transfer function of all system components
 
@@ -154,8 +153,8 @@ The visibility `V` of the fringes is influenced by:
 
 Verbose Results
 ---------------
-Additionally to the already mentioned results brightness, modulation, registration,
-visibility and exposure, more intermediate and verbose results an be returned
+Additionally to the already mentioned results brightness, modulation, coordinate,
+visibility and exposure, more intermediate and verbose results can be returned
 by setting the flag ``verbose`` in the method :meth:`~fringes.fringes.Fringes.decode` to ``True``:
 
 .. literalinclude:: /../../examples/verbose.py
@@ -174,16 +173,17 @@ The phase ... after temporal demodulation ... link to fundamentals
 
 ----
 
-The fringe order ... spatial demodulation, i.e. unwrapping ... link to fundamentals
+..
+   The fringe order ... spatial demodulation, i.e. unwrapping ... link to fundamentals
 
-.. figure:: filter/fringe_order.png
-   :scale: 75%
-   :align: center
-   :alt: fringe order
+   .. figure:: filter/fringe_order.png
+      :scale: 75%
+      :align: center
+      :alt: fringe order
 
-   Fringe order.
+      Fringe order.
 
-----
+   ----
 
 The residuals ... after optimization-based unwrapping ... link to fundamentals
 
@@ -209,7 +209,7 @@ best/minimal uncertainty if ui is set and correct fringe orders are found ... li
 Slope
 -----
 If the deflectometric setup is calibrated,
-the slope of the surface can be computed from the registration.
+the slope of the surface can be computed from the coordinate.
 
 "[Deflectometry] measures slopes (first order derivatives of the shape).
 The sensitivity to higher spatial frequencies is therefore amplified,
@@ -227,7 +227,7 @@ and at the same time poor sensitivity and stability for low-order surface featur
     :alt: slope_x
 
     Slope map in x-direction.
-    From [SAC]_.
+    Source: [SAC]_.
 
 .. figure:: filter/slope_y.jpg
     :scale: 20%
@@ -235,7 +235,7 @@ and at the same time poor sensitivity and stability for low-order surface featur
     :alt: slope_y
 
     Slope map in y-direction.
-    From [SAC]_.
+    Source: [SAC]_.
 
 Curvature
 ---------
@@ -249,7 +249,7 @@ and does not require accurate prior knowledge of the distance to the object." [B
 
 .. literalinclude:: /../../examples/curvature.py
    :language: python
-   :emphasize-lines: 4, 14
+   :emphasize-lines: 4, 16
    :linenos:
 
 .. figure:: filter/curvature.jpg
@@ -258,12 +258,12 @@ and does not require accurate prior knowledge of the distance to the object." [B
     :alt: curvature
 
     Curvature map.
-    From [SAC]_.
+    Source: [SAC]_.
 
 .. Height
    ------
    Deflectometry measures slopes, therefore the 3D shape can in principle be reconstructed by integrating the slope data.
-   From [Wag03]_:
+   Source: [Wag03]_:
 
    .. image:: integrate_01.png
        :scale: 100%

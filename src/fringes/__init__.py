@@ -1,10 +1,10 @@
-"""Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."""
-
+from importlib.metadata import version
 import logging
 
-from .fringes import Fringes
-from .util import _version, vshape
+from fringes.decoder import spu
+from fringes.fringes import Fringes
+from fringes.util import vshape
 
 logger = logging.getLogger(__name__)
 
-__version__ = _version()
+__version__ = version(__package__)  # installed version

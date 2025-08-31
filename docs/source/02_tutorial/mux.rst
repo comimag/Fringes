@@ -82,7 +82,7 @@ This allows single shot applications to be implemented.
 
 Frequency Division Multiplexing
 -------------------------------
-In frequency division multiplexing (:attr:`~fringes.fringes.Fringes.FDM`) [Liu10]_:sup:`,` [Liu14b]_,
+In frequency division multiplexing (:attr:`~fringes.fringes.Fringes.FDM`) [Liu14b]_, [Liu10]_,
 the directions :attr:`~fringes.fringes.Fringes.D`
 and the sets :attr:`~fringes.fringes.Fringes.K` are additively superimposed.
 Hence, the amplitude :attr:`~fringes.fringes.Fringes.B` is reduced
@@ -96,6 +96,22 @@ to distinguish the individual sets.
 A minimal number of shifts
 `N_{min} \ge \lceil 2 * f_{max} \rceil + 1`
 is required to satisfy the sampling theorem.
+
+.. literalinclude:: /../../examples/frequency_division_multiplexing_2.py
+   :language: python
+   :emphasize-lines: 11, 12, 13, 14, 15
+   :linenos:
+
+.. _FDM-D2K1:
+.. figure:: mux/FDM_D2K1.png
+    :scale: 20%
+    :align: center
+    :alt: FDM-D2K1
+
+    Frequency division multiplexing (FDM).
+    Two directions are superimposed.
+
+----
 
 .. literalinclude:: /../../examples/frequency_division_multiplexing_1.py
    :language: python
@@ -113,25 +129,9 @@ is required to satisfy the sampling theorem.
 
 ----
 
-.. literalinclude:: /../../examples/frequency_division_multiplexing_2.py
-   :language: python
-   :emphasize-lines: 11, 12, 13, 14, 15, 16
-   :linenos:
-
-.. _FDM-D2K1:
-.. figure:: mux/FDM_D2K1.png
-    :scale: 20%
-    :align: center
-    :alt: FDM-D2K1
-
-    Frequency division multiplexing (FDM).
-    Two directions are superimposed.
-
-----
-
 .. literalinclude:: /../../examples/frequency_division_multiplexing_3.py
    :language: python
-   :emphasize-lines: 12, 13, 14, 15, 16, 17
+   :emphasize-lines: 11, 12, 13, 14, 15
    :linenos:
 
 .. _FDM-D2K2:
@@ -156,7 +156,7 @@ With static/congruent patterns, one can realize phase shifting by moving printed
 
 .. literalinclude:: /../../examples/frequency_division_multiplexing_4.py
    :language: python
-   :emphasize-lines: 10, 11, 12, 13, 14, 15, 16, 17
+   :emphasize-lines: 10, 11, 12, 13, 14, 15, 16
    :linenos:
 
 .. _FDM-D2K2-static:
@@ -166,8 +166,8 @@ With static/congruent patterns, one can realize phase shifting by moving printed
     :alt: FDM-D2K2-static
 
     Frequency division multiplexing (FDM).
-    Two directions and two sets are superimposed;
-    static pattern which remains congruent when phase shifted.
+    Two directions and two sets are superimposed.
+    This is a static pattern which remains congruent when phase shifted.
 
 .. Fourier Transform Method
    ------------------------
@@ -214,7 +214,7 @@ With static/congruent patterns, one can realize phase shifting by moving printed
 
        In this image, the spatial frequency `\nu_r` is denoted as `f_0`.
        (A) Separated Fourier spectra; (B) single spectrum selected and translated to the origin.
-       From [Mas01]_.
+       Source: [Mas01]_.
 
    Again using the 2DFFT algorithm, we compute the inverse Fourier-transform.
    Now we have the signal phase `\varPhi_s` in the imaginary part
@@ -227,7 +227,7 @@ With static/congruent patterns, one can realize phase shifting by moving printed
        :align: center
 
        Recorded reflection of a crossed fringe pattern with high spatial frequency :attr:`~fringes.fringes.Fringes.v`.
-       From [Liu14a]_.
+       Source: [Liu14a]_.
 
    .. todo: show example images of decoded
 

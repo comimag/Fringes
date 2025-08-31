@@ -7,16 +7,14 @@ f = Fringes()
 
 I = f.encode()
 
-I_rec = I  # todo: replace this line with recording data as in 'record.py'
+Irec = I  # todo: replace this line with the recorded data, cf. example in 'record.py' as in 'record.py'
 
-a, b, x = f.decode(I_rec)
+a, b, x = f.decode(Irec)
 
 s = x  # todo: compute slope from calibrated setup
 
-plt.figure("slope 'y'")
-plt.imshow(s[1, :, :, 0])
-plt.colorbar()
-plt.figure("slope 'x'")
+# show first frame and first color channel of results
+plt.figure("slope 's'")
 plt.imshow(s[0, :, :, 0])
 plt.colorbar()
 plt.show()

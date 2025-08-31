@@ -20,7 +20,7 @@ To get access to the very latest features and bugfixes you have three choices:
 
     pip install .
 
-2. Directly install from GitHub with ``pip``::
+2. Directly install `Fringes` from GitHub with ``pip``::
 
     pip install git+git://github.com/comimag/fringes.git@main
 

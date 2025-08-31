@@ -1,39 +1,17 @@
-import importlib
+from collections.abc import Sequence
 import logging
-import os
 import time
 
 import cv2
 import numba as nb
 import numpy as np
-import skimage as ski
-import scipy as sp
-import toml
 
 # import sympy.ntheory.generate
 
 logger = logging.getLogger(__name__)
 
 
-def _version():
-    """Version of package.
-
-    Use version string in 'pyproject.toml' as the single source of truth."""
-
-    try:
-        # in order not to confuse an installed version of a package with a local one,
-        # first try the local one (not being installed)
-        meta = toml.load(os.path.join(os.path.dirname(__file__), "..", "..", "pyproject.toml"))
-        version = meta["project"]["version"]  # Python Packaging User Guide expects version here
-    except KeyError:
-        version = meta["tool"]["poetry"]["version"]  # Poetry expects version here
-    except FileNotFoundError:
-        version = importlib.metadata.version("fringes")  # installed version
-
-    return version
-
-
-def vshape(data: np.ndarray, channels: list | tuple = (1, 3, 4)) -> np.ndarray:
+def vshape(data: np.ndarray, channels: Sequence[int] = (1, 3, 4)) -> np.ndarray:
     """Standardizes the input data shape.
 
     Transforms video data into the standardized shape (T, Y, X, C), where
@@ -57,43 +35,45 @@ def vshape(data: np.ndarray, channels: list | tuple = (1, 3, 4)) -> np.ndarray:
     Notes
     -----
     Ensures that the array becomes 4-dimensional
-    and that the length of the last dimension is in 'channels').
+    and that the length of the last dimension is in `channels`.
     To do this, leading dimensions may be flattened.
 
     Examples
     --------
     >>> from fringes import vshape
 
-    >>> data = np.ones(100)
+    >>> data = np.ones(shape=(100))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (100, 1, 1, 1)
 
-    >>> data = np.ones((1200, 1920))
+    >>> data = np.ones(shape=(1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (1, 1200, 1920, 1)
 
-    >>> data = np.ones((1200, 1920, 3))
+    >>> data = np.ones(shape=(1200, 1920, 3))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (1, 1200, 1920, 3)
 
-    >>> data = np.ones((100, 1200, 1920))
+    >>> data = np.ones(shape=(100, 1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (100, 1200, 1920, 1)
 
-    >>> data = np.ones((100, 1200, 1920, 3))
+    >>> data = np.ones(shape=(100, 1200, 1920, 3))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (100, 1200, 1920, 3)
 
-    >>> data = np.ones((2, 3, 4, 1200, 1920))
+    >>> data = np.ones(shape=(2, 3, 4, 1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (24, 1200, 1920, 1)
     """
+    data = np.array(data)
+
     if data.ndim == 0:
         data = data.reshape(1)  # returns a view
 
@@ -132,8 +112,8 @@ def vshape(data: np.ndarray, channels: list | tuple = (1, 3, 4)) -> np.ndarray:
     return data.reshape(T, Y, X, C)  # returns a view
 
 
-def deinterlace(self, I: np.ndarray, T_: int) -> np.ndarray:
-    """Deinterlace pattern sequences.
+def unzip(I: np.ndarray, T: int) -> np.ndarray:
+    """Unzip pattern sequences.
 
     This applies for pattern sequences
     recorded with a line scan camera,
@@ -145,7 +125,7 @@ def deinterlace(self, I: np.ndarray, T_: int) -> np.ndarray:
     I : np.ndarray
         Pattern sequence.
         It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-    T_ : int
+    T : int
         Number of frames of the pattern sequence.
 
     Returns
@@ -156,132 +136,28 @@ def deinterlace(self, I: np.ndarray, T_: int) -> np.ndarray:
     Raises
     ------
     ValueError
-        If the number of frames of `I` and the number of frames of the pattern sequence 'T_' don't match.
+        If the number of frames of `I` and the number of frames of the pattern sequence `T` don't match.
 
     Examples
     --------
     >>> from fringes import Fringes
-    >>> from fringes.util import deinterlace
+    >>> from fringes.util import unzip
     >>> f = Fringes()
     >>> I = f.encode()
-    >>> I_rec = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # interlace; this is how a line camera would record
-    >>> I_rec = deinterlace(I_rec)
+    >>> Irec = I.swapaxes(0, 1).reshape(-1, f.T, f.X, f.C)  # zip; this is how a line camera would record
+    >>> Irec = unzip(Irec, f.T)
     """
     t0 = time.perf_counter()
 
-    T, Y, X, C = vshape(I).shape
-    if T * Y % T_ != 0:
-        raise ValueError("Number of frames of data and keyword parameter 'T_' don't match.")
+    I = vshape(I)
+    T_, Y, X, C = I.shape
+    if T_ * Y % T != 0:
+        raise ValueError("Number of frames of data and keyword parameter 'T' don't match.")
 
-    # I = I.reshape((T * Y, X, C))  # concatenate
-    I = I.reshape((-1, T_, X, C)).swapaxes(0, 1)  # returns a view
+    # I = I.reshape((T_ * Y, X, C))  # concatenate
+    I = I.reshape((-1, T, X, C)).swapaxes(0, 1)  # returns a view
 
-    logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
-
-    return I
-
-
-def simulate(
-    I: np.ndarray,
-    # M: float = 1,
-    PSF: float = 0,
-    system_gain: float = 0.038,
-    dark_current: float = 3.64 / 0.038,  # [electrons]  # some cameras feature a dark current compensation
-    dark_noise: float = 13.7,  # [electrons]
-    seed: int = 268664434431581513926327163960690138719,  # secrets.randbits(128)
-) -> np.ndarray:
-    """Simulate the recording, i.e. the transmission channel.
-
-    This includes the modulation transfer function (computed from the imaging system's point spread function)
-    and intensity noise added by the camera.
-
-    Parameters
-    ----------
-    I : np.ndarray
-        Fringe pattern sequence.
-
-    PSF : float, optional
-        Standard deviation of the Point Spread Function, in pixel units.
-        The default is 0.
-
-    system_gain : float, optional
-        System gain of the digital camera.
-        The default is 0.038.
-
-    dark_current : float, optional
-        Dark current of the digital camera, in unit electrons.
-        The default is ~100.
-
-    dark_noise : float, optional
-        Dark noise of the digital camera, in units electrons.
-        The default is 13.7.
-
-    seed : int, optional
-        A seed to initialize the Random Number Generator.
-        It makes the random numbers predictable.
-        See `Seeding and Entropy <https://numpy.org/doc/stable/reference/random/bit_generators/index.html#seeding-and-entropy>`_ for more information about seeding.
-
-    Returns
-    -------
-    I : np.ndarray
-        Simulated fringe pattern sequence.
-    """
-
-    # M : float
-    #         Optical magnification of the imaging system.
-
-    t0 = time.perf_counter()
-
-    I.shape = vshape(I).shape
-    dtype = I.dtype
-    I = I.astype(float, copy=False)
-
-    # # magnification
-    # if magnification != 1:  # attention: magnification must be an integer
-    #     I = sp.ndimage.uniform_filter(I, size=magnification, mode="reflect", axes=(1, 2))
-
-    # # magnification
-    # if M != 1:  # todo: float magnification
-    #     I = sp.ndimage.uniform_filter(I, size=M, mode="nearest", axes=(1, 2))
-
-    # PSF (e.g. defocus)
-    if PSF != 0:
-        I = sp.ndimage.gaussian_filter(I, sigma=PSF, order=0, mode="nearest", axes=(1, 2))
-
-    if system_gain > 0:
-        # random number generator
-        rng = np.random.default_rng(seed)
-
-        # add shot noise
-        shot = (rng.poisson(I) - I) * np.sqrt(system_gain)
-        shot_new = rng.poisson(I / system_gain) * system_gain - I
-        I_shot = rng.poisson(I / system_gain) * system_gain
-        I += shot
-        # todo: int
-        # s_ = np.std(shot)
-
-        if dark_current > 0 or dark_noise > 0:
-            # add dark signal and dark noise
-            dark_current_y = dark_current * system_gain
-            dark_noise_y = dark_noise * system_gain
-            dark = rng.normal(dark_current_y, dark_noise_y, I.shape)
-            I += dark
-            # d_ = np.std(dark)
-
-    DSNU = 0  # todo: spatial non-uniformity
-    if DSNU:
-        # add spatial non-uniformity
-        I += DSNU
-
-    # clip values
-    if system_gain > 0 or np.any(DSNU > 0):
-        Imax = np.iinfo(dtype).max if dtype.kind in "ui" else 1
-        np.clip(I, 0, Imax, out=I)
-
-    # quantization noise is added by converting to integer
-    I = I.astype(dtype, copy=False)
-
-    logger.info(f"{1000 * (time.perf_counter() - t0)}ms")
+    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
 
     return I
 
@@ -297,26 +173,24 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
 
     Returns
     -------
-    I_lin : np.ndarray
+    Ilin : np.ndarray
         Linearized data.
     """
 
     # normalize to [0, 1]
     Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1 if I.max() < 1 else I.max()
-    I = I / Imax
+    Ilin = I / Imax
 
     # estimate gamma correction factor
-    med = np.nanmedian(I)  # Median is a robust estimator for the mean.
-    gamma = np.log(med) / np.log(0.5)
-    inv_gamma = 1 / gamma
+    med = np.nanmedian(Ilin)  # Median is a robust estimator for the mean.
+    g = np.log(med) / np.log(0.5)
+    inv_g = 1 / g
 
     # apply inverse gamma
-    # table = np.array([((g / self.Imax) ** invGamma) * self.Imax for g in range(self.Imax + 1)], self.dtype)
-    # I = cv2.LUT(I, table)
-    I **= inv_gamma
-    I *= Imax
+    Ilin **= inv_g
+    Ilin *= Imax
 
-    return I
+    return Ilin
 
 
 # def degamma(I):  # todo degamma
@@ -347,17 +221,8 @@ def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) ->
     -----
     For more details, see https://ieeexplore.ieee.org/document/9771407.
     """
-
-    # dmax = c / 2
-    # d = b - a
-    # if d > dmax:
-    #     d -= c
-    # elif d < -dmax:
-    #     d += c
-
     # cd = np.minimum(np.abs(a - b), c - np.abs(a - b))
     cd = c / 2 - np.abs(c / 2 - np.abs(a - b))
-
     return cd
 
 
@@ -371,47 +236,6 @@ def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) ->
 #     elif d < -dmax:
 #         d += c
 #     return d
-
-
-def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
-    """Bilateral filter.
-
-    Edge-preserving, denoising filter.
-
-    Parameters
-    ----------
-    I : np.ndarray
-        Input data.
-        It is reshaped to video-shape (frames 'T', height 'Y', width 'X', color channels 'C') before processing.
-    k : int, optional
-        Size of the filter kernel.
-        Default is 7.
-
-    Returns
-    -------
-    out : np.ndarray
-        Filtered data.
-    """
-
-    t0 = time.perf_counter()
-
-    T, Y, X, C = vshape(I).shape
-    I = I.reshape(T, Y, X, C)
-    out = np.empty_like(I)
-
-    for t in range(T):
-        if C in [1, 3]:
-            rv = ski.restoration.denoise_bilateral(I[t], win_size=k, sigma_spatial=1, channel_axis=-1)
-            out[t] = rv if C == 3 else rv[..., None]
-            # out[t] = cv2.bilateralFilter(I[t], d=k, sigmaColor=np.std(I[t]), sigmaSpace=1)
-        else:
-            for c in range(C):
-                out[t, :, :, c] = ski.restoration.denoise_bilateral(I[t, :, :, c], win_size=k, sigma_spatial=1)
-                # out[t, :, :, c] = cv2.bilateralFilter(I[t], d=k, sigmaColor=np.std(I[t, :, :, c]), sigmaSpace=1)
-
-    logging.debug(f"{1000 * (time.perf_counter() - t0)}ms")
-
-    return out
 
 
 # # @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)  # todo
@@ -481,13 +305,13 @@ def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
 #     Returns
 #     -------
 #     a : int
-#         Größter gemeinsamer Teiler von 'a' und 'b'.
+#         Größter gemeinsamer Teiler von `a` und `b`.
 #
 #     u : int
-#         Koeffizienten 'u' und 'v' einer Darstellung von 'a' als ganzzahlige Linearmbination.
+#         Koeffizienten `u` und `v` einer Darstellung von `a` als ganzzahlige Linearmbination.
 #
 #     v : int
-#         Koeffizienten 'u' und 'v' einer Darstellung von 'a' als ganzzahlige Linearmbination.
+#         Koeffizienten `u` und `v` einer Darstellung von `a` als ganzzahlige Linearmbination.
 #     """
 #
 #     u, v, s, t = 1, 0, 0, 1
@@ -515,7 +339,7 @@ def bilateral(I: np.ndarray, k: int = 7) -> np.ndarray:  # todo: test
 #     Returns
 #     -------
 #     mi : int
-#         Multiplikativ inverse Element von 'a' modulo 'n'.
+#         Multiplikativ inverse Element von `a` modulo `n`.
 #     """
 #
 #     g, u, v = extgcd(a, n)

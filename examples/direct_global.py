@@ -10,13 +10,14 @@ f.v = 99, 100, 101  # spatial frequency 'v' must be high enough but still resolv
 
 I = f.encode()
 
-I_rec = I  # todo: replace this line with recording data as in 'record.py'
+Irec = I  # todo: replace this line with the recorded data, cf. example in 'record.py' as in 'record.py'
 
-a, b, x = f.decode(I_rec)
+a, b, x = f.decode(Irec)
 
 d = direct(a)
 g = indirect(a, b)
 
+# show first frame and first color channel of results
 plt.figure("global 'g'")
 plt.imshow(g[0, :, :, 0])
 plt.colorbar()

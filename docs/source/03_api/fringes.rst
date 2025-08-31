@@ -9,37 +9,45 @@ fringes.filter module
 
 .. automodule:: fringes.filter
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 fringes.fringes module
 ----------------------
 
 .. automodule:: fringes.fringes
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 fringes.grid module
 -------------------
 
 .. automodule:: fringes.grid
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+fringes.gui module
+------------------
+
+.. automodule:: fringes.gui
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 fringes.util module
 -------------------
 
 .. automodule:: fringes.util
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: fringes
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
