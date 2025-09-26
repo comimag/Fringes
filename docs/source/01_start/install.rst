@@ -11,13 +11,11 @@ From Source
 -----------
 To get access to the very latest features and bugfixes you have three choices:
 
-1. Clone `Fringes` from `GitHub <https://github.com/comimag/fringes>`_ with ``git``::
+1. Clone `Fringes` from `GitHub <https://github.com/comimag/fringes>`_ with ``git``
+   and install it from source wit ``pip``::
 
     git clone https://github.com/comimag/fringes
     cd fringes
-
-   Now you can install `Fringes` from source wit ``pip``::
-
     pip install .
 
 2. Directly install `Fringes` from GitHub with ``pip``::

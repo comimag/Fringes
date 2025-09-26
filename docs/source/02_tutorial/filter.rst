@@ -12,7 +12,7 @@ The :ref:`decoding <decoding>` yields the following results:
 
 .. literalinclude:: /../../examples/decode.py
    :language: python
-   :emphasize-lines: 11
+   :emphasize-lines: 10
    :linenos:
 
 These results are in :ref:`video shape <video shape>`,
@@ -71,7 +71,7 @@ of the recording camera.
 
 .. literalinclude:: /../../examples/direct_global.py
    :language: python
-   :emphasize-lines: 5, 9, 17, 18
+   :emphasize-lines: 5, 10, 16, 17
    :linenos:
 
 .. figure:: filter/direct.png
@@ -159,7 +159,7 @@ by setting the flag ``verbose`` in the method :meth:`~fringes.fringes.Fringes.de
 
 .. literalinclude:: /../../examples/verbose.py
    :language: python
-   :emphasize-lines: 12, 18, 19, 20, 21
+   :emphasize-lines: 12
    :linenos:
 
 The phase ... after temporal demodulation ... link to fundamentals
@@ -218,7 +218,7 @@ and at the same time poor sensitivity and stability for low-order surface featur
 
 .. literalinclude:: /../../examples/slope.py
    :language: python
-   :emphasize-lines: 14
+   :emphasize-lines: 13
    :linenos:
 
 .. figure:: filter/slope_x.jpg
@@ -249,7 +249,7 @@ and does not require accurate prior knowledge of the distance to the object." [B
 
 .. literalinclude:: /../../examples/curvature.py
    :language: python
-   :emphasize-lines: 4, 16
+   :emphasize-lines: 4, 14
    :linenos:
 
 .. figure:: filter/curvature.jpg
@@ -279,7 +279,7 @@ and does not require accurate prior knowledge of the distance to the object." [B
 
    .. literalinclude:: /../../examples/height.py
       :language: python
-      :emphasize-lines: 13, 15
+      :emphasize-lines: 5, 16
       :linenos:
 
    .. figure:: filter/height.png

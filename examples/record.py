@@ -1,10 +1,10 @@
-"""Use the `Fringes` package to encode, record and decode data."""
+"""Configure, encode and record fringe patterns using `Fringes` and `OpenCV`."""
 
 import cv2
-from fringes import Fringes
 import numpy as np
+from fringes import Fringes
 
-# prepare window in which the fringe pattern sequence will be shown in fullscreen mode
+# prepare window (in which the fringe patterns will be shown in fullscreen mode)
 cv2.namedWindow("Fringes", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("Fringes", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 left, top, width, height = cv2.getWindowImageRect("Fringes")
@@ -12,48 +12,44 @@ left, top, width, height = cv2.getWindowImageRect("Fringes")
 # prepare camera
 camera = cv2.VideoCapture(0)
 
-camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # turn on autofocus
-camera.set(cv2.CAP_PROP_AUTO_WB, 1)  # turn on whitebalance
-camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)  # turn on autoexposure
-
+delay = 500  # delay time of the screen until the image is actually shown
 white = np.full((height, width), 255, np.uint8)  # white image
 cv2.imshow("Fringes", white)  # display white image
-key = cv2.waitKey(250)  # delay time of the screen for displaying the image
+cv2.waitKey(delay)  # wait delay time
 
-for _ in range(10):
-    # let camera automatically set focus, whitebalance and exposure
-    ret, image = camera.read()
+camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # turn on autofocus
+camera.set(cv2.CAP_PROP_AUTO_WB, 1)  # turn on white balance
+camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)  # turn on autoexposure
+
+for _ in range(100):
+    ret, image = camera.read()  # let camera set focus, white balance and exposure
 
 camera.set(cv2.CAP_PROP_AUTOFOCUS, 0)  # turn off autofocus
-camera.set(cv2.CAP_PROP_AUTO_WB, 0)  # turn off whitebalance
+camera.set(cv2.CAP_PROP_AUTO_WB, 0)  # turn off white balance
 camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)  # turn off autoexposure
 
-# configure and create fringe pattern sequence
+# configure and encode fringe patterns
 f = Fringes()
 f.X = width
 f.Y = height
 I = f.encode()
 
-# allocate empty image stack
-Irec = np.empty((f.T,) + image.shape, image.dtype)
-
-# record
+# record fringe patterns
+Irec = np.empty((f.T,) + image.shape, image.dtype)  # allocate empty image stack
 try:
-    # record fringe patterns in a loop
-    for t in range(f.T):
-        # display fringe pattern with index 't' in fullscreen mode
-        cv2.imshow("Fringes", I[t])
-        key = cv2.waitKey(250)  # delay time of the screen for displaying the image
+    for t in range(f.T):  # record fringe patterns in a loop
+        cv2.imshow("Fringes", I[t])  # display fringe pattern in fullscreen mode
+        key = cv2.waitKey(delay)  # wait delay time
 
-        # capture reflected fringe pattern; ensure the fringe pattern is not overexposed!
-        ret, image = camera.read()  # note: OpenCV has color order 'BGR' (instead of 'RGB') for color images
+        ret, image = camera.read()  # capture the fringe pattern (AVOID OVEREXPOSURE !!!)
 
         if ret:
-            # save captured fringe pattern to image stack
-            Irec[t] = image
+            Irec[t] = image  # save captured fringe pattern to image stack
 finally:
-    # close window
-    cv2.destroyWindow("Fringes")
+    cv2.destroyWindow("Fringes")  # close window
+    camera.release()  # release camera resources
 
-    # release camera resources
-    camera.release()
+# show recorded fringe patterns
+for t, frame in enumerate(Irec, start=1):
+    cv2.imshow(f"frame {t}/{f.T}", frame)
+    cv2.waitKey(0)

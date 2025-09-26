@@ -16,7 +16,7 @@ if not flist or os.path.getmtime(__file__) > max(os.path.getmtime(file) for file
     )
 
 
-PI2: float = 2 * np.pi
+_2PI: float = 2 * np.pi
 
 
 def tpu():
@@ -38,7 +38,6 @@ def decode(
     bmin: float = 0.0,
     Vmin: float = 0.0,
     mode: str = "fast",
-    unwrap: bool = True,  # todo: fuse unwrap into mode?
     verbose: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Temporal demodulation and spatial demodulation
@@ -72,7 +71,7 @@ def decode(
         Coordinate offset.
     p0 : float, default=np.pi
         Phase offset.
-    bmin : float
+    bmin : float, default=0
         Minimum modulation for measurement to be valid.
         If 'bmin' isn't reached at a pixel, spatial unwrapping is skipped for this very pixel.
         This can accelerate decoding.
@@ -82,8 +81,6 @@ def decode(
         This can accelerate decoding.
     mode : str, default="fast"
         Mode for decoding.
-    unwrap : bool, default=True
-        Flag for unwrapping.
     verbose : bool, default=False
         Flag for returning intermediate and verbose results.
 
@@ -125,9 +122,9 @@ def decode(
         for i in range(K):
             for n in range(N[d, i]):
                 t_ = n / N[d, i]  # temporal sampling points
-                s[i, n] = np.exp(1j * (PI2 * f[d, i] * t_ + p0))
+                s[i, n] = np.exp(1j * (_2PI * f[d, i] * t_ + p0))
 
-        Nsum = np.sum(N[d])
+        Nsumd = np.sum(N[d])
 
         # initial weights of phase averaging (are their )inverse variances)
         # (must be multiplied with b**2 later on)
@@ -172,9 +169,9 @@ def decode(
                             t += 1
                         # z_[i] = z  # todo
                         b[i] = np.abs(z) / N[d, i] * 2
-                        p[i] = np.angle(z) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
+                        p[i] = np.angle(z) % _2PI  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
                     # a /= t
-                    a /= Nsum
+                    a /= Nsumd
 
                     A[d, y, x, c] = a
                     B[d, :, y, x, c] = b
@@ -201,34 +198,27 @@ def decode(
                                     R[d, y, x, c] = np.nan
                                 continue  # skip spatial demodulation (signal is too weak to yield a reliable result)
 
-                    # spatial demodulation i.e. unwrapping
+                    # spatial demodulation
                     if K == 1:
                         if v[d, 0] == 0:  # no spatial modulation
-                            if R[d] == 1:  # the only possible value (but there is no point in encoding it at all)
-                                Xi[d, y, x, c] = 0
+                            Xi[d, y, x, c] = np.nan
 
-                                if verbose:
-                                    O[d, :, y, x, c] = 0
-                                    R[d, y, x, c] = 0
-                            else:  # no spatial modulation, therefore we can't compute value
-                                Xi[d, y, x, c] = np.nan
-
-                                if verbose:
-                                    O[d, :, y, x, c] = -1
-                                    R[d, y, x, c] = np.nan
-                        elif v[d, 0] <= 1:  # one period covers whole screen: no unwrapping required
-                            Xi[d, y, x, c] = p[0] / PI2 * l[d, 0] - x0  # change codomain from [0, PI2) to [0, Lext)
+                            if verbose:
+                                O[d, :, y, x, c] = -1
+                                R[d, y, x, c] = np.nan
+                        elif v[d, 0] <= 1:  # one period covers whole screen: no spatial phase unwrapping required
+                            Xi[d, y, x, c] = p[0] / _2PI * l[d, 0] - x0  # change codomain from [0, _2PI) to [0, Lext)
 
                             if verbose:
                                 O[d, :, y, x, c] = 0
                                 R[d, y, x, c] = 0
                         else:  # spatial phase unwrapping (to be done in a later step)
-                            Xi[d, y, x, c] = p[0] - x0 * PI2 / l[d, 0]
+                            Xi[d, y, x, c] = p[i0] - x0 * _2PI / l[d, i0]
 
                             if verbose:
-                                # attention: residuals are to be received from SPU
                                 O[d, :, y, x, c] = -1
-                    elif unwrap:  # generalized temporal phase unwrapping
+                                # attention: residuals are to be received from SPU
+                    else:  # generalized temporal phase unwrapping
                         # weights of phase measurements
                         w = w0 * b**2  # weights for inverse variance weighting
                         w /= np.sum(w)  # normalize weights
@@ -245,24 +235,24 @@ def decode(
                         # max. time complexity O(ceil(v[i0]))
                         # max. time complexity O(ceil(vmin))
                         r: float = 0
-                        Z: float = np.nan
+                        Z: complex = 0j * np.nan
                         o = np.empty(K, np.int_)
                         for k0 in kout[i0, : vmax[i0]]:  # fringe orders of reference set 'i0'
-                            a0 = (k0 * PI2 + p[i0]) / v[d, i0]  # reference angle
+                            a0 = (k0 * _2PI + p[i0]) / v[d, i0]  # reference angle, in radian
                             zi = w[i0] * np.exp(1j * a0)
                             o[i0] = k0
 
                             for i in range(i0):
-                                ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                                ai = (ki * PI2 + p[i]) / v[d, i]
+                                ki = np.rint((a0 * v[d, i] - p[i]) / _2PI)  # fringe order of i-th set
+                                ai = (ki * _2PI + p[i]) / v[d, i]
                                 zi += w[i] * np.exp(1j * ai)
                                 o[i] = ki
 
                             # skip reference set 'i0'
 
                             for i in range(i0 + 1, K):
-                                ki = np.rint((a0 * v[d, i] - p[i]) / PI2)  # fringe order of i-th set
-                                ai = (ki * PI2 + p[i]) / v[d, i]
+                                ki = np.rint((a0 * v[d, i] - p[i]) / _2PI)  # fringe order of i-th set
+                                ai = (ki * _2PI + p[i]) / v[d, i]
                                 zi += w[i] * np.exp(1j * ai)
                                 o[i] = ki
 
@@ -277,13 +267,13 @@ def decode(
                                 # if r >= rmin:
                                 #     break
 
-                        xi = np.angle(Z) % PI2 / PI2 * Lext - x0  # change codomain from [-PI, PI] to [0, Lext)
+                        xi = np.angle(Z) % _2PI / _2PI * Lext - x0  # change codomain from [-PI, PI] to [0, Lext)
                         Xi[d, y, x, c] = xi
 
                         if verbose:
-                            R[d, y, x, c] = np.sqrt(-2 * np.log(r))  # circular standard deviation
+                            R[d, y, x, c] = np.sqrt(-2 * np.log(r))  # circular standard deviation  # todo: / _2PI * Lext
         # t0 += t
         # t0 += np.sum(N[d])
-        t0 += Nsum
+        t0 += Nsumd
 
     return A, B.reshape(-1, Y, X, C), P.reshape(-1, Y, X, C), O.reshape(-1, Y, X, C), Xi, R

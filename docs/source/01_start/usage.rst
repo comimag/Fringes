@@ -102,16 +102,16 @@ It returns the Numpy arrays :ref:`brightness <brightness>` ``a``, :ref:`modulati
 
 Example
 """""""
-The only hardware you need is a screen and a camera.
-The setup can be as simple as only using your notebook's screen and integrated camera, cf. :numref:`notebook`:
+The only hardware you need is a screen and a camera, cf. :numref:`setup`:
+The setup can be as simple as only using your notebook's screen and integrated camera.
 
-.. _notebook:
-.. figure:: notebook.jpg
+.. _setup:
+.. figure:: setup.png
     :align: center
-    :scale: 20%
-    :alt: notebook
+    :scale: 50%
+    :alt: setup
 
-    Measurement setup.
+    Measurement setup for deflectometric inspection. Source: [1]_.
 
 Make sure the reflected fringe pattern is visible by the camera.
 Also, make sure to focus onto the test object and adjust the exposure settings of the camera.
@@ -261,3 +261,8 @@ To list all options, call `Fringes` with the help flag ``-h``:
 .. """
 .. The logging of the :class:`~fringes.fringes.Fringes` class is displayed here.
 .. The logging level can be set in the :ref:`Parameter Tree <attributes>`.
+
+.. [1] `Burke,
+        "Brilliant Insights – Deflectometry for the inspection of (partially) specular surfaces",
+        2024.
+        <https://www.iosb.fraunhofer.de/content/dam/iosb/iosbtest/documents/kompetenzen/systemtechnik/MRD/leistungen/deflektometrie/Deflectometry_en.pdf>`_

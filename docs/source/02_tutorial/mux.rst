@@ -14,13 +14,13 @@ The amplitude :attr:`~fringes.fringes.Fringes.B` is halved,
 i.e. for each direction only have the signal strength is available.
 The number of frames :attr:`~fringes.fringes.Fringes.T` is halved.
 
-.. literalinclude:: /../../examples/spatial_division_multiplexing.py
+.. literalinclude:: /../../examples/mux/spatial_division_multiplexing.py
    :language: python
-   :emphasize-lines: 11, 12
+   :emphasize-lines: 12, 13
    :linenos:
 
 .. _SDM:
-.. figure:: mux/SDM.png
+.. figure:: mux/SDM.gif
     :scale: 20%
     :align: center
 
@@ -41,13 +41,13 @@ resulting in an RGB fringe pattern, cf. :numref:`WDM`.
 Therefore it is required that all shifts :attr:`~fringes.fringes.Fringes.N` `= 3`.
 The number of frames :attr:`~fringes.fringes.Fringes.T` is cut into thirds.
 
-.. literalinclude:: /../../examples/wavelength_division_multiplexing.py
+.. literalinclude:: /../../examples/mux/wavelength_division_multiplexing.py
    :language: python
    :emphasize-lines: 11, 12
    :linenos:
 
 .. _WDM:
-.. figure:: mux/WDM.png
+.. figure:: mux/WDM.gif
     :scale: 20%
     :align: center
 
@@ -68,13 +68,13 @@ If only one set :attr:`~fringes.fringes.Fringes.K` `= 1` per direction is used,
 only one frame :attr:`~fringes.fringes.Fringes.T` `= 1` is necessary, cf. :numref:`SDM+WDM`.
 This allows single shot applications to be implemented.
 
-.. literalinclude:: /../../examples/spatial_wavelength_division_multiplexing.py
+.. literalinclude:: /../../examples/mux/spatial_wavelength_division_multiplexing.py
    :language: python
    :emphasize-lines: 11, 12, 13, 14, 15
    :linenos:
 
 .. _SDM+WDM:
-.. figure:: mux/SDM+WDM.png
+.. figure:: mux/SDM+WDM.gif
     :scale: 20%
     :align: center
 
@@ -97,13 +97,13 @@ A minimal number of shifts
 `N_{min} \ge \lceil 2 * f_{max} \rceil + 1`
 is required to satisfy the sampling theorem.
 
-.. literalinclude:: /../../examples/frequency_division_multiplexing_2.py
+.. literalinclude:: /../../examples/mux/frequency_division_multiplexing_2.py
    :language: python
-   :emphasize-lines: 11, 12, 13, 14, 15
+   :emphasize-lines: 12, 13, 14, 15, 16
    :linenos:
 
 .. _FDM-D2K1:
-.. figure:: mux/FDM_D2K1.png
+.. figure:: mux/FDM_D2K1.gif
     :scale: 20%
     :align: center
     :alt: FDM-D2K1
@@ -113,13 +113,13 @@ is required to satisfy the sampling theorem.
 
 ----
 
-.. literalinclude:: /../../examples/frequency_division_multiplexing_1.py
+.. literalinclude:: /../../examples/mux/frequency_division_multiplexing_1.py
    :language: python
-   :emphasize-lines: 11, 12, 13, 14, 15
+   :emphasize-lines: 12, 13, 14, 15, 16
    :linenos:
 
 .. _FDM-D1K2:
-.. figure:: mux/FDM_D1K2.png
+.. figure:: mux/FDM_D1K2.gif
     :scale: 20%
     :align: center
     :alt: FDM-D1K2
@@ -129,13 +129,13 @@ is required to satisfy the sampling theorem.
 
 ----
 
-.. literalinclude:: /../../examples/frequency_division_multiplexing_3.py
+.. literalinclude:: /../../examples/mux/frequency_division_multiplexing_3.py
    :language: python
-   :emphasize-lines: 11, 12, 13, 14, 15
+   :emphasize-lines: 12, 13, 14, 15, 16
    :linenos:
 
 .. _FDM-D2K2:
-.. figure:: mux/FDM_D2K2.png
+.. figure:: mux/FDM_D2K2.gif
     :scale: 20%
     :align: center
     :alt: FDM-D2K2
@@ -154,13 +154,13 @@ and the temporal frequencies must equal the spatial ones:
 :attr:`~fringes.fringes.Fringes.v` `=` :attr:`~fringes.fringes.Fringes.f`.
 With static/congruent patterns, one can realize phase shifting by moving printed patterns [Klu18]_.
 
-.. literalinclude:: /../../examples/frequency_division_multiplexing_4.py
+.. literalinclude:: /../../examples/mux/frequency_division_multiplexing_4.py
    :language: python
-   :emphasize-lines: 10, 11, 12, 13, 14, 15, 16
+   :emphasize-lines: 11, 12, 13, 14, 15, 16, 17
    :linenos:
 
 .. _FDM-D2K2-static:
-.. figure:: mux/FDM_D2K2_static.png
+.. figure:: mux/FDM_D2K2_static.gif
     :scale: 20%
     :align: center
     :alt: FDM-D2K2-static

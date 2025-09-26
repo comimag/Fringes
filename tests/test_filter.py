@@ -29,7 +29,7 @@ def test_visibility_exposure():
     assert np.all(V >= 0), "Visibility contains negative values."
     assert np.allclose(V, 1, rtol=0, atol=0.005), "Visibility is off more than 0.005."
 
-    E = exposure(a, I)
+    E = exposure(a, I)  # todo: test lessbits
     # E_max = np.max(np.abs(E - 0.5))
     assert np.allclose(E, 0.5, rtol=0, atol=0.0005), "Exposure is off more than 0.0005."
 
@@ -41,7 +41,7 @@ def test_curvature():
     I = f.encode()
     a, b, x = f.decode(I)
 
-    c = curvature(x, center=False, normalize=False)
+    c = curvature(x, center=False, normalize=False)  # todo: test center, normalize
     # c_max = np.max(np.abs(c - 2))
     assert np.allclose(c, 2, rtol=0, atol=0.05), "Curvature if off more than 0.05."
 

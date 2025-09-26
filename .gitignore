@@ -12,6 +12,10 @@ wheels/
 # Virtual environments
 .venv/
 
+# Testing
+.coverage
+htmlcov/
+
 # Data
 outfile.npy
 pattern.npy

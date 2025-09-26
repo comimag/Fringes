@@ -208,12 +208,12 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #
 #     Returns
 #     -------
-#     z : np.ndarray
+#     h : np.ndarray
 #         Local height map.
 #     """
 #     t0 = time.perf_counter()
 #
-#     kernel = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], np.float32)
+#     kernel = np.array([[0,  1, 0], [ 1, 0,  1], [0,  1, 0]], np.float32)
 #     # kernel *= iterations  # todo
 #
 #     curv = vshape(curv)
@@ -225,14 +225,14 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #     if curv.min() == curv.max():
 #         return np.zeros_like(curv)
 #
-#     z = np.zeros_like(curv)
+#     h = np.zeros_like(curv)
 #     for c in range(C):
 #         for i in range(iterations):
-#             z[..., c] = (cv2.filter2D(z[..., c], -1, kernel) - curv[..., c]) / 4
+#             h[..., c] = (cv2.filter2D(h[..., c], -1, kernel) - curv[..., c]) / 4
 #
 #     # todo: residuals
-#     # filter2(kernel_laplace, z) - curvature;
+#     # filter2(kernel_laplace, h) - curvature;
 #
 #     logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
 #
-#     return z.reshape(-1, Y, X, C)
+#     return h.reshape(-1, Y, X, C)

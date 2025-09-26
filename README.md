@@ -126,8 +126,7 @@ link to  paper, please cite
 --->
 
 ## Support
-I was looking for a user-friendly tool to configure,
-encode and decode customized fringe patterns with phase shifting algorithms.
+I was looking for a user-friendly tool for phase shifting.
 Since I couldn't find any, I started developing one myself.
 It is intended for non-commercial, academic and educational use.
 

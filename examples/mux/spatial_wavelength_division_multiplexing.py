@@ -13,9 +13,11 @@ f.K = 1
 f.SDM = True
 f.N = 3
 f.WDM = True
+print(f.T)  # it consists of one frame only -> single shot application
 
 I = f.encode()
 
-# show first frame
-plt.imshow(I[0])
+# show fringe patterns
+plt.figure()
+plt.imshow(I[0])  # first frame is only frame
 plt.show()

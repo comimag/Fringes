@@ -73,7 +73,7 @@ The transmission channel consists of the following components with their associa
 
 Combined, this results in the following main effects:
 
-#. Distortion
+1. Distortion
 
    The camera sight ray originating from the camera pixel `x_c`
    gets deflected by the test object onto a screen coordinate `x`.
@@ -82,7 +82,7 @@ Combined, this results in the following main effects:
 
 .. _blur:
 
-#. Blurring
+2. Blurring
 
    The camera sight ray is modeled as an infinitesimal thin ray in space,
    sampling the test object and finally arriving on the illuminating fringe pattern `I`.
@@ -127,7 +127,7 @@ Combined, this results in the following main effects:
 
 .. _noise:
 
-#. Temporal noise
+3. Temporal noise
 
    We assume a linear sensor, i.e. the digital signal increases linearly with the number of photons received.
    We further assume the parameters describing the noise to be invariant with respect to time and space,

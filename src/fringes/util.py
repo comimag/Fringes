@@ -219,11 +219,11 @@ def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) ->
 
     Notes
     -----
-    For more details, see https://ieeexplore.ieee.org/document/9771407.
+    For more details, see https://ieeexplore.ieee.org/document/9771407 or
+    https://insideainews.com/2021/02/12/circular-statistics-in-python-an-intuitive-intro/.
     """
-    # cd = np.minimum(np.abs(a - b), c - np.abs(a - b))
-    cd = c / 2 - np.abs(c / 2 - np.abs(a - b))
-    return cd
+    # return np.minimum(np.abs(a - b), c - np.abs(a - b))
+    return c / 2 - np.abs(c / 2 - np.abs(a - b))
 
 
 # @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)

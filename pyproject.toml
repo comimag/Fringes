@@ -54,6 +54,7 @@ dev = [
     {include-group = "test"}
 ]
 docs = [
+    "imageio>=2",
     "sphinx>=7.4.7",
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.6.1",
@@ -64,9 +65,10 @@ lint = [
     "black>=25",  # 25 is the latest major version
 ]
 test = [
-    "pytest>=8",  # 8 is the latest major version
-    "pytest-cov>=6",  # 6 is the latest major version
-    "matplotlib>=3.10",  # 3.10 is first version to support python>=3.10 (required for testing the examples)
+    "coverage>=7.10.6",  # 7 is latest major version
+    "pytest>=8", # 8 is the latest major version
+    "pytest-cov>=6", # 6 is the latest major version
+    "matplotlib>=3.10", # 3.10 is first version to support python>=3.10 (pyplot is required for testing the examples)
 ]
 
 [project.scripts]  # https://realpython.com/python-pyproject-toml/
@@ -79,8 +81,6 @@ fringes = "fringes.__main__:main"
 line-length = 120
 
 [tool.pytest.ini_options]
-#addopts = "--doctest-modules"
-#addopts = "--import-mode=importlib"
 pythonpath = "examples"
 
 

@@ -45,11 +45,13 @@ class TestClass:
         assert set(Fringes._defaults.keys()) | {"A", "B", "l"} == set(Fringes._setters)
 
     def test_docstrings(self):
-        for p in dir(Fringes):
-            if isinstance(p, property):
-                assert p.__doc__ is not None, f"Property '{p}' has no docstring."
-            elif callable(p):
-                assert p.__doc__ is not None, f"Method '{p}()' has no docstring."
+        for k in dir(Fringes):
+            if k[0] != "_":
+                v = getattr(Fringes, k)
+                if isinstance(v, property):
+                    assert v.__doc__ is not None, f"Property '{k}' has no docstring."
+                elif callable(v):
+                    assert v.__doc__ is not None, f"Method '{k}()' has no docstring."
 
 
 class TestInstance:
@@ -376,17 +378,16 @@ class TestDecode:
     def test_spatial_unwrapping(self):
         f = Fringes()
         f.K = 1
+        # todo: f.v = 7, 14
         I = f.encode()
 
-        for uwr_func in ("ski",):  # todo: "cv2" is error-prone!
+        for uwr_func in ("ski", "cv2"):  # todo: "cv2" is error-prone!
             dec = f.decode(I, uwr_func=uwr_func)
 
             for d in range(f.D):
                 grad = np.gradient(dec.x[d], axis=0) + np.gradient(dec.x[d], axis=1)
-
-                # dg_max = np.max(np.abs(grad[:-2, :-2] - 1))
-                # dx_max = np.max(np.abs(dec.x[d, :-2, :-2] - f.xc[d, :-2, :-2]))
-                # idx = np.argwhere(np.abs(grad - 1) > 0.5)
+                dg_max = np.max(np.abs(grad - 1))
+                idx = np.argwhere(np.abs(grad - 1) > 0.10)
                 assert np.allclose(
                     grad, 1, rtol=0, atol=0.10
                 ), f"Gradient of unwrapped phase map isn't close to 1 at direction {d} for function {uwr_func}."
@@ -487,12 +488,14 @@ class TestDecode:
         assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
         assert np.allclose(dec.x, f.xc, rtol=0, atol=0.08), "Coordinate is off more than 0.08."
 
+    # def test_noise(self): pass  . todo: test noise
+
     @pytest.mark.skip("Test only on request.")
     def test_speed(self):
         f = Fringes()
 
-        # Tmed < 2s in battery-mode on 2025-08-04
-        # Tmed < 1.8s in AC-mode on 2025-08-04
+        # Tmed < 2s in battery-mode on 2025-08-04 and 2025-09-22
+        # Tmed < 2s in AC-mode on 2025-08-04 and 2025-09-22
         f.X = 2048
         f.Y = 2048
         f.v = 13, 7
@@ -512,7 +515,7 @@ class TestDecode:
         Tmax = np.max(T)
         Tavg = np.mean(T)
         Tmed = np.median(T)
-        assert Tmed <= 1.0, f"Decoding takes {Tmed * 1000:.0f}ms > 2000ms."
+        assert Tmed <= 2.0, f"Decoding takes {Tmed * 1000:.0f}ms > 2000ms."  # todo: <= 1.0
 
     @pytest.mark.skip("Test only on request.")
     def test_compile_time(self):

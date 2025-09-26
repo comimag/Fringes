@@ -23,11 +23,12 @@ fname = os.path.join(os.path.dirname(__file__), "..", "..", "pyproject.toml")
 with open(fname, "rb") as f:
     data = tomllib.load(f)
     name = data["project"]["name"]
+    project = name
     version = data["project"]["version"]
     authors = data["project"]["authors"][0]["name"]
 year = time.strftime("%Y")  # current year
-year1 = "2023"  # year of first release
-year = f"{year1} - {year}" if int(year1) < int(year) else year1
+year0 = "2023"  # year of first release
+year = f"{year0} - {year}" if int(year0) < int(year) else year0
 copyright = f"{year}, {authors}"
 author = authors
 release = version

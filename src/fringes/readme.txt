@@ -8,8 +8,11 @@ uv python pin
 uv version --bump patch/minor/major  # https://docs.astral.sh/uv/reference/cli/#uv-version
 uv sync -U --all-groups
 uv run black tests src examples
-uv run pytest --cov  # speed, speed, compile_time
+uv run pytest  # speed, speed, compile_time
 uv run pytest src/ --doctest-modules
+    uv run pytest --cov  # speed, speed, compile_time
+    uv run pytest --cov-report html
+    uv run coverage run -m pytest src/
 
 git tag
 git push (with tags)

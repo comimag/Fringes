@@ -7,10 +7,12 @@ import skimage as ski  # only for spu()
 
 from fringes.decoder_numba import decode
 
+# from fringes.decoder_ import decode
+
 logger = logging.getLogger(__name__)
 
 
-PI2: float = 2 * np.pi
+_2PI: float = 2 * np.pi
 
 
 def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -54,9 +56,9 @@ def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.nd
             idx = int(np.median(idx)) + 1  # median is a robust estimator for the mean
             cidx = c[idx]  # usually frequency '1'
             b[d, i] = np.abs(cidx) / N[d, i]  # todo: * 2  # * 2: also add amplitudes of frequencies with opposite sign
-            # p[d, i] = -np.angle(cidx * np.exp(-1j * (p0 - np.pi))) % PI2  # todo: why p0 - PI???
+            # p[d, i] = -np.angle(cidx * np.exp(-1j * (p0 - np.pi))) % _2PI  # todo: why p0 - PI???
             cidx *= np.exp(1j * p0)  # shift back by p0
-            p[d, i] = np.angle(cidx) % PI2
+            p[d, i] = np.angle(cidx) % _2PI
             t0 += N[d, i]
     return a, b, p
 
@@ -98,13 +100,13 @@ def temp_demod_numpy(I, N, f, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray
             I_ = I[t0 : t0 + N[d, i]]
             a[d] += np.sum(I_)
             t_ = np.arange(N[d, i]) / N[d, i]  # temporal sampling points
-            s = np.exp(1j * (PI2 * f[d, i] * t_ + p0))  # complex filter i.e. sampling points on unit circle
+            s = np.exp(1j * (_2PI * f[d, i] * t_ + p0))  # complex filter i.e. sampling points on unit circle
             # z = np.sum(I_ * c[:, None, None, None], axis=0)  # weighted sum -> complex phasor
             z = np.dot(
                 np.moveaxis(I_, 0, -1), s
             )  # 'If a is an N-D array and b is a 1-D array, it is a sum product over the last axis of a and b.'
             b[d, i] = z / N[d, i] * 2  # * 2: also add amplitudes of frequencies with opposite sign
-            p[d, i] = np.angle(z) % PI2  # arctan2 maps to [-PI, PI], but we need [0, 2PI)  # todo: test p0
+            p[d, i] = np.angle(z) % _2PI  # arctan2 maps to [-PI, PI], but we need [0, 2PI)  # todo: test p0
             t0 += N[d, i]
     return a, b, p
 
@@ -116,7 +118,7 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
     ----------
     p : np.ndarray
         Phase maps to unwrap spatially, stacked along the first dimension.
-        Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
+        Must be in image-shape (height `Y`, width `X`, color channels `C`).
         The frames (first dimension) as well the color channels (last dimension)
         are unwrapped separately.
     verbose : bool, default=False
@@ -130,8 +132,8 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
 
     Returns
     -------
-    x : np.ndarray
-        Unwrapped phase maps.
+    puwr : np.ndarray
+        Unwrapped phase map.
 
     References
     ----------
@@ -147,7 +149,7 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
             2015.
             <https://doi.org/10.1016/j.ijleo.2015.04.070>`_
     """
-    T, Y, X, C = p.shape
+    Y, X, C = p.shape
 
     if uwr_func in "cv2":  # OpenCV unwrapping
         params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
@@ -155,30 +157,28 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
         params.width = X
         unwrapping_instance = cv2.phase_unwrapping.HistogramPhaseUnwrapping.create(params)
 
-    x = np.empty((T, Y, X, C), np.float32)
+    puwr = np.empty((Y, X, C), np.float32)
     if verbose:
-        r = np.empty((T, Y, X, C), np.float32)
+        r = np.empty((Y, X, C), np.float32)
 
-    # todo: 3D phase unwrapping / fuse unwrapped phase maps?
-    for t in range(T):
-        for c in range(C):
-            if uwr_func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
-                # dtype must be np.float32  # todo: test this
-                x[t, :, :, c] = unwrapping_instance.unwrapPhaseMap(p[t, :, :, c])
+    for c in range(C):
+        if uwr_func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
+            # dtype must be np.float32  # todo: test this
+            puwr[:, :, c] = unwrapping_instance.unwrapPhaseMap(p[:, :, c])
 
-                if verbose:
-                    r[t, :, :, c] = unwrapping_instance.getInverseReliabilityMap()
-            else:  # Scikit-image algorithm is slower but delivers better results on edges
-                x[t, :, :, c] = ski.restoration.unwrap_phase(p[t, :, :, c])
+            if verbose:
+                r[:, :, c] = unwrapping_instance.getInverseReliabilityMap()
+        else:  # Scikit-image algorithm is slower but delivers better results on edges
+            puwr[:, :, c] = ski.restoration.unwrap_phase(p[:, :, c])
 
-                if verbose:
-                    r[t, :, :, c] = np.nan
+            if verbose:
+                r[:, :, c] = np.nan
 
-        xmin = x[t].min()
-        if xmin < 0:
-            x[t] -= xmin
+    puwrmin = puwr.min()
+    if puwrmin < 0:
+        puwr -= puwrmin
 
-    return x
+    return puwr  # todo: return r
 
 
 def ftm(I, D) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
