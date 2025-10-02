@@ -1,0 +1,105 @@
+    #N -> T
+
+digraph G {
+    concentrate=true
+    compound=true
+    
+    subgraph cluster_0 {
+        label = "grid"
+        {rank =min; C, T}
+        {rank = same; X, Y}
+        C -> shape
+        T -> shape
+        X -> shape, R, axis
+        Y -> shape, R, axis
+        shape -> X, Y [style=invis]
+        axis -> R
+        R -> L
+        alpha -> L
+        {rank = max; alpha, L}
+	}
+	
+	subgraph cluster_3 {
+        label = "unwrapping"
+        m
+        crt -> uwr
+	}
+	
+	subgraph cluster_4 {
+        label = "quality"
+        B_est -> up
+        ui -> up
+        up -> ux
+        ux -> u
+        u -> SNR
+        u -> DR
+        UMR
+        R -> eta
+        M
+        eta
+        gcd
+        {rank = max; SNR, eta, DR}
+	}
+	
+	subgraph cluster_1 {
+        label = "sets"
+        N -> m [style=invis]
+        // m -> l [style=invis]
+        l -> UMR, v
+        f -> v [style=invis]
+        v -> gcd [style=invis]
+        {rank = min; N, f, reverse}
+        {rank = same; l, v}
+        v -> UMR, l
+        reverse -> f [constraint=false]
+        gcd
+	}
+	
+	N -> up
+	N -> T [constraint=false]
+	D -> N [lhead = "cluster_1"][dir=both]
+	D -> T [constraint=false]
+ 	K -> f [lhead = "cluster_1"][dir=both]
+ 	K -> T [constraint=false]
+ 	
+    l -> ux
+    l -> m
+    l -> CRT
+    v -> m
+    v -> uwr
+	R -> SNR
+	M -> up
+	l -> gcd [constraint=false]
+	m -> gcd [constraint=false]
+	m -> crt [constraint=false]
+	UMR -> eta
+	UMR -> DR
+	eta -> uwr [constraint=false]
+	
+	subgraph cluster_2 {
+        label = "intensity"
+        bits -> Imax, dtype
+        {rank = "min"; bits, dtype}
+        dtype -> bits
+        gamma
+        Imax -> {A, B}
+        A -> B, E, V
+        B -> A, E, V
+        E -> A, B, V
+        V -> A, B, E
+        {rank = same; A, B}
+        {rank = same; E, V}
+        
+	}
+	
+// 	L -> l [constraint=false]
+	
+// 	subgraph cluster_5 {
+        // label = "mux"
+        // D -> SDM
+        // WDM
+        // FDM
+// 	}
+    
+    #N -> UMR [constraint=false]
+}
