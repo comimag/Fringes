@@ -271,7 +271,9 @@ def decode(
                         Xi[d, y, x, c] = xi
 
                         if verbose:
-                            R[d, y, x, c] = np.sqrt(-2 * np.log(r))  # circular standard deviation  # todo: / _2PI * Lext
+                            R[d, y, x, c] = np.sqrt(
+                                -2 * np.log(r)
+                            )  # circular standard deviation  # todo: / _2PI * Lext
         # t0 += t
         # t0 += np.sum(N[d])
         t0 += Nsumd

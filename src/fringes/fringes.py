@@ -2938,18 +2938,16 @@ class Fringes:
         return eta
 
     @property
-    def _params(self) -> dict:  # todo: get_params
+    def _params(self) -> dict:
         """Base parameters required for en- & decoding fringe patterns.
 
         This contains all property objects of the class which have a setter method,
         i.e. are (usually) not derived from others.
         """
         params = {"__version__": version(__package__)}
+
         for k in sorted(self._setters):
-            # for k in sorted(dir(self)):  # sorted() ensures setting params in the right order in __init__()
-            #     if not k.startswith("_"):  # avoid e.g. '_params'
-            #         if isinstance(getattr(type(self), k, None), property) and getattr(type(self), k, None).fset is not None:
-            v = getattr(self, k, None)
+            v = getattr(self, k)
             if isinstance(v, np.ndarray):
                 params[k] = v.tolist()
             elif isinstance(v, np.dtype):
@@ -2960,7 +2958,7 @@ class Fringes:
         return params
 
     @_params.setter
-    def _params(self, params: dict):  # todo: set_params
+    def _params(self, params: dict):
         params_old = self._params.copy()  # copy current params; they become old params
 
         # set params
@@ -2981,7 +2979,9 @@ class Fringes:
             return
 
         logger.warning(
-            f"Parameter '{k}' got overwritten by interdependencies. Choose consistent initialization values."
+            f"Parameter '{k}' got overwritten by interdependencies."
+            f"Choose consistent initialization values."
+            f"Restoring old values."
         )
         self._params = params_old  # restore old params
 

@@ -41,6 +41,16 @@ resulting in an RGB fringe pattern, cf. :numref:`WDM`.
 Therefore it is required that all shifts :attr:`~fringes.fringes.Fringes.N` `= 3`.
 The number of frames :attr:`~fringes.fringes.Fringes.T` is cut into thirds.
 
+This works best when an RGB-prism-based camera is used,
+because its spectral bands don't overlap and hence the RGB-channels can be separated sharply.
+Additionally, a white balance has to be executed to ensure equal irradiance readings in all color channels.
+
+Also, the effect of color absorption by the surface material cannot be neglected.
+This means that the test object itself must not have any color.
+
+Overall, less light is available per pixel because it is divided into the three color channels.
+Therefore, it requires about 3 times the exposure time compared to grayscale patterns.
+
 .. literalinclude:: /../../examples/mux/wavelength_division_multiplexing.py
    :language: python
    :emphasize-lines: 11, 12
@@ -53,15 +63,7 @@ The number of frames :attr:`~fringes.fringes.Fringes.T` is cut into thirds.
 
     Wavelength division multiplexing (WDM).
 
-This works best when an RGB-prism-based camera is used,
-because its spectral bands don't overlap and hence the RGB-channels can be separated sharply.
-Additionally, a white balance has to be executed to ensure equal irradiance readings in all color channels.
-
-Also, the effect of color absorption by the surface material cannot be neglected.
-This means that the test object itself must not have any color.
-
-Overall, less light is available per pixel because it is divided into the three color channels.
-Therefore, it requires about 3 times the exposure time compared to grayscale patterns.
+----
 
 Spatial and wavelength division multiplexing can be used together [Tru16]_.
 If only one set :attr:`~fringes.fringes.Fringes.K` `= 1` per direction is used,
@@ -74,7 +76,7 @@ This allows single shot applications to be implemented.
    :linenos:
 
 .. _SDM+WDM:
-.. figure:: mux/SDM+WDM.gif
+.. figure:: mux/SDM+WDM.png
     :scale: 20%
     :align: center
 

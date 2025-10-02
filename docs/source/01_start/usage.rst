@@ -38,8 +38,8 @@ Encode
 """"""
 For generating the fringe pattern sequence ``I``, use the method :meth:`~fringes.fringes.Fringes.encode`.
 It returns a `Numpy array <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_
-in :meth:`~fringes.util.vshape` (frames :attr:`~fringes.fringes.Fringes.T`, width :attr:`~fringes.fringes.Fringes.X`,
-height :attr:`~fringes.fringes.Fringes.Y`, color channels :attr:`~fringes.fringes.Fringes.C`).
+in :meth:`~fringes.util.vshape`: frames :attr:`~fringes.fringes.Fringes.T`, width :attr:`~fringes.fringes.Fringes.X`,
+height :attr:`~fringes.fringes.Fringes.Y`, color channels :attr:`~fringes.fringes.Fringes.C`.
 
 .. code-block:: python
 
