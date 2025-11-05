@@ -102,7 +102,7 @@ It returns the Numpy arrays :ref:`brightness <brightness>` ``a``, :ref:`modulati
 
 Example
 """""""
-The only hardware you need is a screen and a camera, cf. :numref:`setup`:
+The only hardware you need is a screen and a camera, cf. :numref:`setup`.
 The setup can be as simple as only using your notebook's screen and integrated camera.
 
 .. _setup:
@@ -130,22 +130,32 @@ CLI
 You can run `Fringes` directly from the command-line interface with option flags.
 
 If `infile` ``-i`` is **not specified**, `Fringes` **encodes** the fringe pattern sequence.
-(If `outfile` ``-o`` is not specified, the result is saved to ``outfile.npy`` respective ``outfile.npz`` per default.)
+
+Save the fringe pattern sequence to 'pattern.npy':
 
 .. code-block:: console
 
-   fringes
+   fringes pattern.npy
+
+Save the fringe pattern sequence as image files with appended image index to 'pattern_*.png':
 
 .. code-block:: console
 
-   fringes -o pattern.npy
+   fringes pattern_.png
 
-If `infile` ``-i`` is **specified**, `Fringes` **decodes** the given data
-and saves it to .
+If `infile` ``-i`` is **specified**, `Fringes` **decodes** the given data.
+
+Load and decode 'pattern.npy':
 
 .. code-block:: console
 
-   fringes -i pattern.npy -o decoded.npz
+   fringes -i pattern.npy decoded.npz
+
+Load and decode the glob pattern 'pattern_*.png':
+
+.. code-block:: console
+
+   fringes -i pattern_*.npy decoded.npz
 
 To list all options, call `Fringes` with the help flag ``-h``:
 

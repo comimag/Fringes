@@ -128,8 +128,8 @@ The visibility `V` is influenced by:
 
 - the maximum contrast of the light source
 - the :ref:`surface quality <psf>` of the sample (roughness, scattering),
-- the position of the sample with regard to focal plane of the lens (defocus and depth of field),
-- the camera lens' modulation transfer function,
+- the position of the sample with regard to the focal plane of the lens (blurring due to defocus and depth of field),
+- the camera lens' :ref:`modulation transfer function <mtf>`,
 - the camera's resolution (the camera pixel size projected onto the light source acts as a low pass filter).
 
 .. literalinclude:: /../../examples/visibility_exposure.py

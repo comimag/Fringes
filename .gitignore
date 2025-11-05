@@ -14,9 +14,9 @@ wheels/
 
 # Testing
 .coverage
+coverage_html_report/
 htmlcov/
 
 # Data
-outfile.npy
-pattern.npy
-decoded.npy
+/pattern*.*
+/decoded.npz

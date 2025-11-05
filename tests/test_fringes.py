@@ -11,7 +11,8 @@ import pytest
 
 import fringes
 from fringes import Fringes, __version__
-from fringes.fringes import Decoded, Decoded_verbose
+from fringes.fringes import _Decoded, _Decoded_verbose
+from fringes.util import circular_distance
 
 f = Fringes()
 I = f.encode()
@@ -100,7 +101,7 @@ class TestInstance:
         params = f._params
 
         with tempfile.TemporaryDirectory() as tempdir:
-            for ext in (".json", ".yaml"):
+            for ext in {".json", ".yaml"}:
                 fname = os.path.join(tempdir, f"params{ext}")
 
                 f.save(fname)
@@ -199,9 +200,9 @@ class TestEncode:
 
         print(T)
         Tmin = np.min(T)
-        Tmax = np.max(T)
-        Tavg = np.mean(T)
         Tmed = np.median(T)
+        Tavg = np.mean(T)
+        Tmax = np.max(T)
         assert Tmed <= 0.1, f"Encoding takes {Tmed * 1000:.0f}ms > 100ms."
 
 
@@ -220,6 +221,15 @@ class TestDecode:
                     assert np.allclose(
                         dec.x, f.xc, rtol=0, atol=0.13
                     ), f"Coordinate is off more than 0.13 with {f.D = }, {f.axis = }, {f.indexing = }."
+
+    def test_p0(self):
+        f = Fringes()
+
+        for p0 in {0, np.pi / 2, np.pi}:  # todo: 1.0
+            f.p0 = p0
+            I = f.encode()
+            dec = f.decode(I)
+            assert np.allclose(dec.x, f.xc, rtol=0, atol=0.5), f"Coordinate is off more than 0.13 with {f.mode = }."
 
     def test_modes(self):
         f = Fringes()
@@ -253,6 +263,8 @@ class TestDecode:
             assert np.allclose(
                 dec.x[:, 1:, :, :], f.xc[:, 1:, :, :], rtol=0, atol=0.13
             ), f"Coordinate is off more than 0.13 with {f.dtype = }."  # todo: index 0
+            # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+            # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.13)  # todo: float32, float64
 
     def test_dtype_object(self):
         I10_ = np.empty((f10.T,), object)
@@ -292,18 +304,18 @@ class TestDecode:
 
     def test_demodulate(self):
         dec = f.decode(I)
-        assert isinstance(dec, tuple) and isinstance(dec, Decoded), "Return value isn't a 'namedtuple'."
+        assert isinstance(dec, tuple) and isinstance(dec, _Decoded), "Return value isn't a 'namedtuple'."
         assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
         # da_max = np.max(np.abs(dec.a - f.A))
         # db_max = np.max(np.abs(dec.b - f.B))
         # dx_max = np.max(np.abs(dec.x - f.xc))
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."  # todo: 0.1
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."  # todo: 0.1
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."  # todo: 0.5
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
+        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
 
     def test_demodulate_verbose(self):
         dec = f.decode(I, verbose=True)
-        assert isinstance(dec, tuple) and isinstance(dec, Decoded_verbose), "Return value isn't a 'namedtuple'."
+        assert isinstance(dec, tuple) and isinstance(dec, _Decoded_verbose), "Return value isn't a 'namedtuple'."
         assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
         p = (f.xc[:, None, :, :, :] % f._l[:, :, None, None, None] / f._l[:, :, None, None, None]) * 2 * np.pi
         p = p.reshape(f.D * f.K, f.Y, f.X, f.C).astype(np.float32, copy=False)
@@ -315,19 +327,21 @@ class TestDecode:
         # dp_max = np.max(np.abs(dec.p - p))
         # r_max = np.max(np.abs(dec.r))
         # u_max = np.max(np.abs(dec.u))
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."  # todo: 0.1
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."  # todo: 0.1
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."  # todo: 0.5
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
+        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
         # assert np.allclose(dec.x, f.xc, rtol=0, atol=4 * dec.r)  # todo: x within factor * r
         assert np.allclose(dec.x, f.xc, rtol=0, atol=4 * dec.u)
         assert np.allclose(dec.p, np.pi, rtol=0, atol=np.pi), "Phase values are not within [0, 2PI]."
         assert np.allclose(dec.p, p, rtol=0, atol=0.0052), "Phase is off more than 0.0052."
         assert np.allclose(dec.k, k, rtol=0, atol=0), "Fringe orders are wrong."
-        assert np.allclose(dec.r, 0, rtol=0, atol=0.09), "Residuals are larger than 0.09."  # <0.1
-        assert np.allclose(dec.u, 0, rtol=0, atol=0.04), "Uncertainty is larger than 0.04."  # <0.1
+        assert np.allclose(dec.r, 0, rtol=0, atol=0.09), "Residuals are larger than 0.09."
+        assert np.allclose(dec.u, 0, rtol=0, atol=0.04), "Uncertainty is larger than 0.04."
+
 
     def test_threads(self):
-        for threads in range(1, get_num_threads() + 1):
+        max_threads = get_num_threads()
+        for threads in range(-max_threads, max_threads + 2):
             f10.decode(I10, threads=threads)
 
     def test_uncertainty(self):
@@ -338,7 +352,7 @@ class TestDecode:
                 for a in 127.5, dec.a, None:
                     for K in 0.038, None:
                         for dark_noise in 13.7, None:
-                            u = f.uncertainty(ui, b, a, K, dark_noise)  # todo: assert no raises
+                            u = f.uncertainty(ui, b, a, K, dark_noise)
 
         u = f.uncertainty(a=127.5, b=70, K=0.038, dark_noise=13.7)
         assert np.allclose(u, 0.5, rtol=0, atol=0.5), "Uncertainty is off more than 0.5."
@@ -356,6 +370,7 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.92
         ), "Coordinate is off more than 0.92."  # todo: index 0
+        assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.92)
 
         f.N = 23
         I = f.encode()
@@ -365,6 +380,7 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.48
         ), "Coordinate is off more than 0.48."  # todo: index 0
+        assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.48)
 
     def test_alpha(self):
         f = Fringes(Y=10)
@@ -381,7 +397,7 @@ class TestDecode:
         # todo: f.v = 7, 14
         I = f.encode()
 
-        for uwr_func in ("ski", "cv2"):  # todo: "cv2" is error-prone!
+        for uwr_func in {"ski", "cv2"}:  # todo: "cv2" is error-prone!
             dec = f.decode(I, uwr_func=uwr_func)
 
             for d in range(f.D):
@@ -412,6 +428,8 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.29
         ), "Coordinate is off more than 0.29."  # todo: index 0
+        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.29)  # todo
 
     def test_hues(self):
         f = Fringes(Y=10)
@@ -440,6 +458,8 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.09
         ), "Coordinate is off more than 0.09."  # todo: index 0
+        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=00)  # todo
 
     def test_SDM(self):
         f = Fringes()
@@ -449,6 +469,8 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=1.19
         ), "Coordinate is off more than 1.19."  # todo: index 0
+        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=1.19)  # todo
 
     def test_SDM_WDM(self):
         f = Fringes()
@@ -460,12 +482,14 @@ class TestDecode:
         assert np.allclose(
             dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=1.13
         ), "Coordinate is off more than 1.13."  # todo: index 0
+        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=1.13)  # todo
 
     def test_FDM(self):
         f = Fringes(Y=10)
         f.FDM = True
 
-        for static in (False, True):
+        for static in {False, True}:
             f.static = static
             f.N = 1
             I = f.encode()
@@ -473,6 +497,10 @@ class TestDecode:
             assert np.allclose(
                 dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.31
             ), f"Coordinate is off more than 0.31 with {static = }, {f.N = }."  # todo: index 0
+            # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
+            # assert np.all(
+            #     circular_distance(dec.x, f.xc, f.Lext) < 0.31
+            # ), f"Coordinate is off more than 0.31 with {static = }, {f.N = }."  # todo
 
     def test_8K(self):
         f = Fringes()
@@ -487,8 +515,6 @@ class TestDecode:
         assert np.allclose(dec.a, f.A, rtol=0, atol=0.09), "Brightness is off more than 0.13."
         assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
         assert np.allclose(dec.x, f.xc, rtol=0, atol=0.08), "Coordinate is off more than 0.08."
-
-    # def test_noise(self): pass  . todo: test noise
 
     @pytest.mark.skip("Test only on request.")
     def test_speed(self):
@@ -512,9 +538,9 @@ class TestDecode:
 
         print(T)
         Tmin = np.min(T)
-        Tmax = np.max(T)
-        Tavg = np.mean(T)
         Tmed = np.median(T)
+        Tavg = np.mean(T)
+        Tmax = np.max(T)
         assert Tmed <= 2.0, f"Decoding takes {Tmed * 1000:.0f}ms > 2000ms."  # todo: <= 1.0
 
     @pytest.mark.skip("Test only on request.")

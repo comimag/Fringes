@@ -32,11 +32,11 @@ def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.nd
     Returns
     -------
     a : np.ndarray
-            Brightness: average signal.
-        b : np.ndarray
-            Modulation: amplitude of the cosine signal.
-        p : np.ndarray, optional
-            Local phase.
+        Brightness: average signal.
+    b : np.ndarray
+        Modulation: amplitude of the cosine signal.
+    p : np.ndarray, optional
+        Local phase.
     """
     T, Y, X, C = I.shape
     D, K = N.shape
@@ -58,7 +58,7 @@ def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.nd
             b[d, i] = np.abs(cidx) / N[d, i]  # todo: * 2  # * 2: also add amplitudes of frequencies with opposite sign
             # p[d, i] = -np.angle(cidx * np.exp(-1j * (p0 - np.pi))) % _2PI  # todo: why p0 - PI???
             cidx *= np.exp(1j * p0)  # shift back by p0
-            p[d, i] = np.angle(cidx) % _2PI
+            p[d, i] = np.angle(cidx) % _2PI  # todo: test p0
             t0 += N[d, i]
     return a, b, p
 
@@ -123,8 +123,8 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
         are unwrapped separately.
     verbose : bool, default=False
         Flag for computing InverseReliabilityMap if `uwr_func` is 'cv2'.
-    uwr_func : {'ski', 'cv2'}, optional
-        Unwrapping function to use. The default is 'ski'.
+    uwr_func : {'ski', 'cv2'}, default='ski'
+        Unwrapping function to use.
 
         - 'ski': `Scikit-image[1]_ <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
 

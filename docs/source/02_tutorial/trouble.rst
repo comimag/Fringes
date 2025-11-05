@@ -13,6 +13,11 @@ Troubleshooting
 
 .. dropdown:: My decoded coordinates show systematic offsets
 
+  - Ensure that the unambiguous measurement range is larger than the pattern length,
+    i.e. :attr:`~fringes.fringes.Fringes.UMR` :math:`\ge` :attr:`~fringes.fringes.Fringes.L`.
+    If not, adjust the used wavelengths :attr:`~fringes.fringes.Fringes.l`
+    resp. number of periods :attr:`~fringes.fringes.Fringes.v` accordingly,
+    or reset them by setting one of them to 'default'.
   - Make sure the exposure of your camera is adjusted so that the fringe patterns show up with maximum contrast.
     Avoid under- and overexposure during recording.
   - Ensure that the correct frames were captured while recording the fringe pattern sequence.
@@ -28,13 +33,10 @@ Troubleshooting
        to compensate for the dominant harmonics of the gamma-non-linearities.
 
     c) You can use the function :func:`~fringes.util.gamma_auto_correct`
-       to automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.\
+       to automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
 
-  - Ensure that the unambiguous measurement range is larger than the pattern length,
-    i.e. :attr:`~fringes.fringes.Fringes.UMR` :math:`\ge` :attr:`~fringes.fringes.Fringes.L`.
-    If not, adjust the used wavelengths :attr:`~fringes.fringes.Fringes.l`
-    resp. number of periods :attr:`~fringes.fringes.Fringes.v` accordingly,
-    or reset them by setting one of them to 'default'.
+    d) Applying `histogram equaization <https://scikit-image.org/docs/0.25.x/api/skimage.exposure.html#skimage.exposure.equalize_hist>`_
+       may also linearize the display/camera response curve.\
 
 .. dropdown:: My decoded coordinates show lots of noise
 

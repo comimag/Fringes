@@ -4,7 +4,7 @@ Parameters
 ==========
 All parameters are implemented as
 `properties <https://docs.python.org/3/library/functions.html#property>`_ (managed attributes).
-They are parsed when set, so usually several input types are accepted,
+They are parsed when set: values are clipped to the allowed range and usually several types are accepted,
 e.g. ``bool``, ``int``, ``float`` for `numbers <https://docs.python.org/3.13/library/numbers.html#module-numbers>`_
 and additionally ``list``, ``tuple``, ``numpy.ndarray`` for `sequences <https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence>`_.
 
@@ -38,8 +38,6 @@ Video Shape
 :attr:`~fringes.fringes.Fringes.L` is the maximum of :attr:`~fringes.fringes.Fringes.X` and :attr:`~fringes.fringes.Fringes.Y` and denotes the length (in pixel units) to be encoded.
 It can be extended by the factor :attr:`~fringes.fringes.Fringes.a` to :attr:`~fringes.fringes.Fringes.Lext`.
 
-.. :attr:`~fringes.fringes.Fringes.size` is the product of :attr:`~fringes.fringes.Fringes.shape`.
-
 Coordinate System
 ------------------
 The following coordinate systems can be used by setting :attr:`~fringes.fringes.Fringes.grid` to:
@@ -54,10 +52,10 @@ The following coordinate systems can be used by setting :attr:`~fringes.fringes.
 :attr:`~fringes.fringes.Fringes.indexing` denotes the indexing convention.
 Possible values are:
 
-- ``'xy'``: *Cartesian indexing* will index the row first;
+- ``'xy'``: *Cartesian indexing* (the default) will index the row first;
 - ``'ij'``: *matrix indexing* will index the colum first.
 
-:attr:`~fringes.fringes.Fringes.D` denotes the number of directions to be encoded.
+:attr:`~fringes.fringes.Fringes.D` denotes the number of directions to be encoded (default is 2).
 
 :attr:`~fringes.fringes.Fringes.axis` is used to define along which axis of the coordinate system (index 0 or 1)
 the fringe pattern is modulated and shifted if :attr:`~fringes.fringes.Fringes.D` = 1.
@@ -100,15 +98,14 @@ Intensity Values
 ----------------
 :attr:`~fringes.fringes.Fringes.bits` is the number of bits.
 
-:attr:`~fringes.fringes.Fringes.dtype` denotes the data type which can hold `2` ** :attr:`~fringes.fringes.Fringes.bits` of information.
+:attr:`~fringes.fringes.Fringes.dtype` denotes the data type which can hold `2` ^ :attr:`~fringes.fringes.Fringes.bits` of information.
 Possible values are:
 
-- ``'uint8'`` (default)
+- ``'uint8'`` (the default)
 - ``'uint16'``
+- ``'uint32'``
 - ``'float32'``
 - ``'float64'``
-
-.. :attr:`~fringes.fringes.Fringes.nbytes` is the total bytes consumed by fringe pattern sequence.
 
 .. :attr:`~fringes.fringes.Fringes.q` is the quantization step size and equals 1 for ``bool``, `2^r` for r-bit ``unsigned integers``,
    and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
@@ -120,7 +117,7 @@ Possible values are:
    and `2^r - 1` for ``unsigned integers`` with r bits.
 
 :attr:`~fringes.fringes.Fringes.Imax` is the maximum gray value and equals 1 for ``float``
-and `2` ** :attr:`~fringes.fringes.Fringes.bits` for ``unsigned integers``.
+and `2` ^ :attr:`~fringes.fringes.Fringes.bits` `- 1` for ``unsigned integers``.
 
 :attr:`~fringes.fringes.Fringes.A` is the offset, also called brightness (of the background).
 It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
@@ -192,7 +189,8 @@ For more details, please refer to :doc:`Multiplex <mux>`.
 .. Unwrapping
    ----------
 
-   :attr:`~fringes.fringes.Fringes.uwr` denotes the phase unwrapping method and is eihter ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
+   :attr:`~fringes.fringes.Fringes.uwr` denotes the phase unwrapping method
+   and is either ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
    See :ref:`unwrapping <uwr>` for more details.
 
 .. :attr:`~fringes.fringes.Fringes.mode` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
@@ -211,31 +209,27 @@ The :attr:`~fringes.fringes.Fringes.UMR` is derived from :attr:`~fringes.fringes
 - Else, if :attr:`~fringes.fringes.Fringes.v` `\lor` :attr:`~fringes.fringes.Fringes.l` `\in \mathbb{Q}` , `lcm` resp. `gcd` are extended to rational numbers.
 - Else, if :attr:`~fringes.fringes.Fringes.v` `\land` :attr:`~fringes.fringes.Fringes.l` `\in \mathbb{R} \setminus \mathbb{Q}` , :attr:`~fringes.fringes.Fringes.UMR` = `prod(` :attr:`~fringes.fringes.Fringes.l` `)`, with `prod` being the product operator.
 
-.. :attr:`~fringes.fringes.Fringes.u` denotes the minimum possible uncertainty of the measurement in pixels.
-   It is based on the phase noise model from [Sur97]_
-   and propagated through the unwrapping process and the phase fusion.
-   It is influenced by the parameters
+:attr:`~fringes.fringes.Fringes.uq` denotes the minimum possible positional uncertainty (standard deviation)
+of the measurement in pixels when considering only quantization noise.
+It is based on the phase noise model from [Sur97]_
+and propagated through the unwrapping process and the phase fusion.
+It is influenced by the parameters
 
-   - :attr:`~fringes.fringes.Fringes.M`: number of averaged intensity samples,
-   - :attr:`~fringes.fringes.Fringes.N`: number of phase shifts,
-   - :attr:`~fringes.fringes.Fringes.l`: wavelengths,
-   - `\hat{B}`: measured modulation and
-   - `\hat{u_I}`: intensity noise (caused by the measurement hardware [EMV]_, [Bot08]_).
+- `1 / \sqrt{12}`: standard deviation of quantization noise of the light source or camera,
+- :attr:`~fringes.fringes.Fringes.B`: modulation of the fringe patterns,
+- :attr:`~fringes.fringes.Fringes.M`: number of averaged intensity samples,
+- :attr:`~fringes.fringes.Fringes.N`: number of phase shifts,
+- :attr:`~fringes.fringes.Fringes.l`: wavelengths
 
-   .. - :attr:`~fringes.fringes.Fringes.quant`: quantization noise of the light source or camera,
-      - :attr:`~fringes.fringes.Fringes.dark`: dark noise of the used camera,
-      - :attr:`~fringes.fringes.Fringes.shot`: photon noise of light itself,
-      - :attr:`~fringes.fringes.Fringes.gain`: system gain of the used camera.
+:attr:`~fringes.fringes.Fringes.SQNR` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.uq`
+is the signal-to-quantization-noise ratio of the phase shift coding.
+It is a measure of how many points can be distinguished at most within the screen length [0, :attr:`~fringes.fringes.Fringes.L`).
+It remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
 
-   :attr:`~fringes.fringes.Fringes.SNR` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.u`
-   is the signal-to-noise ratio of the phase shift coding
-   and is a measure of how many points can be distinguished within the screen length [0, :attr:`~fringes.fringes.Fringes.L`).
-   It remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
-
-   :attr:`~fringes.fringes.Fringes.DR` = :attr:`~fringes.fringes.Fringes.UMR` / :attr:`~fringes.fringes.Fringes.u`
-   is the dynamic range of the phase shift coding
-   and is a measure of how many points can be distinguished within the unambiguous measurement range `[0,` :attr:`~fringes.fringes.Fringes.UMR` `)`.
-   Again, it remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
+:attr:`~fringes.fringes.Fringes.DRQ` = :attr:`~fringes.fringes.Fringes.UMR` / :attr:`~fringes.fringes.Fringes.uq`
+is the dynamic range of the phase shift coding.
+It a measure of how many points can be distinguished at most within the unambiguous measurement range `[0,` :attr:`~fringes.fringes.Fringes.UMR` `)`.
+Again, it remains constant if :attr:`~fringes.fringes.Fringes.L` and hence :attr:`~fringes.fringes.Fringes.l` is scaled (the scaling factor cancels out).
 
 :attr:`~fringes.fringes.Fringes.eta` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.UMR`
 is the spatial coding efficiency
@@ -248,32 +242,33 @@ because then a significant part of the coding range remains unused.
    and is a measure of how many code words, i.e. frames :attr:`~fringes.fringes.Fringes.T`,
    can distinguish how many screen points :attr:`~fringes.fringes.Fringes.SNR`.
 
-.. [Bot08]
-   `Bothe,
-   "Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
-   Dissertation,
-   ISBN 978-3-933762-24-5,
-   BIAS Bremen,
-   2008.
-   <https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2>`_
+..
+  .. [Bot08]
+     `Bothe,
+     "Grundlegende Untersuchungen zur Formerfassung mit einem neuartigen Prinzip der Streifenprojektion und Realisierung in einer kompakten 3D-Kamera",
+     Dissertation,
+     ISBN 978-3-933762-24-5,
+     BIAS Bremen,
+     2008.
+     <https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2>`_
 
-.. [EMV]
-   `EMVA,
-   "Standard for Characterization of Image Sensors and Cameras Release 4.0 Linear",
-   European Machine Vision Association,
-   2021.
-   <https://www.emva.org/standards-technology/emva-1288/emva-standard-1288-downloads-2/>`_
+  .. [EMV]
+     `European Machine Vision Association,
+     "Standard for Characterization of Image Sensors and Cameras",
+     EMVA Standard 1288 Release 4.0 Linear,
+     2021.
+     <https://www.emva.org/standards-technology/emva-1288/>`_
 
-.. [Klu18]
-   `Kludt and Burke,
-   "Coding strategies for static patterns suitable for UV deflectometry",
-   Forum Bildverarbeitung 2018,
-   2018.
-   <https://publikationen.bibliothek.kit.edu/1000088264>`_
+  .. [Klu18]
+     `Kludt and Burke,
+     "Coding strategies for static patterns suitable for UV deflectometry",
+     Forum Bildverarbeitung 2018,
+     2018.
+     <https://publikationen.bibliothek.kit.edu/1000088264>`_
 
-.. [Sur97]
-   `Surrel,
-   "Additive noise effect in digital phase detection",
-   Applied Optics,
-   1997.
-   <https://doi.org/10.1364/AO.36.000271>`_
+  .. [Sur97]
+     `Surrel,
+     "Additive noise effect in digital phase detection",
+     Applied Optics,
+     1997.
+     <https://doi.org/10.1364/AO.36.000271>`_

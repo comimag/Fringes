@@ -15,7 +15,7 @@ def test_examples(monkeypatch):
     ]:
 
         m = importlib.import_module(module)  # on import, the module is run
-        plt.close()
         cv2.destroyAllWindows()
+        plt.close()
 
         assert m.__doc__ is not None, f"Module '{module}' has no docstring."

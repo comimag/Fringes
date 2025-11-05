@@ -20,7 +20,7 @@ _2PI: float = 2 * np.pi
 
 
 def tpu():
-    NotImplemented  # todo: tpu() with numba
+    NotImplementedError  # todo: tpu() with numba
 
 
 @nb.jit(cache=True, nopython=True, nogil=True, parallel=True, fastmath=True)
@@ -37,6 +37,7 @@ def decode(
     p0: float = np.pi,
     bmin: float = 0.0,
     Vmin: float = 0.0,
+    unwrap: bool = True,
     mode: str = "fast",
     verbose: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -79,6 +80,8 @@ def decode(
         Minimum visibility for measurement to be valid.
         If 'Vmin' isn't reached at a pixel, spatial unwrapping is skipped for this very pixel.
         This can accelerate decoding.
+    unwrap : bool, default=True
+        Flag for temporal phase unwrapping (TPU).
     mode : str, default="fast"
         Mode for decoding.
     verbose : bool, default=False
@@ -218,7 +221,7 @@ def decode(
                             if verbose:
                                 O[d, :, y, x, c] = -1
                                 # attention: residuals are to be received from SPU
-                    else:  # generalized temporal phase unwrapping
+                    elif unwrap:  # generalized temporal phase unwrapping
                         # weights of phase measurements
                         w = w0 * b**2  # weights for inverse variance weighting
                         w /= np.sum(w)  # normalize weights

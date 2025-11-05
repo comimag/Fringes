@@ -15,7 +15,7 @@ def direct(b: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     b : np.ndarray
-        Modulation
+        Modulation.
 
     Returns
     -------
@@ -41,7 +41,7 @@ def indirect(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     a : np.ndarray
         Brightness.
     b : np.ndarray
-        Modulation
+        Modulation.
 
     Returns
     -------
@@ -102,8 +102,8 @@ def exposure(a: np.ndarray, Irec: np.ndarray, lessbits: bool = True) -> np.ndarr
         Brightness.
     Irec : np.ndarray
         Fringe pattern sequence.
-    lessbits: bool, optional
-        The camera recorded `Irec` may contain fewer bits of information than its data type can hold,
+    lessbits: bool, default=True
+        `Irec` rcorded by tha camera may contain fewer bits of information than its data type can hold,
         e.g. 12 bits for dtype `uint16`.
         If this flag is activated, it looks for the maximal value in `I`
         and sets `Imax` to the same or next power of two which is divisible by two.
@@ -140,13 +140,11 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
     s : np.ndarray
         Slope map.
         It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-    center : bool, optional
+    center : bool, default=False
         If this flag is set to True, the curvature values get centered around zero using the median.
-        Default is False.
-    normalize : bool
-        Flag indicating whether to use the acr-tangent function
-        to non-linearly map the codomain from [-inf, inf] to [-1, 1].
-        Default is False.
+    normalize : bool, default=False
+        Flag indicating whether to use the arc-tangent function
+        to non-linearly map the codomain of `c` from [-inf, inf] to [-1, 1].
 
     Returns
     -------
@@ -187,7 +185,6 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
         c = np.arctan(c) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
 
     logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
-
     return c  # .reshape(-1, Y, X, C)
 
 
@@ -202,9 +199,8 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #     curv : np.ndarray
 #         Curvature map.
 #         It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
-#     iterations : int, optional
+#     iterations : int, default=3
 #         Number of iterations of the inverse Laplace filter kernel.
-#         Default is 3.
 #
 #     Returns
 #     -------
@@ -234,5 +230,4 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
 #     # filter2(kernel_laplace, h) - curvature;
 #
 #     logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
-#
 #     return h.reshape(-1, Y, X, C)

@@ -5,25 +5,26 @@ import time
 import cv2
 import numba as nb
 import numpy as np
+import scipy as sp
 
 # import sympy.ntheory.generate
 
 logger = logging.getLogger(__name__)
 
 
-def vshape(data: np.ndarray, channels: Sequence[int] = (1, 3, 4)) -> np.ndarray:
+def vshape(data: np.ndarray, channels: set[int] = (1, 3, 4)) -> np.ndarray:
     """Standardizes the input data shape.
 
     Transforms video data into the standardized shape (T, Y, X, C), where
     T is number of frames, Y is height, X is width, and C is number of color channels.
 
-    Inspired from `scikit-video <http://www.scikit-video.org/stable/modules/generated/skvideo.utils.vshape.html>`_.
+    Inspired from `scikit-video <https://www.scikit-video.org/stable/modules/generated/skvideo.utils.vshape.html>`_.
 
     Parameters
     ----------
     data : ndarray
-        Input data of arbitrary shape.
-    channels : list | tuple
+        Input data in arbitrary shape.
+    channels : set of ints, default = {1, 3, 4}
         Allowed number of color channels.
 
     Returns
@@ -118,7 +119,7 @@ def unzip(I: np.ndarray, T: int) -> np.ndarray:
     This applies for pattern sequences
     recorded with a line scan camera,
     where each frame has been displayed and captured
-    as the object moved one pixel.
+    as the object moved by one pixel.
 
     Parameters
     ----------
@@ -131,7 +132,7 @@ def unzip(I: np.ndarray, T: int) -> np.ndarray:
     Returns
     -------
     I : np.ndarray
-        Deinterlaced pattern sequence.
+        Unzipped pattern sequence.
 
     Raises
     ------
@@ -158,7 +159,6 @@ def unzip(I: np.ndarray, T: int) -> np.ndarray:
     I = I.reshape((-1, T, X, C)).swapaxes(0, 1)  # returns a view
 
     logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
-
     return I
 
 
@@ -193,11 +193,125 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
     return Ilin
 
 
-# def degamma(I):  # todo degamma
-#     """Gamma correction.
-#
-#     Assumes equally distributed histogram."""
-#     NotImplemented
+def fade(
+    I: np.ndarray,
+    I0: float | np.ndarray = 0.0,
+    T: float | np.ndarray = 1.0,
+    M: int = 1,
+    PSF: float = 0.0,
+    K: float = 0.038,  # [DN/electron]
+    dark_noise: float = 13.7,  # [electrons]
+    dark_current: float = 14.2,  # [electrons]  # some cameras feature a dark current compensation
+    bits: int = 8,
+    rng: np.random.Generator | int | None = None,
+    clip: bool = True,
+):
+    """Fade image (sequence).
+
+    This includes the modulation transfer function
+    (computed from the imaging system's point spread function),
+    and intensity noise added by the camera.
+
+    Parameters
+    -----------
+    I: np.ndarray
+        Image (sequence) with values within [0, 1].
+    I0 : float | np.ndarray, default=0.0
+        Offset with values within [0, 2**`b`-1].
+    T : float | np.ndarray, default=1.0
+        Transmission factor with values within [0, 1].
+    M : int, default=1
+        Optical magnification >= 1.
+    PSF : float, default=0.0
+        Standard deviation of the point spread function, in pixel units.
+    K : float, default=0.038 (@ `bits` = 8).
+        System gain of the digital camera, in units of DN (digital numbers) / electron.
+    dark_noise : float, default=13.7
+        Dark noise of the digital camera, in units of electrons.
+    dark_current : float, default=14.2
+        Dark current of the digital camera, in units of electrons.
+    bits : int, default=8
+        Number of bits to store information of one pixel.
+        This is used to determine the output dtype.
+        If e.g. bits equals 8, `Imax` will be 2 ** 8 - 1 = 255 and `dtype` will be `uint8`.
+        If e.g. bits equals 0, `Imax` will be 1 and `dtype` will be `float`.
+    clip : bool, default=True
+        If True (default), the output will be clipped after noise is applied.
+        This is needed to maintain the proper image data range.
+    rng : {numpy.random.Generator, int}, optional
+        Pseudo-random number generator.
+        By default, a PCG64 generator is used (see numpy.random.default_rng()).
+        If rng is an int, it is used to seed the generator.
+
+    Returns
+    -------
+    In : np.ndarray
+        Faded image (sequence).
+    """
+    t0 = time.perf_counter()
+
+    # check input
+    assert np.issubdtype(I.dtype, np.floating)
+    assert I.min() >= 0
+    assert I.max() <= 1
+
+    # scale values
+    Imax = 1 if bits == 0 else 2**bits - 1
+    In = vshape(I) * Imax  # this makes a copy
+
+    # transmission
+    if isinstance(T, np.ndarray) or T != 1.0:
+        assert np.all(0 <= T <= 0)
+        In *= vshape(T)
+
+    # offset
+    if isinstance(I0, np.ndarray) or I0 > 0.0:
+        assert np.all(I0 >= 0)
+        In += vshape(I0)
+
+    # magnification
+    if M > 1:  # attention: magnification must be an integer
+        In = sp.ndimage.uniform_filter(In, size=M, mode="wrap", axes=(1, 2))
+
+    # blur (e.g. defocus)
+    if PSF > 0:
+        In = sp.ndimage.gaussian_filter(In, sigma=PSF, order=0, mode="wrap", axes=(1, 2))
+
+    # camera noise
+    if K > 0:
+        # random number generator
+        if rng is None:
+            rng = np.random.default_rng()
+        if isinstance(rng, int):
+            rng = np.random.default_rng(rng)
+
+        # shot noise
+        # note: In has to be scaled to final value range first, else the SNR is too bad;
+        # then dividing by K yields number of electrons -> calc poisson -> multiplying by K yields DN
+        In = rng.poisson(In / K) * K
+
+        # dark signal and dark noise
+        if dark_current > 0 or dark_noise > 0:
+            In += rng.normal(dark_current * K, dark_noise * K, In.shape)
+    # # spatial non-uniformities
+    # DSNU = 0  # dark signal non-uniformity
+    # # In += DSNU  # todo: dark signal non-uniformity
+    # PRNU = 0  # photoresponse non-uniformity
+    # # In += PRNU  # todo: photoresponse non-uniformity
+
+    # clip values
+    if clip or bits != 0:
+        In.clip(0, Imax, out=In)
+
+    # quantization noise
+    # In += rng.uniform(0, 1, In.shape)
+    if bits >= 1:
+        bits += -bits % 8  # next power of two divisible by 8
+        dtype = f"uint{bits}"
+        In = In.astype(dtype, copy=False)
+
+    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
+    return In[0] if In.shape[0] == 1 else In
 
 
 def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) -> np.ndarray:
@@ -215,12 +329,20 @@ def circular_distance(a: float | np.ndarray, b: float | np.ndarray, c: float) ->
     Returns
     -------
     d : float or np.ndarray
-        Circular distance from a to b.
+        Circular distance between a and b.
 
-    Notes
-    -----
-    For more details, see https://ieeexplore.ieee.org/document/9771407 or
-    https://insideainews.com/2021/02/12/circular-statistics-in-python-an-intuitive-intro/.
+    References
+    ----------
+    .. [#] `Uhlig et al.,
+           “A Probabilistic Approach for Spatio-Temporal Phase Unwrapping in Multi-Frequency Phase-Shift Coding”,
+           IEEE,
+           2022.
+           <https://doi.org/10.1109/ACCESS.2022.3174121>`_
+
+    .. [#] `"Circular Statistics in Python: An Intuitive Intro",
+           www.insideainews.com,
+           2021.
+           <https://insideainews.com/2021/02/12/circular-statistics-in-python-an-intuitive-intro/>`_
     """
     # return np.minimum(np.abs(a - b), c - np.abs(a - b))
     return c / 2 - np.abs(c / 2 - np.abs(a - b))

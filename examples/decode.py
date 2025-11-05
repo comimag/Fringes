@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 f = Fringes()
+
 I = f.encode()
-Irec = I  # todo: replace this line with recording data as in 'record.py'
+Irec = I  # replace this line with recording data as in 'record.py'
 a, b, x = f.decode(Irec)
 
 # show results

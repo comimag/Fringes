@@ -29,7 +29,7 @@ The number of frames :attr:`~fringes.fringes.Fringes.T` is halved.
 In the decoding stage, the recorded fringe pattern sequence `I^*` is Fourier-transformed
 and the directions are separated in frequency space.
 Because this is done within the camera frame of reference,
-the demultiplexed directions only correspond to the encoded ones when the camera and scree are well aligned,
+the demultiplexed directions only correspond to the encoded ones when the camera and screen are well aligned,
 i.e. they must face each other directly.
 Otherwise, the decoded coordinate directions can not be assigned to the screen axes correctly.
 

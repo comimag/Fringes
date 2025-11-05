@@ -1,10 +1,10 @@
 [project]
 name = "Fringes"
-version = "1.2.0"
+version = "2.0.0"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 authors = [{name="Christian Kludt"}]
 readme = "README.md"
-license = "CC-BY-NC-SA-4.0"  # todo: GPL-3.0-only
+license = "GPL-3.0-only"
 license-files = ["LICEN[CS]E.*"]
 keywords = [
     "phase shifting",
@@ -32,20 +32,24 @@ dependencies = [
 
 [project.optional-dependencies]
 #cli = [
-#    "rich>=10.12",  # 10.12 if official Py3.10 release
+#    "rich>=10.12",  # 10.12 is official Py3.10 release
 #    "rich-argparse",
 #]
-#gui = [
-#    "asdf>=3",  # requires python>=3.9
-#    "pyside6>=6.0.4",  # 6.0.4 is first version to only the Qt 6.0+ frameworksince 6.2 support for: QImage::Format_RGBX16FPx4, QImage::Format_RGBA16FPx4, QImage::Format_RGBX32FPx4, QImage::Format_RGBA32FPx4
+#data = [
+##    "asdf>=3",  # requires python>=3.9
+#    "pooch>=1.8.2",  # todo: allow older version
 #    "pyqtgraph>=0.13",
+#    "pyside6>=6.0.4",  # 6.0.4 is first version to only support the Qt 6.0+ framework
+#]
+#gui = [
 #    "qdarktheme",
 #    "textual>=4",
+#    {include-group = "data"},
 #]
 
 [dependency-groups]
 dev = [
-#    "jupyter>=1.1.1",
+    "jupyter>=1.1.1",
     "matplotlib>=3.10", # 3.10 is first version to support python>=3.10
     "pyside6>=6.0.4", # 6.0.4 is first version to only the Qt 6.0+ frameworksince 6.2 support for: QImage::Format_RGBX16FPx4, QImage::Format_RGBA16FPx4, QImage::Format_RGBX32FPx4, QImage::Format_RGBA32FPx4
     "pyqtgraph>=0.13",
@@ -67,25 +71,15 @@ lint = [
 test = [
     "coverage>=7.10.6",  # 7 is latest major version
     "pytest>=8", # 8 is the latest major version
-    "pytest-cov>=6", # 6 is the latest major version
+#    "pytest-cov>=6", # 6 is the latest major version
     "matplotlib>=3.10", # 3.10 is first version to support python>=3.10 (pyplot is required for testing the examples)
 ]
 
-[project.scripts]  # https://realpython.com/python-pyproject-toml/
-fringes = "fringes.__main__:main"
+[project.scripts]
+fringes = "fringes.__main__:main"  # instead of 'uvx run fringes':
 
 #[project.gui-scripts]
 #fgui = "fringes.gui:main"
-
-[tool.black]
-line-length = 120
-
-[tool.pytest.ini_options]
-pythonpath = "examples"
-
-
-[tool.uv]
-package = true
 
 [project.urls]  # https://docs.pypi.org/project_metadata/
 Documentation = "https://fringes.readthedocs.io"
@@ -94,3 +88,44 @@ Repository = "https://github.com/comimag/fringes"
 Donate = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EHBGZ229DKUC4"
 # JOSS
 # ZENODO
+
+[tool.black]
+line-length = 120
+
+[tool.coverage.run]
+#branch = true
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if False:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    ]
+ignore_errors = true
+
+[tool.coverage.html]
+directory = "coverage_html_report"
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --doctest-continue-on-failure"
+pythonpath = "examples"
+testpaths = [
+    "tests",
+    "src",
+]
+
+[tool.uv]
+package = true

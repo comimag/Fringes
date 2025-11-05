@@ -39,7 +39,7 @@ Irec = np.empty((f.T,) + image.shape, image.dtype)  # allocate empty image stack
 try:
     for t in range(f.T):  # record fringe patterns in a loop
         cv2.imshow("Fringes", I[t])  # display fringe pattern in fullscreen mode
-        key = cv2.waitKey(delay)  # wait delay time
+        cv2.waitKey(delay)  # wait delay time
 
         ret, image = camera.read()  # capture the fringe pattern (AVOID OVEREXPOSURE !!!)
 
