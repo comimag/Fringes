@@ -26,7 +26,3 @@ jobs:
 
       - name: Run pytest using coverage
         run: uv run coverage run -m pytest
-        run: uv run coverage combine
-        run: uv run coverage report
-        run: uv run coverage html
-        run: uv run pytest
