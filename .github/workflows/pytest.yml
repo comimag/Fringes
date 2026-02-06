@@ -1,4 +1,4 @@
-name: uv-pytest-coverage
+name: uv-pytest
 
 on:
   push:
@@ -36,5 +36,5 @@ jobs:
       - name: Install the project
         run: uv sync --all-groups
 
-      - name: Run pytest using coverage
-        run: uv run coverage run -m pytest
+      - name: Run pytest
+        run: uv run pytest
