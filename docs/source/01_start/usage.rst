@@ -3,7 +3,7 @@ Usage
 This package provides the handy :class:`~fringes.fringes.Fringes` class,
 which handles all the required :ref:`parameters <parameters>`
 for configuring the fringe pattern sequence
-and provides methods for encoding and decoding them.
+and provides methods for encoding and decoding it.
 
 Script
 ------
@@ -32,7 +32,7 @@ Circular dependencies are resolved automatically.
    f.N = 4                      # set number of shifts
    f.v = [9, 10]                # set spatial frequencies
 
-   T = f.T                      # get number of frames
+   print(f.T)                   # get number of frames
 
 Encode
 """"""
@@ -57,7 +57,7 @@ and capture the scene with a camera according to the following pseudocode
    Irec = []
 
    for t in range(f.T):
-       # display frame on screen
+       # display frame of pattern sequence on screen
        frame = I[t]
        ...
 
@@ -127,37 +127,30 @@ in the `examples <https://github.com/comimag/Fringes/tree/main/examples>`_ direc
 
 CLI
 ---
-You can run `Fringes` directly from the command-line interface with option flags.
+You can run `fringes` directly from the command-line interface with option flags.
 
-If `infile` ``-i`` is **not specified**, `Fringes` **encodes** the fringe pattern sequence.
-
-Save the fringe pattern sequence to 'pattern.npy':
-
-.. code-block:: console
-
-   fringes pattern.npy
-
-Save the fringe pattern sequence as image files with appended image index to 'pattern_*.png':
+Encode the fringe pattern sequence and save it to image files `pattern.png`
+(the frame index will be automatically appended):
 
 .. code-block:: console
 
-   fringes pattern_.png
+   fringes pattern.png
 
-If `infile` ``-i`` is **specified**, `Fringes` **decodes** the given data.
-
-Load and decode 'pattern.npy':
-
-.. code-block:: console
-
-   fringes -i pattern.npy decoded.npz
-
-Load and decode the glob pattern 'pattern_*.png':
+Decode the (recorded) fringe pattern sequence from the input file(s)
+defined by the `glob pattern <https://docs.python.org/3/library/glob.html>`_ `pattern*.png`
+and save the results in `.npz <https://numpy.org/doc/stable/reference/generated/numpy.savez.html>`_ format:
 
 .. code-block:: console
 
-   fringes -i pattern_*.npy decoded.npz
+   fringes -i pattern*.png decoded.npz
 
-To list all options, call `Fringes` with the help flag ``-h``:
+.. note::
+  | If the input file(s) ``-i`` are **not** specified,
+    the pattern sequence will be **encoded**.
+  | If they **are** specified, the input file(s) will be **decoded**.
+  | In any case, the output file(s) must be specified.
+
+To list all options, call `fringes` with the help flag ``-h``:
 
 .. code-block:: console
 

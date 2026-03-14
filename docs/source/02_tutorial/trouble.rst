@@ -35,7 +35,7 @@ Troubleshooting
     c) You can use the function :func:`~fringes.util.gamma_auto_correct`
        to automatically estimate and apply the gamma correction factor to linearize the display/camera response curve.
 
-    d) Applying `histogram equaization <https://scikit-image.org/docs/0.25.x/api/skimage.exposure.html#skimage.exposure.equalize_hist>`_
+    d) Applying `histogram equalization <https://scikit-image.org/docs/0.25.x/api/skimage.exposure.html#skimage.exposure.equalize_hist>`_
        may also linearize the display/camera response curve.\
 
 .. dropdown:: My decoded coordinates show lots of noise

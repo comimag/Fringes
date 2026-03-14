@@ -58,8 +58,8 @@ Encoding
 
    The fringe patterns of each set `i` are then modulated temporally,
    i.e. shifted `N_i` times with an equidistant phase shift of `2 \pi f_i / N_i`.
-   This is equal to sampling over `f_i` periods with `N_i` sample points
-   at time steps `t_{i,n} = n / N_i`, with `n \in \{ \, \mathbb{N}_0 \mid n < N_i \, \}`.
+   This is equal to sampling over `f_i` periods with `N_i` equidistant sample points
+   at times `t_{i,n} = n / N_i`, with `n \in \{ \, \mathbb{N}_0 \mid n < N_i \, \}`.
 
 Transmission
 ------------
@@ -177,7 +177,7 @@ Decoding
 
    `\hat{b_i} = \frac{|z_i|}{N_i} 2`.
 
-   The factor 2 is because we also have to take the amplitudes of the frequencies with opposite sign into account.
+   The factor 2 is because we also have to take the amplitudes of the frequencies with opposite sign into account [#]_.
 
    The argument of the complex phasor `z_i` is the circular mean of the irradiance-weighted sample points `c_{i, n}`
    and yields the phase map
@@ -241,7 +241,7 @@ Decoding
 
   b) Temporal Phase Unwrapping (TPU)
 
-     If multiple sets, i.e. `K \le 2`, with different spatial frequencies `\nu_i` are used,
+     If multiple sets, i.e. `K \ge 2`, with different spatial frequencies `\nu_i` are used,
      and the unambiguous measurement range is larger than or equal to the screen length, i.e. `UMR \ge L`,
      the ambiguity of the phase map is resolved by generalized multi-frequency temporal phase unwrapping (GTPU).
 
@@ -285,7 +285,7 @@ Now we can state how the transmission impairments are adressed by the phase shif
   Although their modulation `b` is attenuated,
   the desired coordinate `x` is determined with sub-pixel precision [Bey16]_.
 
-The :ref:`decoding <decoding>` yields the following information about the observed scene:
+:ref:`Decoding <decoding>` yields the following information about the observed scene:
 
 1. The brightness `\hat{a}` is a measure for the reflectance (resp. absorption) of a surface point.
 
@@ -373,3 +373,8 @@ The :ref:`decoding <decoding>` yields the following information about the observ
    Applied Optics,
    1997.
    <https://doi.org/10.1364/AO.36.000271>`_
+
+.. [#] Here we only get the amplitude at the positive detection frequency,
+       but we also have to consider the amplitude at the negative detection frequency.
+       It is the same because it's a real function, which has Hermitian symmetry.
+       Hence, we have to multiply by two.

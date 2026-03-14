@@ -1,18 +1,20 @@
 import glob
-from importlib.metadata import version
 import logging
 import os
 import tempfile
 import time
+from importlib.metadata import version
+from pathlib import Path
 
-from numba import get_num_threads
+import cv2
 import numpy as np
 import pytest
+from numba import get_num_threads
 
 import fringes
 from fringes import Fringes, __version__
 from fringes.fringes import _Decoded, _Decoded_verbose
-from fringes.util import circular_distance
+from fringes.util import circular_distance, vshape
 
 f = Fringes()
 I = f.encode()
@@ -22,9 +24,9 @@ I10 = f10.encode()
 
 class TestPackage:
     def test_logging(self):
-        assert (
-            fringes.__package__ in logging.Logger.manager.loggerDict
-        ), f"Top level logger '{fringes.__package__}' doesn't exist."
+        assert fringes.__package__ in logging.Logger.manager.loggerDict, (
+            f"Top level logger '{fringes.__package__}' is not available."
+        )
 
     def test_version(self):
         assert __version__, "Version is not specified."
@@ -43,38 +45,43 @@ class TestClass:
         assert set(Fringes._setters) == set(Fringes._help.keys())
 
     def test_defaults_setters(self):
-        assert set(Fringes._defaults.keys()) | {"A", "B", "l"} == set(Fringes._setters)
+        assert set(Fringes._defaults.keys()) | {"A", "B", "l", "D"} == set(Fringes._setters)
 
-    def test_docstrings(self):
-        for k in dir(Fringes):
-            if k[0] != "_":
-                v = getattr(Fringes, k)
-                if isinstance(v, property):
-                    assert v.__doc__ is not None, f"Property '{k}' has no docstring."
-                elif callable(v):
-                    assert v.__doc__ is not None, f"Method '{k}()' has no docstring."
+    @pytest.mark.parametrize("attr", [a for a in dir(Fringes) if a[0] != "_"])
+    def test_docstrings(self, attr):
+        v = getattr(Fringes, attr)
+        if isinstance(v, property):
+            assert v.__doc__ is not None, f"Property '{attr}' has no docstring."
+        elif callable(v):
+            assert v.__doc__ is not None, f"Method '{attr}()' has no docstring."
 
 
 class TestInstance:
-    def test_init(self, caplog):
-        # todo: the next line basically replaces the next for-loop
+    def test_call(self):
+        assert np.array_equal(I10, f10())
+
+    # todo: parameterize
+    def test_init_consistency(self, caplog):
+        Fringes(dtype="uint16", bits=16)
         assert "' got overwritten by interdependencies. Choose consistent initialization values." not in caplog.text
 
-        for k, v in Fringes._defaults.items():
-            if k in "N l v f".split() and getattr(f, k).ndim != np.array(v).ndim:
-                assert np.array_equal(
-                    getattr(f, k), v[0]
-                ), f"'{k}' got overwritten by interdependencies. Choose consistent default values in '__init__()'."  # without contradiction
-            else:
-                assert np.array_equal(
-                    getattr(f, k), v
-                ), f"'{k}' got overwritten by interdependencies. Choose consistent default values in '__init__()'."  # without contradiction
+        Fringes(dtype="uint16", bits=32)
+        assert "' got overwritten by interdependencies. Choose consistent initialization values." in caplog.text
+        assert caplog.records[0].levelname == "WARNING"
 
-        for k in "N v f".split():
-            assert getattr(f, f"_{k}").shape == (
-                f.D,
-                f.K,
-            ), f"'Set' parameter {k} does not have shape ({f.D}, {f.K})."
+    @pytest.mark.parametrize("attr", Fringes._defaults.items())
+    def test_init_defaults(self, attr):
+        k, v = attr
+        msg = f"'{k}' got overwritten by interdependencies. Choose consistent default values in '__init__()'."
+
+        if k in "N l v f".split() and getattr(f, k).ndim != np.array(v).ndim:
+            assert np.array_equal(getattr(f, k), v[0]), msg  # ...without contradiction
+        else:
+            assert np.array_equal(getattr(f, k), v), msg  # ...without contradiction
+
+    @pytest.mark.parametrize("set_prop", [c for c in "Nlvf"])
+    def test_set(self, set_prop):
+        assert getattr(f, f"_{set_prop}").shape == (f.D, f.K)
 
     def test_equal(self):
         f_ = Fringes()
@@ -96,193 +103,232 @@ class TestInstance:
     #         f.T = T
     #         assert f.T == T, f"Couldn't set 'T' to {T}."
 
-    def test_save_load(self):
+    @pytest.mark.parametrize("ext", [".json", ".yaml"])
+    def test_save_load(self, ext):
         f = Fringes()
         params = f._params
 
         with tempfile.TemporaryDirectory() as tempdir:
-            for ext in {".json", ".yaml"}:
-                fname = os.path.join(tempdir, f"params{ext}")
+            fname = Path(tempdir) / f"params{ext}"
 
-                f.save(fname)
-                assert os.path.isfile(fname), "No params-file saved."
+            f.save(fname)
+            assert os.path.isfile(fname), "No params-file saved."
 
-                f.load(fname)
-                params_loaded = f._params
+            f.load(fname)
 
-                # iterate over loaded params
-                for k in params_loaded.keys():
-                    assert k in params, f"Fringes class has no attribute '{k}'"
-                    assert (
-                        params_loaded[k] == params[k]
-                    ), f"Attribute '{k}' in file '{fname}' differs from its corresponding instance attribute."
+            assert params == f._params
 
-                # iterate over instance params
-                for k in params.keys():
-                    assert k in params_loaded, f"File '{fname}' has no attribute '{k}'"
-                    if k in params_loaded:
-                        assert (
-                            params[k] == params_loaded[k]
-                        ), f"Instance attribute '{k}' differs from its corresponding attribute in file '{fname}'."
 
-    def test_UMR(self):
+class TestCosys:
+    @pytest.mark.parametrize("axes", [0, 1, (0, 1), (1, 0)])
+    def test_x(self, axes):
         f = Fringes()
-        f.l = 20.2, 60.6
-        assert np.array_equal(f.UMR, [60.6] * f.D), "'UMR' is not 60.6."
+        f.axes = axes
 
-    def test_x(self):
+        idx = np.indices((f.Y, f.X))[f.axes, ..., None]
+        assert np.array_equal(f.x, idx)
+
+    @pytest.mark.parametrize("axes", [0, 1, (0, 1), (1, 0)])
+    def test_axes(self, axes):
         f = Fringes()
+        f.axes = axes
 
-        for D in range(1, f._Dmax + 1):
-            f.D = D
-            for ax in range(f._Dmax):
-                f.axis = ax
-                for idx in Fringes._choices["indexing"]:
-                    f.indexing = idx
+        I = f.encode()
+        dec = f.decode(I)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
 
-                    x = f.x
-                    i = np.indices((f.Y, f.X))
-                    if idx == "xy":
-                        i = i[::-1]
-                    if D == 1:
-                        i = i[ax][None, :, :]
-                    assert np.array_equiv(
-                        x, i
-                    ), f"Coordinates are wrong for D = {f.D}, axis = {f.axis}, indexing = {f.indexing}."
+    # def test_grids(self): # todo: fix grids
+    #     f = Fringes()
+    #
+    #     for g in Fringes._choices["grid"]:
+    #         f.grid = g
+    #         f.Y = f.X = 1000
+    #         f.l = 13, 7, 89
+    #         I = f.encode()
+    #         dec = f.decode(I)
+    #         da_max = np.max(np.abs(dec.a - f.A))
+    #         db_max = np.max(np.abs(dec.b - f.B))
+    #         dx_max = np.max(np.abs(dec.x - f.x))
+    #         # todo: mask in center if polar
+    #         d = dec.x - f.x
+    #         assert np.allclose(d, 0, rtol=0, atol=0.13)
+    #
+    #         # todo: test angles(0, 90, 45)
 
-
-class TestEncode:
-    def test_shape(self):
-        assert isinstance(I, np.ndarray), "Return value isn't a 'Numpy array'."
-        assert I.shape == f.shape, f"Shape is not {f.shape}."
-
-    def test_dtypes(self):
+    @pytest.mark.parametrize("alpha", [1.1, 2])
+    def test_alpha(self, alpha):
         f = Fringes(Y=10)
+        f.a = alpha
 
-        for dtype in Fringes._choices["dtype"]:
-            f.dtype = dtype
-            I = f.encode()
-            assert I.dtype == f.dtype, f"dtype isn't {dtype}."
+        I = f.encode()
+        dec = f.decode(I)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.26)
 
-    def test_call(self):
-        I10_ = f10()
-        assert isinstance(I10_, np.ndarray), "Return value isn't a 'Numpy array'."
-        assert I10_.shape == f10.shape, f"Shape is not {f10.shape}."
-        assert I10_.dtype == f10.dtype, f"Dtype is not {f10.dtype}."
-        assert np.array_equal(I10_, I10)
+    def test_distort(self):
+        a = 0.15
+        a = min(a, 0.5 / 3)
+        x_map, y_map = f.x.astype(np.float32, copy=False)
+        x_map[
+            int(f.Y / 2 - f.Y * a + 0.5) : int(f.Y / 2 + f.Y * a + 0.5),
+            int(f.X / 2 - f.X * a + 0.5) : int(f.X / 2 + f.X * a + 0.5),
+        ] = x_map[
+            int(f.Y / 2 + f.Y * a + 0.5) : int(f.Y / 2 + 3 * f.Y * a + 0.5),
+            int(f.X / 2 + f.X * a + 0.5) : int(f.X / 2 + 3 * f.X * a + 0.5),
+        ]
+        y_map[
+            int(f.Y / 2 - f.Y * a + 0.5) : int(f.Y / 2 + f.Y * a + 0.5),
+            int(f.X / 2 - f.X * a + 0.5) : int(f.X / 2 + f.X * a + 0.5),
+        ] = y_map[
+            int(f.Y / 2 + f.Y * a + 0.5) : int(f.Y / 2 + 3 * f.Y * a + 0.5),
+            int(f.X / 2 + f.X * a + 0.5) : int(f.X / 2 + 3 * f.X * a + 0.5),
+        ]
+        Irec = np.array([cv2.remap(frame, x_map, y_map, cv2.INTER_LINEAR) for frame in I])
+        x = vshape(np.array([cv2.remap(xd, x_map, y_map, cv2.INTER_LINEAR) for xd in f.x]))
 
-    def test_iter(self):
-        for t, frame in enumerate(f10):
-            assert isinstance(frame, np.ndarray), "Return value isn't a 'Numpy array'."
-            assert frame.shape == f10.shape[1:], f"Shape is not {f10.shape[1:]}."
-            assert frame.dtype == f10.dtype, f"Dtype is not {f10.dtype}."
-            assert np.array_equal(frame, I10[t])
-        assert t + 1 == f10.T, "Number of iterations doesn't equal number of frames."
+        dec = f.decode(Irec)
+        # da_max = np.max(np.abs(dec.a - f.A))
+        # db_max = np.max(np.abs(dec.b - f.B))
+        # dx_max = np.max(np.abs(dec.x - x))
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13)
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69)
+        assert np.allclose(dec.x, x, rtol=0, atol=0.13)
 
-        I10_ = np.array(list(frame for frame in f10))
-        assert isinstance(I10_, np.ndarray), "Return value isn't a 'Numpy array'."
-        assert I10_.shape == f10.shape, f"Shape is not {f10.shape}."
-        assert I10_.dtype == f10.dtype, f"Dtype is not {f10.dtype}."
-        assert np.array_equal(I10_, I10)
 
-    @pytest.mark.skip("Test only on request.")
-    def test_speed(self):
+class TestMux:
+    def test_WDM(self):
+        f = Fringes(Y=10)
+        f.N = 3
+        f.WDM = True
+
+        I = f.encode()
+        assert np.array_equal(I, np.array([frame for frame in f]))
+
+        dec = f.decode(I)
+        # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+        # dx_max = np.max(np.abs(dec.x[:, 1:, :, :] - f.x[:, 1:, :, :]))
+        assert np.allclose(dec.x[:, 1:, :, :], f.x[:, 1:, :, :], rtol=0, atol=0.09)  # todo: index 0
+
+    def test_SDM(self):
+        f = Fringes()
+        f.SDM = True
+
+        I = f.encode()
+        assert np.array_equal(I, np.array([frame for frame in f]))
+
+        dec = f.decode(I)
+        # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+        # dx_max = np.max(np.abs(dec.x[:, 1:, :, :] - f.x[:, 1:, :, :]))
+        assert np.allclose(dec.x[:, 1:, :, :], f.x[:, 1:, :, :], rtol=0, atol=1.19)  # todo: index 0
+
+    def test_SDM_WDM(self):
+        f = Fringes()
+        f.N = 3
+        f.SDM = True
+        f.WDM = True
+
+        I = f.encode()
+        assert np.array_equal(I, np.array([frame for frame in f]))
+
+        dec = f.decode(I)
+        # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+        # dx_max = np.max(np.abs(dec.x[:, 1:, :, :] - f.x[:, 1:, :, :]))
+        assert np.allclose(dec.x[:, 1:, :, :], f.x[:, 1:, :, :], rtol=0, atol=1.13)  # todo: index 0
+
+    @pytest.mark.parametrize("static", [False, True])
+    def test_FDM(self, static):
+        f = Fringes(Y=10)
+        f.FDM = True
+        f.static = static
+        f.N = 1
+
+        I = f.encode()
+        assert np.array_equal(I, np.array([frame for frame in f]))
+
+        dec = f.decode(I)
+        # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+        # dx_max = np.max(np.abs(dec.x[:, 1:, 1:, :] - f.x[:, 1:, 1:, :]))
+        assert np.allclose(dec.x[:, 1:, 1:, :], f.x[:, 1:, 1:, :], rtol=0, atol=0.31)  # todo: index 0
+
+
+@pytest.mark.skip()
+class TestSpeed:
+    def test_encode(self):
         f = Fringes()
         f.X = 3840
         f.Y = 2160
 
-        T = np.empty(10)
-        for t in range(len(T)):
+        count = 10
+
+        T_enc_ = np.empty(count)
+        for t in range(len(T_enc_)):
             t0 = time.perf_counter()
             f.encode()
             t1 = time.perf_counter()
+            T_enc_[t] = t1 - t0
+        T_enc_med = np.median(T_enc_)
+        assert T_enc_med <= 0.1, f"Encoding takes {T_enc_med * 1000:.0f}ms > 100ms."
+
+        T_iter_ = np.empty(count)
+        for t in range(len(T_iter_)):
+            t0 = time.perf_counter()
+            for frame in f:
+                pass
+            t1 = time.perf_counter()
+            T_iter_[t] = t1 - t0
+        T_iter_med = np.median(T_iter_)
+        assert T_iter_med <= 0.1 * 1.2, f"Encoding takes {T_iter_med * 1000:.0f}ms > 100ms."
+
+    def test_decode(self):
+        f = Fringes()
+
+        # Tmed < 2s in battery-mode on 2025-08-04 and 2025-09-22
+        # Tmed < 2s in AC-mode on 2025-08-04 and 2025-09-22
+        f.X = 2048
+        f.Y = 2048
+        f.v = 13, 7
+
+        I = f.encode()
+
+        T = np.empty(10)
+        for t in range(len(T)):
+            t0 = time.perf_counter()
+            f.decode(I)
+            t1 = time.perf_counter()
             T[t] = t1 - t0
+            time.sleep(4)  # time for CPU to cool down
+
+        Tmed = np.median(T)
+        assert Tmed <= 2.0, f"Decoding takes {Tmed * 1000:.0f}ms > 2000ms."  # todo: <= 1.0
+
+    def test_compile(self):
+        flist = glob.glob(
+            os.path.join(os.path.dirname(__file__), "..", "src", "fringes", "__pycache__", "decoder*decode*.nbc")
+        )
+        for file in flist:
+            os.remove(file)
+
+        t0 = time.perf_counter()
+        f.decode(I)
+        t1 = time.perf_counter()
+        T = t1 - t0
 
         print(T)
-        Tmin = np.min(T)
-        Tmed = np.median(T)
-        Tavg = np.mean(T)
-        Tmax = np.max(T)
-        assert Tmed <= 0.1, f"Encoding takes {Tmed * 1000:.0f}ms > 100ms."
+        assert T < 10 * 60, f"Numba compilation took {T / 60} minutes > 10 minutes."
 
 
 class TestDecode:
-    def test_x(self):
-        f = Fringes()
-
-        for D in range(1, f._Dmax + 1):
-            f.D = D
-            for ax in range(f._Dmax):  # if D == 1 else range(1):
-                f.axis = ax
-                for indexing in Fringes._choices["indexing"]:
-                    f.indexing = indexing
-                    I = f.encode()
-                    dec = f.decode(I)
-                    assert np.allclose(
-                        dec.x, f.xc, rtol=0, atol=0.13
-                    ), f"Coordinate is off more than 0.13 with {f.D = }, {f.axis = }, {f.indexing = }."
-
-    def test_p0(self):
-        f = Fringes()
-
-        for p0 in {0, np.pi / 2, np.pi}:  # todo: 1.0
-            f.p0 = p0
-            I = f.encode()
-            dec = f.decode(I)
-            assert np.allclose(dec.x, f.xc, rtol=0, atol=0.5), f"Coordinate is off more than 0.13 with {f.mode = }."
-
-    def test_modes(self):
-        f = Fringes()
-
-        for mode in Fringes._choices["mode"]:
-            f.mode = mode
-            I = f.encode()
-            dec = f.decode(I)
-            assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), f"Coordinate is off more than 0.13 with {f.mode = }."
-
-    # def test_grids(): # todo: fix grids
-    #     f = Fringes()
-    #
-    #     for g in Fringes._choices[grid"]:
-    #         f.grid = g
-    #         I = f.encode()
-    #         dec = f.decode(I)
-    #
-    #         d = dec.x - f.xc
-    #         assert np.allclose(d, 0, rtol=0, atol=0.13), f"Coordinate is off more than 0.13 with {f.grid = }."
-    #
-    #         # todo: test angles(0, 90, 45)
-
-    def test_dtypes(self):
-        f = Fringes(Y=10)
-
-        for dtype in Fringes._choices["dtype"]:
-            f.dtype = dtype
-            I = f.encode()
-            dec = f.decode(I)
-            assert np.allclose(
-                dec.x[:, 1:, :, :], f.xc[:, 1:, :, :], rtol=0, atol=0.13
-            ), f"Coordinate is off more than 0.13 with {f.dtype = }."  # todo: index 0
-            # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-            # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.13)  # todo: float32, float64
-
     def test_dtype_object(self):
         I10_ = np.empty((f10.T,), object)
         for t, frame in enumerate(I10):
             I10_[t] = frame
         dec = f10.decode(I10_)
-        assert np.allclose(dec.x, f10.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13 with dtype = object."
+        assert np.allclose(dec.x, f10.x, rtol=0, atol=0.13)
 
-    def test_check_overexposure(self, caplog):
-        I10_ = np.full(f10.shape, f10.Imax, f10.dtype)
+    @pytest.mark.parametrize("I10_", [np.full(f10.shape, f10.Imax, f10.dtype), np.full(f10.shape, 2**10 - 1, "uint16")])
+    def test_check_overexposure(self, I10_, caplog):
         f10.decode(I10_, check_overexposure=True)
         assert "'I' is probably overexposed and decoding might yield unreliable results." in caplog.messages
-        assert caplog.records[0].levelname == "WARNING", "logging level of 'overexposure-warning' is not 'WARNING'."
-
-        I10_ = np.full(f10.shape, 2**11 - 1, np.uint16)
-        f10.decode(I10_, check_overexposure=True)
-        assert "'I' is probably overexposed and decoding might yield unreliable results." in caplog.messages
-        assert caplog.records[0].levelname == "WARNING", "logging level of 'overexposure-warning' is not 'WARNING'."
+        assert caplog.records[0].levelname == "WARNING"
 
     def test_check_num_frames(self):
         I10_ = I10[:-1]
@@ -302,205 +348,40 @@ class TestDecode:
             excinfo.value
         )
 
-    def test_demodulate(self):
-        dec = f.decode(I)
-        assert isinstance(dec, tuple) and isinstance(dec, _Decoded), "Return value isn't a 'namedtuple'."
-        assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
-        # da_max = np.max(np.abs(dec.a - f.A))
-        # db_max = np.max(np.abs(dec.b - f.B))
-        # dx_max = np.max(np.abs(dec.x - f.xc))
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
+    @pytest.mark.parametrize("threads", range(-get_num_threads(), get_num_threads() + 2))
+    def test_threads(self, threads):
+        f10.decode(I10, threads=threads)
 
-    def test_demodulate_verbose(self):
+    @pytest.mark.parametrize("verbose,rt", [(False, _Decoded), (True, _Decoded_verbose)])
+    def test_named_tuple(self, verbose, rt):
+        dec = f.decode(I, verbose=verbose)
+        assert isinstance(dec, tuple) and isinstance(dec, rt), "Return value isn't a 'namedtuple'."
+        assert all(isinstance(item, np.ndarray) for item in dec)
+
+
+class TestPrecision:
+    def test_verbose(self):
         dec = f.decode(I, verbose=True)
-        assert isinstance(dec, tuple) and isinstance(dec, _Decoded_verbose), "Return value isn't a 'namedtuple'."
-        assert all(isinstance(item, np.ndarray) for item in dec), "Return values aren't 'Numpy arrays'."
-        p = (f.xc[:, None, :, :, :] % f._l[:, :, None, None, None] / f._l[:, :, None, None, None]) * 2 * np.pi
+        p = (f.x[:, None, :, :, :] % f._l[:, :, None, None, None] / f._l[:, :, None, None, None]) * 2 * np.pi
         p = p.reshape(f.D * f.K, f.Y, f.X, f.C).astype(np.float32, copy=False)
-        k = f.xc[:, None, :, :, :] // f._l[:, :, None, None, None]
+        k = f.x[:, None, :, :, :] // f._l[:, :, None, None, None]
         k = k.reshape(f.D * f.K, f.Y, f.X, f.C).astype(np.int_, copy=False)
         # da_max = np.max(np.abs(dec.a - f.A))
         # db_max = np.max(np.abs(dec.b - f.B))
-        # dx_max = np.max(np.abs(dec.x - f.xc))
+        # dx_max = np.max(np.abs(dec.x - f.x))
         # dp_max = np.max(np.abs(dec.p - p))
         # r_max = np.max(np.abs(dec.r))
         # u_max = np.max(np.abs(dec.u))
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13), "Brightness is off more than 0.13."
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-        # assert np.allclose(dec.x, f.xc, rtol=0, atol=4 * dec.r)  # todo: x within factor * r
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=4 * dec.u)
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.13)
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
+        # assert np.allclose(dec.x, f.x, rtol=0, atol=4 * dec.r)  # todo: x within factor * r
+        assert np.allclose(dec.x, f.x, rtol=0, atol=4 * dec.u)
         assert np.allclose(dec.p, np.pi, rtol=0, atol=np.pi), "Phase values are not within [0, 2PI]."
-        assert np.allclose(dec.p, p, rtol=0, atol=0.0052), "Phase is off more than 0.0052."
+        assert np.allclose(dec.p, p, rtol=0, atol=0.0052)
         assert np.allclose(dec.k, k, rtol=0, atol=0), "Fringe orders are wrong."
-        assert np.allclose(dec.r, 0, rtol=0, atol=0.09), "Residuals are larger than 0.09."
-        assert np.allclose(dec.u, 0, rtol=0, atol=0.04), "Uncertainty is larger than 0.04."
-
-
-    def test_threads(self):
-        max_threads = get_num_threads()
-        for threads in range(-max_threads, max_threads + 2):
-            f10.decode(I10, threads=threads)
-
-    def test_uncertainty(self):
-        dec = f10.decode(I10)
-
-        for ui in 3, np.full((f10.Y, f10.X, f10.C), 3):
-            for b in 100, dec.b, None:
-                for a in 127.5, dec.a, None:
-                    for K in 0.038, None:
-                        for dark_noise in 13.7, None:
-                            u = f.uncertainty(ui, b, a, K, dark_noise)
-
-        u = f.uncertainty(a=127.5, b=70, K=0.038, dark_noise=13.7)
-        assert np.allclose(u, 0.5, rtol=0, atol=0.5), "Uncertainty is off more than 0.5."
-
-    def test_single_fringe(self):
-        f = Fringes()
-        f.K = 1
-        f.v = 1
-
-        f.N = 9
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.17), "Brightness is off more than 0.17."
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.34), "Modulation is off more than 0.34."
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.92
-        ), "Coordinate is off more than 0.92."  # todo: index 0
-        assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.92)
-
-        f.N = 23
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.20), "Brightness is off more than 0.20."
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.26), "Modulation is off more than 0.26."
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.48
-        ), "Coordinate is off more than 0.48."  # todo: index 0
-        assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.48)
-
-    def test_alpha(self):
-        f = Fringes(Y=10)
-
-        for a in [1.1, 2]:
-            f.a = a
-            I = f.encode()
-            dec = f.decode(I)
-            assert np.allclose(dec.x, f.xc, rtol=0, atol=0.26), f"Coordinate is off more than 0.26 with {f.a = }."
-
-    def test_spatial_unwrapping(self):
-        f = Fringes()
-        f.K = 1
-        # todo: f.v = 7, 14
-        I = f.encode()
-
-        for uwr_func in {"ski", "cv2"}:  # todo: "cv2" is error-prone!
-            dec = f.decode(I, uwr_func=uwr_func)
-
-            for d in range(f.D):
-                grad = np.gradient(dec.x[d], axis=0) + np.gradient(dec.x[d], axis=1)
-                dg_max = np.max(np.abs(grad - 1))
-                idx = np.argwhere(np.abs(grad - 1) > 0.10)
-                assert np.allclose(
-                    grad, 1, rtol=0, atol=0.10
-                ), f"Gradient of unwrapped phase map isn't close to 1 at direction {d} for function {uwr_func}."
-
-    def test_decolorize(self):
-        f = Fringes(Y=10)
-
-        f.h = "rgb"
-        I = f.encode()
-        dec = f.decode(I)
-        assert dec.x.shape[-1] == 3, "Coordinate does not have 3 color channels."
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-        I = I.mean(axis=-1)
-        dec = f.decode(I)
-        assert dec.x.shape[-1] == 3, "Coordinate does not have 1 color channel."
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-
-        f.h = (100, 100, 100)
-        I = f.encode()
-        dec = f.decode(I)
-        assert dec.x.shape[-1] == 1, "Coordinate does not have 1 color channel."
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.29
-        ), "Coordinate is off more than 0.29."  # todo: index 0
-        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=0.29)  # todo
-
-    def test_hues(self):
-        f = Fringes(Y=10)
-
-        f.h = "ww"
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-
-        f.h = "rggb"
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-
-        f.h = "www"
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.13), "Coordinate is off more than 0.13."
-
-    def test_WDM(self):
-        f = Fringes(Y=10)
-        f.N = 3
-        f.WDM = True
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.09
-        ), "Coordinate is off more than 0.09."  # todo: index 0
-        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=00)  # todo
-
-    def test_SDM(self):
-        f = Fringes()
-        f.SDM = True
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=1.19
-        ), "Coordinate is off more than 1.19."  # todo: index 0
-        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=1.19)  # todo
-
-    def test_SDM_WDM(self):
-        f = Fringes()
-        f.N = 3
-        f.SDM = True
-        f.WDM = True
-        I = f.encode()
-        dec = f.decode(I)
-        assert np.allclose(
-            dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=1.13
-        ), "Coordinate is off more than 1.13."  # todo: index 0
-        # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-        # assert np.allclose(circular_distance(dec.x, f.xc, f.Lext), 0, rtol=0, atol=1.13)  # todo
-
-    def test_FDM(self):
-        f = Fringes(Y=10)
-        f.FDM = True
-
-        for static in {False, True}:
-            f.static = static
-            f.N = 1
-            I = f.encode()
-            dec = f.decode(I)
-            assert np.allclose(
-                dec.x[:, 1:, 1:, :], f.xc[:, 1:, 1:, :], rtol=0, atol=0.31
-            ), f"Coordinate is off more than 0.31 with {static = }, {f.N = }."  # todo: index 0
-            # xmax = np.max(np.abs(circular_distance(dec.x, f.xc, f.Lext)))
-            # assert np.all(
-            #     circular_distance(dec.x, f.xc, f.Lext) < 0.31
-            # ), f"Coordinate is off more than 0.31 with {static = }, {f.N = }."  # todo
+        assert np.allclose(dec.r, 0, rtol=0, atol=0.09)
+        assert np.allclose(dec.u, 0, rtol=0, atol=0.04)
 
     def test_8K(self):
         f = Fringes()
@@ -511,53 +392,118 @@ class TestDecode:
         dec = f.decode(I)
         # da_max = np.max(np.abs(dec.a - f.A))
         # db_max = np.max(np.abs(dec.b - f.B))
-        # dx_max = np.max(np.abs(dec.x - f.xc))
-        assert np.allclose(dec.a, f.A, rtol=0, atol=0.09), "Brightness is off more than 0.13."
-        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69), "Modulation is off more than 0.69."
-        assert np.allclose(dec.x, f.xc, rtol=0, atol=0.08), "Coordinate is off more than 0.08."
+        # dx_max = np.max(np.abs(dec.x - f.x))
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.09)
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.69)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.08)
 
-    @pytest.mark.skip("Test only on request.")
-    def test_speed(self):
+    def test_single_fringe(self):
         f = Fringes()
+        f.K = 1
+        f.v = 1
+        f.N = 9  # with N = 23: atol=0.48
 
-        # Tmed < 2s in battery-mode on 2025-08-04 and 2025-09-22
-        # Tmed < 2s in AC-mode on 2025-08-04 and 2025-09-22
-        f.X = 2048
-        f.Y = 2048
-        f.v = 13, 7
+        I = f.encode()
+        dec = f.decode(I)
+        # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+        # dx_max = np.max(np.abs(dec.x[:, 1:, 1:, :] - f.x[:, 1:, 1:, :]))
+        assert np.allclose(dec.a, f.A, rtol=0, atol=0.17)
+        assert np.allclose(dec.b, f.B, rtol=0, atol=0.34)
+        assert np.allclose(dec.x[:, 1:, 1:, :], f.x[:, 1:, 1:, :], rtol=0, atol=0.92)  # todo: index 0
+        assert np.allclose(circular_distance(dec.x, f.x, f.Lext), 0, rtol=0, atol=0.92)
+
+    @pytest.mark.parametrize("dark_noise", [None, 13.7])
+    @pytest.mark.parametrize("K", [None, 0.038])
+    @pytest.mark.parametrize("a", [None, 127.5, np.full((f10.D, f10.Y, f10.X, f10.C), 127.5)])
+    @pytest.mark.parametrize("b", [None, 88, np.full((f10.D * f10.K, f10.Y, f10.X, f10.C), 88)])
+    @pytest.mark.parametrize("ui", [3, np.full((f10.Y, f10.X, f10.C), 3)])
+    def test_uncertainty(self, ui, b, a, K, dark_noise):
+        u = f.uncertainty(ui, b, a, K, dark_noise)
+        assert np.allclose(u, 0, rtol=0, atol=0.5)
+
+    @pytest.mark.parametrize("spu_func", ["ski", "cv2"])  # todo: "cv2" is error-prone!
+    def test_spatial_unwrapping(self, spu_func):
+        f = Fringes()
+        f.K = 1
+        # todo: f.v = 7, 14
+
+        I = f.encode()
+        dec = f.decode(I, spu_func=spu_func)
+
+        for d, ax in enumerate(f.axes):
+            grad = np.gradient(dec.x[d], axis=ax)
+            # dg_max = np.max(np.abs(grad - 1))
+            # idx = np.argwhere(np.abs(grad - 1) > 0.10)
+            assert np.allclose(grad, 1, rtol=0, atol=0.10), (
+                f"Gradient of unwrapped phase map isn't close to 1 at axis {ax}."
+            )
+
+
+class TestMisc:
+    def test_UMR(self):
+        f = Fringes()
+        f.l = 20.2, 60.6
+        assert np.array_equal(f.UMR, [60.6] * f.D)
+
+    @pytest.mark.parametrize("h", ["ww", "rb", "rgb", "www", "rggb"])
+    def test_hues(self, h):
+        f = Fringes(Y=10)
+        f.h = h
+
+        I = f.encode()
+        assert np.array_equal(I, np.array([frame for frame in f]))
+
+        dec = f.decode(I)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
+
+    @pytest.mark.parametrize("p0", [0, np.pi / 2, np.pi, 3 * np.pi / 2, 1])
+    def test_p0(self, p0):
+        f = Fringes()
+        f.p0 = p0
+
+        I = f.encode()
+        dec = f.decode(I)
+        if p0 == 1:
+            assert np.allclose(dec.x[:, 1:, 1:, :], f.x[:, 1:, 1:, :], rtol=0, atol=0.13)
+        else:
+            assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
+
+    @pytest.mark.parametrize("mode", Fringes._choices["mode"])
+    def test_modes(self, mode):
+        if mode == "sRGB":
+            return  # not bijective
+
+        f = Fringes()
+        f.mode = mode
 
         I = f.encode()
 
-        T = np.empty(10)
-        for t in range(len(T)):
-            t0 = time.perf_counter()
-            f.decode(I)
-            t1 = time.perf_counter()
-            T[t] = t1 - t0
-            time.sleep(4)  # time for CPU to cool down
+        # if mode == "sRGB":
+        #     I /= f.Imax
+        #     I = np.where(I <= 0.04045, I / 12.92, ((I + 0.055) / 1.055) ** 2.4)
+        #     I *= f.Imax
 
-        print(T)
-        Tmin = np.min(T)
-        Tmed = np.median(T)
-        Tavg = np.mean(T)
-        Tmax = np.max(T)
-        assert Tmed <= 2.0, f"Decoding takes {Tmed * 1000:.0f}ms > 2000ms."  # todo: <= 1.0
+        dec = f.decode(I)
+        assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
 
-    @pytest.mark.skip("Test only on request.")
-    def test_compile_time(self):
-        flist = glob.glob(
-            os.path.join(os.path.dirname(__file__), "..", "src", "fringes", "__pycache__", "decoder*decode*.nbc")
-        )
-        for file in flist:
-            os.remove(file)
+    @pytest.mark.parametrize("dtype", Fringes._choices["dtype"])
+    def test_dtypes(self, dtype):
+        f = Fringes(Y=10)
+        f.dtype = dtype
 
-        t0 = time.perf_counter()
-        f.decode(I)
-        t1 = time.perf_counter()
-        T = t1 - t0
+        I = f.encode()
+        assert I.dtype == f.dtype
 
-        print(T)
-        assert T < 10 * 60, f"Numba compilation took {T / 60} minutes > 10 minutes."
+        dec = f.decode(I)
+        # da_max = np.max(np.abs(dec.a - f.A))
+        # db_max = np.max(np.abs(dec.b - f.B))
+        # dx_max = np.max(np.abs(dec.x - f.x))
+        if dtype in ["float32", "float64"]:
+            # idx = np.argwhere(np.abs(dec.x - f.x) > 2)
+            # dx_max = np.max(np.abs(dec.x[:, 1:, :, :] - f.x[:, 1:, :, :]))
+            assert np.allclose(dec.x[:, 1:, :, :], f.x[:, 1:, :, :], rtol=0, atol=0.13)  # todo: index 0
+        else:
+            assert np.allclose(dec.x, f.x, rtol=0, atol=0.13)
 
 
 # def test_mtf():

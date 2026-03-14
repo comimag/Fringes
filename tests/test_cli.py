@@ -6,6 +6,9 @@ import tempfile
 from fringes import Fringes
 from fringes.__main__ import LONG_FLAGS, SHORT_FLAGS, base_parser
 
+# import pyqtgraph as pg
+# from PySide6.QtWidgets import QApplication
+
 
 def test_args():
     parser = base_parser()
@@ -14,10 +17,13 @@ def test_args():
     assert not (a & b)  # no intersection
 
 
-def test_cli():
+def test_cli(monkeypatch):
+    # monkeypatch.setattr(pg, "exec", lambda: None)
+
     with tempfile.TemporaryDirectory() as tempdir:
         # encode
-        sp.run(["fringes", "pattern"], cwd=tempdir)
+        sp.run(["fringes", "pattern", "--config", "config.yaml"], cwd=tempdir)
+        assert os.path.isfile(os.path.join(tempdir, "config.yaml"))
         assert os.path.isfile(os.path.join(tempdir, "pattern.npy"))
 
         sp.run(["fringes", "pattern1.npy"], cwd=tempdir)
@@ -26,6 +32,9 @@ def test_cli():
         sp.run(["fringes", "pattern_.png"], cwd=tempdir)
         flist = glob.glob(os.path.join(tempdir, "pattern_*.png"))
         assert len(flist) == Fringes().T
+
+        # sp.run(["fringes", "pattern.npy", "-s"], cwd=tempdir)
+        # QApplication.closeAllWindows()
 
         # decode
         sp.run(["fringes", "-i", "pattern.npy", "decoded"], cwd=tempdir)
@@ -36,3 +45,6 @@ def test_cli():
 
         sp.run(["fringes", "-i", "pattern_*.png", "decoded2"], cwd=tempdir)
         assert os.path.isfile(os.path.join(tempdir, "decoded2.npz"))
+
+        # sp.run(["fringes", "-i", "pattern.npy", "decoded.npz", "-s"], cwd=tempdir)
+        # QApplication.closeAllWindows()

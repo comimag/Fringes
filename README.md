@@ -5,14 +5,14 @@
 ![coding-cheme](https://raw.githubusercontent.com/comimag/fringes/main/docs/source/01_start/coding-scheme.gif)
 
 [![PyPI](https://img.shields.io/pypi/v/fringes)](https://pypi.org/project/fringes/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![tests](https://github.com/comimag/Fringes/actions/workflows/pytest.yml/badge.svg)](https://github.com/comimag/Fringes/actions/workflows/pytest.yml)
 [![Read the Docs](https://img.shields.io/readthedocs/fringes)](https://fringes.readthedocs.io)
 [![PyPI - License](https://img.shields.io/pypi/l/fringes)](https://github.com/comimag/fringes/blob/main/LICENSE.txt)
 [![Static Badge](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.10936353-blue)](https://zenodo.org/doi/10.5281/zenodo.10936353)
 
 [//]: # (![PyPI - Python Version]&#40;https://img.shields.io/pypi/pyversions/fringes&#41;)
-[//]: # (![GitHub Actions Workflow Status]&#40;https://img.shields.io/github/actions/workflow/status/comimag/fringes/python-package.yml&#41;)
-[//]: # (![GitHub]&#40;https://img.shields.io/github/license/comimag/fringes&#41;)
+[//]: # ([![Code style: black]&#40;https://img.shields.io/badge/code%20style-black-000000.svg&#41;]&#40;https://github.com/psf/black&#41;)
 [//]: # ([![PyPI - Downloads]&#40;https://img.shields.io/pypi/dm/fringes&#41;]&#40;https://pypistats.org/packages/fringes&#41;)
 [//]: # ([![Downloads]&#40;https://static.pepy.tech/badge/fringes&#41;]&#40;https://pepy.tech/project/fringes&#41;)
 
@@ -60,7 +60,8 @@ f.X = 1920                   # set width of the fringe patterns
 f.Y = 1080                   # set height of the fringe patterns
 f.N = 4                      # set number of shifts
 f.v = [9, 10]                # set spatial frequencies
-T = f.T                      # get number of frames
+
+print(f.T)                   # get number of frames
 ```
 
 To encode the fringe pattern sequence `I`, use the method `encode()`.
@@ -80,7 +81,7 @@ according to the following pseudocode
 Irec = []
 
 for t in range(f.T):
-    # display frame on screen
+    # display frame of pattern sequence on screen
     frame = I[t]
     ...
 

@@ -1,22 +1,23 @@
-from collections import namedtuple
-from collections.abc import Sequence
-from importlib.metadata import version
 import itertools as it
 import json
 import logging
 import os
 import sys
 import time
+from collections import namedtuple
+from collections.abc import Sequence
+from importlib.metadata import version
 from typing import Literal
 
-from numba import set_num_threads, get_num_threads
 import numpy as np
 import scipy as sp
 import sympy
 import yaml
+from numba import get_num_threads, set_num_threads
 
-from fringes.decoder import decode, ftm, spu, temp_demod_numpy
 from fringes import grid
+from fringes.decoder import ftm, spu, temp_demod_numpy, temp_demod_numpy_unknown_frequencies
+from fringes.decoder_numba import decode
 from fringes.util import vshape
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,10 @@ class Fringes:
     _choices = {
         "grid": {
             "image",
-        },  # todo: ("image", "Cartesian", "polar", "log-polar")
-        "indexing": {"xy", "ij"},  # todo: Literal["xy", "ij"]
+            # "Cartesian",
+            # "polar",
+            # "log-polar",
+        },  # todo: ("Cartesian", "polar", "log-polar")
         "dtype": {
             # "bool",  # results are too unprecise
             "uint8",
@@ -65,7 +68,7 @@ class Fringes:
             "float32",
             "float64",
         },
-        "mode": {"fast", "precise", "MRD"},  # , "numpy", "numba"),
+        "mode": {"fast", "precise", "MRD", "sRGB"},  # todo: , "NumPy", "Numba"),
         "h": {"w", "r", "g", "b", "c", "m", "y"},
     }
 
@@ -73,10 +76,9 @@ class Fringes:
     def __init__(
         self,
         *args,  # bundles all args, what follows are only kwargs
-        # **_defaults,  # todo: kwargs
         X: int = 1920,
         Y: int = 1200,
-        D: int = 2,
+        axes: int | Sequence[int] = (1, 0),
         K: int = 2,
         N: int | Sequence[int] = ((4, 4), (4, 4)),
         # l: float | Sequence[float] | str = ((1920 / 13., 1920 / 7.), (1920 / 13., 1920 / 7.)),  # inferred from v
@@ -94,13 +96,11 @@ class Fringes:
         dtype: str | np.dtype = "uint8",  # inferred from bits
         grid: str = "image",
         # angle: float = 0.0,
-        axis: int = 0,
         SDM: bool = False,
         WDM: bool = False,
         FDM: bool = False,
         static: bool = False,
         lmin: float = 8.0,
-        indexing: str = "xy",
         reverse: bool = False,
         mode: str = "fast",
         # **kwargs,  # bundles all further (hence undefined) kwargs;
@@ -131,36 +131,35 @@ class Fringes:
         self.UMR  # compute and cache; logs warning if necessary
         self.crt  # compute and cache (also computes _m)
 
-    def __call__(self, *args, **kwargs) -> np.ndarray:
+    def __call__(self, *args, **kwargs) -> np.ndarray:  # noqa: D102
         return self.encode(*args, **kwargs)
 
-    def __iter__(self):
+    def __iter__(self):  # noqa: D105
         self._t: int = 0
         return self
 
-    def __next__(self) -> np.ndarray:
+    def __next__(self) -> np.ndarray:  # noqa: D105
         if self._t < self.T:
-            I = self.encode(frames=self._t)[0]
+            I = self.encode()[0]
             self._t += 1
             return I
         else:
             del self._t
             raise StopIteration()
 
-    def __len__(self) -> int:
-        """Number of frames."""
+    def __len__(self) -> int:  # noqa: D105
         return self.T
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other) -> bool:  # noqa: D105
         return other.__class__ is self.__class__ and self._params == other._params
 
-    def __contains__(self, item):
+    def __contains__(self, item):  # noqa: D105
         return hasattr(self, item)
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # noqa: D105
         return self.__class__.__name__
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # noqa: D105
         return f"{self._params}"
 
     def reset(self) -> None:
@@ -183,7 +182,7 @@ class Fringes:
         Examples
         --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+        >>> fname = os.path.join(os.getcwd(), "config.yaml")
 
         >>> from fringes import Fringes
         >>> f = Fringes()
@@ -199,7 +198,7 @@ class Fringes:
         pname = self.__class__.__name__.lower()
 
         if fname is None:
-            fname = os.path.join(os.path.expanduser("~"), f".{pname}.yaml")
+            fname = os.path.join(os.getcwd(), "config.yaml")
 
         if not os.path.isfile(fname):
             logger.error(f"File '{fname}' does not exist.")
@@ -240,7 +239,7 @@ class Fringes:
         Examples
         --------
         >>> import os
-        >>> fname = os.path.join(os.path.expanduser("~"), ".fringes.yaml")
+        >>> fname = os.path.join(os.getcwd(), "config.yaml")
 
         >>> from fringes import Fringes
         >>> f = Fringes()
@@ -250,10 +249,13 @@ class Fringes:
         pname = self.__class__.__name__.lower()
 
         if fname is None:
-            fname = os.path.join(os.path.expanduser("~"), f".{pname}.yaml")
+            fname = os.path.join(os.getcwd(), "config.yaml")
+
+        if not os.path.dirname(fname):
+            fname = os.path.join(os.getcwd(), fname)
 
         if not os.path.isdir(os.path.dirname(fname)):
-            logger.error(f"File directory does not exist.")
+            logger.error("File directory does not exist.")
             return
 
         name, ext = os.path.splitext(fname)
@@ -261,14 +263,17 @@ class Fringes:
             name, ext = ext, name
 
         if ext not in {".json", ".yaml"}:  # toml does not allow the type 'None'
-            logger.error(f"File extension is unknown. Must be '.json' or '.yaml'.")
+            logger.error("File extension '{ext}' is unknown. Must be '.json' or '.yaml'.")
             return
 
-        with open(fname, "w") as f:  # todo: file gets overwritten or only section 'fringes'?
+        if os.path.isfile(fname):
+            logger.warning(f"File '{fname}' already exists and will be overwritten.")
+
+        with open(fname, "w") as f:  # todo: only overwrite section "fringes"
             if ext == ".json":
                 json.dump({f"{pname}": self._params}, f, indent=4)
             elif ext == ".yaml":
-                yaml.dump({f"{pname}": self._params}, f)
+                yaml.safe_dump({f"{pname}": self._params}, f)
 
         logger.info(f"Saved parameters to {fname}.")
 
@@ -282,10 +287,9 @@ class Fringes:
     #         If `T` is not provided, the number of frames from the `Fringes` instance is used.
     #         Then, the `Fringes` instance's number of shifts `N` is distributed optimally over the directions and sets.
     #      umax : float, optional
-    #         Maximum allowable uncertainty.
+    #         Maximum allowable uncertainty (in pixel units).
     #         Must be greater than zero.
     #         Standard deviation of maximum uncertainty for measurement to be valid.
-    #         [umax] = px.
     #
     #     Notes
     #     -----
@@ -402,21 +406,17 @@ class Fringes:
     #
     #     logger.info("Optimized parameters.")
 
-    def _modulate(
-        self, x: np.ndarray | tuple[np.ndarray, ...], frames: int | Sequence[int]
-    ) -> np.ndarray:
+    def _modulate(self, x: np.ndarray | tuple[np.ndarray]) -> np.ndarray:
         """Encode base fringe patterns by spatio-temporal modulation.
 
         Parameters
         ----------
-        x : np.ndarray | tuple[np.ndarray, ...]
+        x : np.ndarray | tuple[np.ndarray]
             Coordinates.
             Might be generated by `numpy.indices <https://numpy.org/doc/stable/reference/generated/numpy.indices.html>`_.
             Must have three dimensions at most.
             The first dimension resp. len(`x`) must match `D`.
             The shape of each element must be (`Y`, `X`).
-        frames : np.ndarray
-            Indices of the frames to be encoded.
 
         Returns
         -------
@@ -425,47 +425,111 @@ class Fringes:
         """
         t0 = time.perf_counter()
 
-        frames = np.array(list(set(t % np.sum(self._N) for t in frames)))  # numpy.unique would return sorted
+        # frames
+        if hasattr(self, "_t"):
+            frames = np.array([self._t % np.sum(self._N)])
+
+            if self.FDM:
+                # to every frame add D*K-1 frames in distance N
+                N = self._N[0, 0]
+                frames = np.array([[t + N * i for i in range(self.D * self.K)] for t in frames]).ravel()
+
+            if self.WDM:  # WDM before SDM
+                # for every frame take next N consecutive numbers => triple for N=3
+                N = 3
+                frames = np.array([[t * N + i for i in range(N)] for t in frames]).ravel()
+
+            if self.SDM or self.uwr == "FTM":  # WDM before SDM
+                # to every frame add 1 in distance N0sum => double
+                N0sum = np.sum(self._N[0])
+                frames = np.array([[t, t + N0sum] for t in frames]).ravel()
+        else:
+            frames = np.arange(np.sum(self._N))
+
+        # allocate
         T = len(frames)
         is_mixed_color = np.any((self.h != 0) * (self.h != 255))
         dtype = np.dtype("float64") if self.SDM or self.FDM or is_mixed_color or self.uwr == "FTM" else self.dtype
         I = np.empty((T, self.Y, self.X), dtype)
 
-        # Ncum = np.cumsum(self._N).reshape(self.D, self.K)
+        # Ncum = np.cumsum(self._N)
         # for t in frames:
-        #     d, i = np.argwhere(t < Ncum)[0]
-        #     n = t - Ncum[d, i] + self._N[0, 0]
-        #     ...
+        #     j = np.argmax(t < Ncum)
+        #     # j = np.searchsorted(Ncum, t, side="right")
+        #     d, i = np.unravel_index(j, shape=(self.D, self.K))
+        #     n = t - (Ncum[j] - Ncum[0])
+        #
+        #     x_ = (x[d] + self.x0) / self.Lext  # normalize x to be within interval [0, 1)
+        #     k = _2PI * self._v[d, i]
+        #     w = _2PI * self._f[d, i]
+        #
+        #     if "MRD" in self.mode:
+        #         k *= self.Lext / self.L[d]
+        #
+        #     if self.reverse:
+        #         w *= -1
+        #
+        #     t_ = n / 4 if self._N[d, i] == 2 else n / self._N[d, i]
+        #     p = k * x_ - w * t_ - self.p0
+        #
+        #     I_t = self.E * (1 + self.V * np.cos(p))
+        #
+        #     if "sRGB" in self.mode:
+        #         I_t = np.where(
+        #             I_t <= 0.0031308,
+        #             I_t * 12.92,
+        #             1.055 * I_t ** (1 / 2.4) - 0.055
+        #         )
+        #     elif self.g != 1:
+        #         I_t **= self.g
+        #
+        #     if self.Imax != 1:
+        #         I_t *= self.Imax
+        #
+        #     if dtype.kind in "ui":  # todo: and rint:
+        #         np.rint(I_t, out=I_t)
+        #     # elif dtype.kind in "b":
+        #     #     val = val >= 0.5
+        #
+        #     I[t] = I_t
 
-        idx = 0
+        t = 0
         frame = 0
-        for d in range(self.D):
-            x_ = (x[d] + self.x0) / self.Lext  # normalize x to be within interval [0, 1)
+        for d, ax in enumerate(self.axes):
+            x_ = (x[ax] + self.x0) / self.Lext  # normalize x to be within interval [0, 1)
 
             for i in range(self.K):
                 k = _2PI * self._v[d, i]
                 w = _2PI * self._f[d, i]
 
-                if "mrd" in self.mode:
+                if "MRD" in self.mode:
                     k *= self.Lext / self.L[d]
 
                 if self.reverse:
                     w *= -1
 
-                for n in range(self._N[d, i]):  # todo: allow any n: for n in self.n[d, i]:
+                for n in range(self._N[d, i]):
                     if frame in frames:
-                        t = n / 4 if self._N[d, i] == 2 else n / self._N[d, i]
-                        p = k * x_ - w * t - self.p0
-                        Iidx = self.Imax * (self.E * (1 + self.V * np.cos(p))) ** self.g
+                        t_ = n / 4 if self._N[d, i] == 2 else n / self._N[d, i]
 
-                        if dtype.kind in "ui":  # todo: and rint:
-                            np.rint(Iidx, out=Iidx)
+                        I_t = self.E * (1 + self.V * np.cos(k * x_ - w * t_ - self.p0))
+
+                        if "sRGB" in self.mode:
+                            I_t = np.where(I_t <= 0.0031308, I_t * 12.92, 1.055 * I_t ** (1 / 2.4) - 0.055)
+                        elif self.g != 1:
+                            I_t **= self.g
+
+                        if self.Imax != 1:
+                            I_t *= self.Imax
+
+                        if dtype.kind in "ui":
+                            np.rint(I_t, out=I_t)
                         # elif dtype.kind in "b":
                         #     val = val >= 0.5
 
-                        I[idx] = Iidx
+                        I[t] = I_t
 
-                        idx += 1
+                        t += 1
                     frame += 1
 
         logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
@@ -479,7 +543,7 @@ class Fringes:
         unwrap: bool = True,
         verbose: bool | str = False,
         threads: int | None = None,
-        uwr_func: str = "ski",
+        spu_func: str = "ski",
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Decode base fringe patterns by spatio-temporal demodulation.
 
@@ -487,7 +551,7 @@ class Fringes:
         ----------
         I : np.ndarray
             Fringe pattern sequence.
-            It is reshaped to `vshape` (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
+            Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
         bmin : float
             Minimum modulation for measurement to be valid.
             Can accelerate decoding.
@@ -502,7 +566,7 @@ class Fringes:
             Number of threads to use.
             Default is all threads.
             If negative, this many threads will not be used.
-        uwr_func : {'ski', 'cv2'}, default='ski'
+        spu_func : {'ski', 'cv2'}, default='ski'
             Unwrapping function to use.
 
             - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_ [1]_
@@ -540,23 +604,22 @@ class Fringes:
         """
         t0 = time.perf_counter()
 
-        # parse
-        I = vshape(I)
-        T, Y, X, C = I.shape  # extract Y, X, C from data as these parameters depend on used camera
-
         if self.uwr == "FTM":
             a, b, x = ftm(I, self.D)
             # todo: p, k, r
-        elif "numpy" in self.mode:
+        elif "NumPy" in self.mode:
             a, b, p = temp_demod_numpy(I, self._N, self._f, self.p0)
-            # a, b, p = temp_demod_numpy_unknown_frequencies(I, self._N, self.p0)
+            a_, b_, p_ = temp_demod_numpy_unknown_frequencies(I, self._N, self.p0)
+            # isa = np.allclose(a, a_)
+            # isb = np.allclose(b, b_)
+            # isp = np.allclose(p, p_)
             if self.uwr == "temporal":
                 NotImplementedError  # todo: call tpu() from decoder (as ufunc?)
 
             # todo: x, k, r
-
-            b.shape = (-1, Y, X, C)
-            p.shape = (-1, Y, X, C)
+            x = np.empty_like(a)
+            k = np.empty_like(a)
+            r = np.empty_like(a)
         else:
             try:
                 max_threads = get_num_threads()
@@ -569,7 +632,7 @@ class Fringes:
                 a, b, p, k, x, r = decode(
                     I,
                     self._N,
-                    self._v * self.Lext / self.L[:, None] if "mrd" in self.mode else self._v,
+                    self._v * self.Lext / self.L[:, None] if "MRD" in self.mode else self._v,
                     -self._f if self.reverse else self._f,
                     self.L,
                     self.UMR,
@@ -599,13 +662,14 @@ class Fringes:
                 #     i0 = np.argmin(self.v[d])  # fast
                 # todo: unwrap phases via TPU as far as possible in order to reduce the number of phase transitions
 
-                x[d] = spu(x[d], verbose=verbose, uwr_func=uwr_func)
+                x[d] = spu(x[d], verbose=verbose, spu_func=spu_func)
 
                 if "precise" in self.mode:
                     w0 = self._N[d] * self._v[d] ** 2
                     i0 = np.argmax(w0)  # precise
                 else:
                     i0 = np.argmin(self._v[d])  # fast
+
                 x[d] *= self._l[d, i0] / _2PI
 
                 if verbose:
@@ -689,54 +753,24 @@ class Fringes:
         """
         t0 = time.perf_counter()
 
-        I = vshape(I)
         T, Y, X, C = I.shape  # extract Y, X, C from data as these parameters depend on used camera
 
         if self.SDM:
             assert not self.FDM
             assert self.grid in {"image", "Cartesian"}  # self._choices["grid"][:2]
             assert self.D == 2
-
-            if X % 2 == 0:  # todo: revert padding by simply taking I[:-1] ?
-                fx = np.fft.fftshift(np.fft.rfftfreq(X))
-                fy = np.fft.fftshift(np.fft.fftfreq(Y))
-                fxx, fyy = np.meshgrid(fx, fy)
-                mx = np.abs(fxx) >= np.abs(fyy)
-                my = np.abs(fxx) <= np.abs(fyy)
-                J = I
-                I = np.empty((2 * T, Y, X, C))
-                for t in range(T):
-                    for c in range(C):
-                        I_FFT = np.fft.fftshift(np.fft.rfft2(J[t, ..., c]))
-                        I[t, ..., c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * mx))
-                        I[T + t, ..., c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * my))
-            elif Y % 2 == 0:
-                fx = np.fft.fftshift(np.fft.rfftfreq(Y))
-                fy = np.fft.fftshift(np.fft.fftfreq(X))
-                fxx, fyy = np.meshgrid(fx, fy)
-                mx = np.abs(fxx) >= np.abs(fyy)
-                my = np.abs(fxx) <= np.abs(fyy)
-                J = I.transpose(0, 2, 1, 3)
-                I = np.empty((2 * T, X, Y, C))
-                for t in range(T):
-                    for c in range(C):
-                        I_FFT = np.fft.fftshift(np.fft.rfft2(J[t, ..., c]))
-                        I[t, ..., c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * my))
-                        I[T + t, ..., c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * mx))
-                I = I.transpose(0, 2, 1, 3)
-            else:
-                fx = np.fft.fftshift(np.fft.fftfreq(X))
-                fy = np.fft.fftshift(np.fft.fftfreq(Y))
-                fxx, fyy = np.meshgrid(fx, fy)
-                mx = np.abs(fxx) >= np.abs(fyy)
-                my = np.abs(fxx) <= np.abs(fyy)
-                J = I
-                I = np.empty((2 * T, Y, X, C))
-                for t in range(T):
-                    for c in range(C):
-                        I_FFT = np.fft.fftshift(np.fft.fft2(J[t, ..., c]))
-                        I[t, ..., c] = np.abs(np.fft.ifft2(np.fft.ifftshift(I_FFT * mx)))
-                        I[T + t, ..., c] = np.abs(np.fft.ifft2(np.fft.ifftshift(I_FFT * my)))
+            fx = np.fft.fftshift(np.fft.rfftfreq(X))
+            fy = np.fft.fftshift(np.fft.fftfreq(Y))
+            fxx, fyy = np.meshgrid(fx, fy)
+            mx = np.abs(fxx) >= np.abs(fyy)
+            my = np.abs(fxx) <= np.abs(fyy)
+            J = I
+            I = np.empty((2 * T, Y, X, C))
+            for t in range(T):
+                for c in range(C):
+                    I_FFT = np.fft.fftshift(np.fft.rfft2(J[t, :, :, c]))
+                    I[t, :, :, c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * mx), s=(Y, X))
+                    I[T + t, :, :, c] = np.fft.irfft2(np.fft.ifftshift(I_FFT * my), s=(Y, X))
 
         if self.WDM:
             assert not self.FDM
@@ -754,7 +788,7 @@ class Fringes:
         logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
         return I
 
-    def _colorize(self, I: np.ndarray, frames: Sequence[int]) -> np.ndarray:
+    def _colorize(self, I: np.ndarray) -> np.ndarray:
         """Colorize fringe patterns.
 
         Parameters
@@ -762,8 +796,6 @@ class Fringes:
         I : np.ndarray
             Base fringe patterns,
             possibly multiplexed.
-        frames : np.ndarray
-            Indices of the frames to be encoded.
 
         Returns
         -------
@@ -772,52 +804,30 @@ class Fringes:
         """
         t0 = time.perf_counter()
 
-        T_ = I.shape[0]  # number of frames for each hue
-        T = len(frames)
+        if hasattr(self, "_t"):
+            hues = np.array([self._t // np.sum(self._N)])
+        else:
+            hues = np.arange(self.H)
+
+        T = len(hues) * len(I)
         Icol = np.empty((T, self.Y, self.X, self.C), self.dtype)
 
-        for t in frames:
-            tb = t % I.shape[0]  # indices from base fringe pattern I
+        t = 0
+        for h in hues:
+            for frame in I:
+                for c in range(self.C):
+                    cb = c if self.WDM else 0
 
-            for c in range(self.C):
-                h = int(t // T_)  # hue index
-                cb = c if self.WDM else 0  # color index of base fringe pattern I
+                    if self.h[h, c] == 0:  # uibf -> uibf
+                        Icol[t, :, :, c] = 0
+                    elif self.h[h, c] == 255 and Icol.dtype == self.dtype:  # uibf -> uibf
+                        Icol[t, :, :, c] = frame[:, :, cb]
+                    elif self.dtype.kind in "uib":  # f -> uib
+                        Icol[t, :, :, c] = np.rint(frame[:, :, cb] * (self.h[h, c] / 255))
+                    else:  # f -> f
+                        Icol[t, :, :, c] = frame[:, :, cb] * (self.h[h, c] / 255)
 
-                if self.h[h, c] == 0:  # uibf -> uibf
-                    Icol[t, ..., c] = 0
-                elif self.h[h, c] == 255 and Icol.dtype == self.dtype:  # uibf -> uibf
-                    Icol[t, ..., c] = I[tb, ..., cb]
-                elif self.dtype.kind in "uib":  # f -> uib
-                    Icol[t, ..., c] = np.rint(I[tb, ..., cb] * (self.h[h, c] / 255))
-                else:  # f -> f
-                    Icol[t, ..., c] = I[tb, ..., cb] * (self.h[h, c] / 255)
-
-        # for h in range(self.H):
-        #     if frames is None:
-        #         for c in range(self.C):
-        #             cj = c if self.WDM else 0  # todo: ???
-        #             if self.h[h, c] == 0:  # uib -> uib, f -> f
-        #                 Icol[h * Th : (h + 1) * Th, ..., c] = 0
-        #             elif self.h[h, c] == 255 and Icol.dtype == self.dtype:  # uib -> uib, f -> f
-        #                 Icol[h * Th : (h + 1) * Th, ..., c] = I[..., cj]
-        #             elif self.dtype.kind in "uib":  # f -> uib
-        #                 Icol[h * Th : (h + 1) * Th, ..., c] = np.rint(I[..., cj] * (self.h[h, c] / 255)).astype(
-        #                     self.dtype, copy=False
-        #                 )
-        #             else:  # f -> f
-        #                 Icol[h * Th : (h + 1) * Th, ..., c] = I[..., cj] * (self.h[h, c] / 255)
-        #     elif h in hues:  # i.e. frames is not None and h in hues
-        #         for c in range(self.C):
-        #             cj = c if self.WDM else 0  # todo: ???
-        #             if self.h[h, c] == 0:  # uib -> uib, f -> f
-        #                 Icol[i, ..., c] = 0
-        #             elif self.h[h, c] == 255 and Icol.dtype == self.dtype:  # uib -> uib, f -> f
-        #                 Icol[i, ..., c] = I[i, ..., cj]
-        #             elif self.dtype.kind in "uib":  # f -> uib
-        #                 Icol[i, ..., c] = np.rint(I[i, ..., cj] * (self.h[h, c] / 255)).astype(self.dtype, copy=False)
-        #             else:  # f -> f
-        #                 Icol[i, ..., c] = I[i, ..., cj] * (self.h[h, c] / 255)
-        #         i += 1
+                t += 1
 
         logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
         return Icol
@@ -829,6 +839,7 @@ class Fringes:
         ----------
         I : np.ndarray
             Colorized fringe patterns.
+            Must be in `vshape` (frames `T`, height `Y`, width `X`, color channels `C`).
 
         Returns
         -------
@@ -837,7 +848,6 @@ class Fringes:
         """
         t0 = time.perf_counter()
 
-        I = vshape(I)
         T, Y, X, C = I.shape  # extract Y, X, C from data as these parameters depend on used camera
         I = I.reshape((self.H, T // self.H, Y, X, C))  # returns a view
 
@@ -853,33 +863,33 @@ class Fringes:
             # basic slicing returns a view
             idx = np.argmax(self.h, axis=1)
             if np.array_equal(idx, [0, 2, 1]):  # RBG
-                I = I[..., 0::-1, :]
+                I = I[:, :, :, 0::-1, :]
             elif np.array_equal(idx, [1, 2, 0]):  # GBR
-                I = I[..., 1:1:, :]
+                I = I[:, :, :, 1:1:, :]
             elif np.array_equal(idx, [1, 0, 2]):  # GRB
-                I = I[..., 1:1:-1, :]
+                I = I[:, :, :, 1:1:-1, :]
             elif np.array_equal(idx, [2, 1, 0]):  # BGR
-                I = I[..., 2::-1, :]
+                I = I[:, :, :, 2::-1, :]
             elif np.array_equal(idx, [2, 0, 1]):  # BRG
-                I = I[..., 2:2:-1, :]
+                I = I[:, :, :, 2:2:-1, :]
             # elif np.array_equal(idx, [0, 1, 2]):  # RGB
-            #     I = I[..., :, :]
+            #     I = I[:, :, :, :, :]
 
             if C == 1:
-                I = I[..., 0]  # returns a view
+                I = I[:, :, :, :, 0]  # returns a view
             elif C == 3:
                 I = np.diagonal(I, axis1=-2, axis2=-1)  # returns a view
-        elif self.H == 2 and C in [1, 3] and solo and same:
+        elif self.H == 2 and C in [1, 3] and base and same:
             I = np.moveaxis(I, 0, -2)  # returns a view
 
             # advanced indexing returns a copy, not a view
             if C == 1:
                 idx = np.argmax(self.h, axis=0)
-                I = I[..., idx, :]
-                I = I[..., 0]  # returns a view
+                I = I[:, :, :, idx, :]
+                I = I[:, :, :, 0]  # returns a view
             elif C == 3:
                 idx = self.h != 0
-                I = I[..., idx]
+                I = I[:, :, :, idx]
         else:
             # fuse colors by weighted averaging,
             # this assumes constant camera exposure settings for each set of hues
@@ -896,21 +906,12 @@ class Fringes:
 
             dtype = float  # without this, np.sum chooses a dtype which can hold the theoretical maximal sum, i.e. uint32 or uint64 with problems in pyqtgraph's
             I = np.sum(I * w[:, None, None, None, :], axis=0, dtype=dtype)
-            # todo: np.dot or np.tensordot ?
 
         logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
         return I
 
-    def encode(self, frames: int | Sequence[int] | None = None) -> np.ndarray:
+    def encode(self) -> np.ndarray:
         """Encode fringe patterns.
-
-        Parameters
-        ----------
-        frames : int or Sequence of ints, optional
-            Indices of the frames to be encoded.
-            The default, frames=None, will encode all frames at once.
-            Else, `frames` is used as an index into the fringe pattern sequence
-            (negative indexes are allowed; indexes with magnitude larger than `T` are wrapped around).
 
         Returns
         -------
@@ -931,55 +932,28 @@ class Fringes:
 
         >>> I = f.encode()
 
-        Create a generator to receive the frames iteratively, i.e. in a lazy manner.
-
-        >>> I = (frame for frame in f)
-
         Call the instance to encode the complete fringe pattern sequence.
 
         >>> I = f()
+
+        Create a generator to receive the frames iteratively, i.e. in a lazy manner.
+
+        >>> I = (frame for frame in f)
         """
         t0 = time.perf_counter()
 
-        # check frames
-        if frames is None:
-            frames = np.arange(self.H * np.sum(self._N))
-        else:
-            if not hasattr(frames, "__iter__"):
-                frames = [frames]
+        I = self._modulate(self._x)
 
-            frames = np.array(frames, int) % self.T  # t=0:T:1
-
-            if self.FDM:
-                frames = np.array(
-                    [np.arange(i * self.D * self.K, (i + 1) * self.D * self.K) for i in frames]
-                ).ravel()  # t*D*K:(t+1)*D*K:1
-
-            if self.WDM:  # WDM before SDM
-                N = 3
-                frames = np.array([np.arange(i * N, (i + 1) * N) for i in frames]).ravel()  # t*3:(t+1)*3:1
-
-            if self.SDM or self.uwr == "FTM":  # WDM before SDM
-                len_D0 = np.sum(self._N[0])
-                frames = np.array([np.arange(i, i + len_D0 + 1, len_D0) for i in frames]).ravel()  # t:t+len_D0:len_D0
-
-        # modulate
-        I = self._modulate(self._x, frames)
-
-        # multiplex (reduce number of frames)
         if self.SDM or self.WDM or self.FDM or self.uwr == "FTM":
-            I = self._multiplex(I)
+            I = self._multiplex(I)  # reduces number of frames
 
-        # apply inscribed circle
         if self.grid in ["polar", "log-polar"]:
             I *= grid.inner_circ(self.Y, self.X)[None, :, :, None]
 
-        # colorize (extended averaging)
         if self.H > 1 or np.any(self.h != 255):  # can be used for extended averaging
-            I = self._colorize(I, frames)
+            I = self._colorize(I)
 
         logger.info(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
-
         return I
 
     def decode(
@@ -991,7 +965,7 @@ class Fringes:
         verbose: bool | str = False,
         check_overexposure: bool = False,
         threads: int | None = None,
-        uwr_func: str = "ski",
+        spu_func: str = "ski",
     ) -> _Decoded | _Decoded_verbose:
         r"""Decode fringe patterns.
 
@@ -1020,7 +994,7 @@ class Fringes:
             Number of threads to use.
             Default is all threads.
             If negative, this many threads will not be used.
-        uwr_func : {'ski', 'cv2'}, default='ski'
+        spu_func : {'ski', 'cv2'}, default='ski'
             Spatial unwrapping function to use.
 
             - 'ski': `Scikit-image <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_ [1]_
@@ -1069,7 +1043,7 @@ class Fringes:
         >>> from fringes import Fringes
         >>> f = Fringes()
         >>> I = f.encode()
-        >>> Irec = I  # todo: replace this line with the recorded data as in 'record.py'
+        >>> Irec = I  # todo: replace this line with the recorded data (cf. example in 'record.py')
 
         >>> a, b, x = f.decode(Irec)
 
@@ -1131,7 +1105,7 @@ class Fringes:
         # demodulate
         bmin = float(max(0, bmin))
         Vmin = float(min(max(0, Vmin), 1))
-        a, b, p, k, x, r = self._demodulate(I, bmin, Vmin, unwrap, verbose, threads)
+        a, b, p, k, x, r = self._demodulate(I, bmin, Vmin, unwrap, verbose, threads, spu_func=spu_func)
         if verbose:
             u = self.uncertainty(b=b)
 
@@ -1139,15 +1113,22 @@ class Fringes:
         # if self.H > 1 and C == 3:
         #     idx = np.sum(self.h, axis=0) == 0
         #     if np.any(idx):  # blacken where color value of hue was black
-        #         a[..., idx] = 0
-        #         b[..., idx] = 0
-        #         x[..., idx] = np.nan
+        #         a[:, :, :, idx] = 0
+        #         b[:, :, :, idx] = 0
+        #         x[:, :, :, idx] = np.nan
         #         if verbose:
-        #             r[..., idx] = np.nan
-        #             u[..., idx] = np.nan  # self.L / np.sqrt(12)  # todo: circular distribution
-        #             p[..., idx] = np.nan
+        #             r[:, :, :, idx] = np.nan
+        #             u[:, :, :, idx] = np.nan  # self.L / np.sqrt(12)  # todo: circular distribution
+        #             p[:, :, :, idx] = np.nan
 
         # # coordinate retransformation  # todo: test
+        # if self.grid == "Cartesian":
+        #     for d, ax in enumerate(self.axes):
+        #         if ax == 0:
+        #             x[d] -= self.L[d] / 2 - .5
+        #         elif ax == 1:
+        #             x[d] = np.where(x[d] < self.L[d] / 2, x[d] + self.L[d] / 2 - .5, x[d] - self.L[d] / 2 - .5)
+
         # if self.D == 2:
         #     # todo: swapaxes
         #     if self.grid == "Cartesian":
@@ -1163,7 +1144,7 @@ class Fringes:
         #             x[1] *= -1
         #             x[1] += self.Y / 2 - 0.5
         #             x[1] %= self.Y
-        #
+
         #     # todo: polar, logpolar, spiral
         #     # if self.angle != 0:
         #     #     t = np.deg2rad(-self.angle)
@@ -1231,10 +1212,10 @@ class Fringes:
             If np.ndarray, it must have image shape (Y, X, C).
         b : float | np.ndarray, optional
             Modulation.
-            If np.ndarray, it must have video shape (T, Y, X, C).
+            If np.ndarray, it must have video shape (T, Y, X, C) with T = D * K.
         a : float | np.ndarray, optional
             Offset (mean number of gray values).
-            If np.ndarray, it must have video shape (T, Y, X, C).
+            If np.ndarray, it must have video shape (T, Y, X, C) with T = D.
         K : float, optional
             System gain of used camera, in units DN/electron.
         dark_noise : float, optional
@@ -1249,7 +1230,7 @@ class Fringes:
         ----
         If `a`, `K` and `dark_noise` are given, `ui` is ignored and calculated from them.
         In any case, if either `ui`, `b` or `a` is a numpy.ndarray,
-        they must be broadcastable and hence their shape must end in the same (Y, X, C) values
+        they must be shape consistent and hence their shape must end in the same (Y, X, C) values
         (the function takes care of those who are in front).
 
         Examples
@@ -1268,7 +1249,7 @@ class Fringes:
         Using decoded values (numpy.ndarrays) and camera parameters:
 
         >>> I = f.encode()
-        >>> Irec = I  # todo: replace this line with the recorded data as in 'record.py'
+        >>> Irec = I  # todo: replace this line with recording data (cf. example in 'record.py')
         >>> a, b, x = f.decode(Irec)
 
         >>> u = f.uncertainty(b=b, a=a, K=0.038, dark_noise=13.7)
@@ -1278,12 +1259,12 @@ class Fringes:
         if b is None:
             b = self.B
         elif isinstance(b, np.ndarray):
-            # make b broadcastable
+            # make b shape consistent
             Tb, Yb, Xb, Cb = vshape(b).shape
             assert Tb == self.D * self.K
             b = b.reshape(self.D, self.K, Yb, Xb, Cb)
 
-            # check if b and (a or ui) are broadcastable
+            # check if b and (a or ui) are shape consistent
             if isinstance(a, np.ndarray):
                 assert vshape(a).shape == (self.D, Yb, Xb, Cb)
             elif isinstance(ui, np.ndarray):
@@ -1291,7 +1272,7 @@ class Fringes:
 
         if a is not None and K is not None and dark_noise is not None:
             if isinstance(a, np.ndarray):
-                # make a broadcastable
+                # make a shape consistent
                 Ta, Ya, Xa, Ca = vshape(a).shape
                 assert Ta == self.D
                 a = a.reshape(Ta, 1, Ya, Xa, Ca)
@@ -1302,13 +1283,13 @@ class Fringes:
             p = np.sqrt(a / K) * K
             ui = np.sqrt(d**2 + q**2 + p**2)
         elif isinstance(ui, np.ndarray):
-            # make ui broadcastable
+            # make ui shape consistent
             Tui, Yui, Xui, Cui = vshape(ui).shape
             assert Tui == 1
             ui = ui.reshape(1, 1, Yui, Xui, Cui)
 
         if isinstance(ui, np.ndarray) or isinstance(b, np.ndarray) or isinstance(a, np.ndarray):
-            # make N and l broadcastable
+            # make N and l shape consistent
             N = self._N[:, :, None, None, None]
             l = self._l[:, :, None, None, None]
         else:
@@ -1323,20 +1304,19 @@ class Fringes:
         return u.astype(np.float32, copy=False)
 
     def _trim(self, a: np.ndarray) -> np.ndarray:
-        """Change ndim of `a` to 2, i.e. its hape to ('D', 'K')."""
-        # D, K = self._v.shape  # todo: if K is read only
+        """Change ndim of `a` to 2, i.e. its shape to ('D', 'K')."""
         if a.ndim == 0:
-            a = np.full((self.D, self.K), a)
+            b = np.full((self.D, self.K), a)
         elif a.ndim == 1:
-            a = np.vstack([a[: self._Kmax] for d in range(self.D)])
+            b = np.array([a[: self._Kmax] for d in range(self.D)])
         elif a.ndim == 2:
-            a = a[: self._Dmax, : self._Kmax]
+            b = a[: self._Dmax, : self._Kmax]
         else:
             raise ValueError("Only 0 up to 2 dimensions are allowed.")
 
-        return a
+        return b
 
-    def set_mtf(self, b: np.ndarray):
+    def _set_mtf(self, b: np.ndarray):
         """Set the modulation transfer function (MTF).
 
         Parameters
@@ -1348,6 +1328,7 @@ class Fringes:
         ------
         ValueError
             If 'b' contains negative values.
+            If length of `b` is not equal to `D` * `K`.
 
         Notes
         -----
@@ -1356,7 +1337,7 @@ class Fringes:
         """
         if b is None:
             self._mtf = None
-            logger.debug(f"Reset modulation transfer function.")
+            logger.debug("Reset modulation transfer function.")
             return
 
         if np.any(b < 0):
@@ -1365,7 +1346,8 @@ class Fringes:
         b = vshape(b)
         T, Y, X, C = b.shape  # extract Y, X, C from data as these parameters depend on used camera
 
-        assert T == self.D * self.K  # todo: description of AssertionError
+        if T != self.D * self.K:
+            raise ValueError(f"Number of frames must be {self.D * self.K}.")
 
         b = b.reshape(self.D, self.K, Y, X, C)
 
@@ -1375,17 +1357,17 @@ class Fringes:
         b = np.nanmedian(b, axis=(2, 3))  # filter along spatial axes
         # b = np.nanquantile(b, 0.9, axis=(2, 3))  # filter along spatial axes
         b[np.isnan(b)] = 0
-        # v_ = np.unique(self._v, axis=1)
-        v_ = self._v
+        i, v = np.unique(self._v, return_index=True, axis=1)
+        b = b[i]
 
-        self._mtf = [sp.interpolate.CubicSpline(v_[d], b[d], extrapolate=True) for d in range(self.D)]
+        self._mtf = [sp.interpolate.CubicSpline(v[d], b[d], extrapolate=True) for d in range(self.D)]
 
-        logger.debug(f"Set modulation transfer function.")
+        logger.debug("Set modulation transfer function.")
 
     def mtf(self, v: Sequence[float] | None = None, PSF: float = 0.0) -> np.ndarray:
-        """Modulation Transfer Function,
+        """Modulation Transfer Function.
 
-        normalized to values ∈ [0, 1].
+        Normalized to values ∈ [0, 1].
 
         Parameters
         ----------
@@ -1401,7 +1383,7 @@ class Fringes:
             'b' is in the same shape as 'v'.
 
         Raises
-        ______
+        ------
         ValueError
             If 'v' contains negative numbers.
 
@@ -1423,31 +1405,29 @@ class Fringes:
                 <https://www.amazon.de/Grundlegende-Untersuchungen-Formerfassung-Streifenprojektion-Strahltechnik/dp/3933762243/ref=sr_1_2?qid=1691575452&refinements=p_27%3AThorsten+B%C3%B6th&s=books&sr=1-2>`_
 
         """
-        # todo: test
+        # todo: test mtf()
 
         if v is None:
             v = self.v
 
-        v_ = np.array(v, float, copy=False, ndmin=2)
+        v = np.array(v, float, copy=False, ndmin=2)
 
-        if np.any(v_ < 0):
+        if np.any(v < 0):
             raise ValueError("Negative numbers are not allowed.")
 
-        D, K = v_.shape
+        D, K = v.shape
 
         if self._mtf is not None:  # interpolate from (previous) measurement
-            b = np.array([self._mtf[d](v_[d]) for d in range(D)]).reshape(D, K)
+            b = np.array([self._mtf[d](v[d]) for d in range(D)]).reshape(D, K)
             bmax = np.array([self._mtf[d](0) for d in range(D)])
             b /= bmax
             np.clip(b, 0, 1, out=b)
-            # todo: self._mtf = None when v or l or D changes or (D == 1 and axis changes) or indexing changes
+            # todo: self._mtf = None when D changes or (D == 1 and axis changes)
         elif PSF > 0:  # determine MTF from PSF
-            b = self.B * np.exp(-2 * (np.pi * PSF * v_) ** 2)  # todo: fix
+            b = self.B * np.exp(-2 * (np.pi * PSF / self.Lmax * v) ** 2)  # todo: fix
             # todo: what is smaller: dl or lv?
         else:
-            b = 1 - v_ / self.vmax  # approximation of [Bothe2008]
-        # else:
-        #     b = np.ones(v_.shape)
+            b = 1 - v / self.vmax  # approximation of [Bothe2008]
 
         return b
 
@@ -1457,17 +1437,17 @@ class Fringes:
         if self.uwr == "FTM":
             return np.array([0.5, 0.5])  # todo: D = 1 ?
 
-        Td = self.H * np.sum(self._N, axis=1, dtype=int)
+        Td = self.H * np.sum(self._N, axis=1, dtype=float)
 
         if self.FDM:  # todo: fractional periods
-            Td = Td / (self.D * self.K)
+            Td /= self.D * self.K
 
         if self.SDM:
-            Td = Td / self.D
+            Td /= self.D
 
         if self.WDM:
             if np.all(self.N == 3):  # WDM along shifts
-                Td = Td / 3
+                Td /= 3
             # elif self.K > self.D:  # WDM along sets todo
             #     a = np.sum(self._N, axis=1)
             #     b = np.max(a)
@@ -1483,7 +1463,7 @@ class Fringes:
             #         T = int(np.ceil(np.max(np.sum(self._N, axis=1)) / 3))
             #     else:  # use red and blue
             #         T = int(np.ceil(np.max(np.sum(self._N, axis=0)) / 2))
-            # else:  # WDM along directions, use red and blue todo
+            # else:  # WDM along directions (use red and blue) todo
             #     a = np.sum(self._N, axis=0)
             #     b = np.max(a)
             #     c = np.ceil(b / 2)
@@ -1499,8 +1479,7 @@ class Fringes:
 
     @property
     def Y(self) -> int:
-        """Height of fringe patterns.
-        [Y] = px."""
+        """Height of fringe patterns (in pixel units)."""
         return self._Y
 
     @Y.setter
@@ -1519,17 +1498,12 @@ class Fringes:
                     f"Frame size 'Y' * 'X' exceeds 'OPENCV_IO_MAX_IMAGE_PIXELS': {self._X * self._Y} > 2**30."
                 )
 
-            if self._Y == 1:
-                self.D = 1
-                self.axis = 0
-
             self._UMR = None  # empty cache
             self.UMR  # compute and cache
 
     @property
     def X(self: int) -> int:
-        """Width of fringe patterns.
-        [X] = px."""
+        """Width of fringe patterns (in pixel units)."""
         return self._X
 
     @X.setter
@@ -1548,10 +1522,6 @@ class Fringes:
                     f"Frame size 'Y' * 'X' exceeds 'OPENCV_IO_MAX_IMAGE_PIXELS': {self._X * self._Y} > 2**30."
                 )
 
-            if self._Y == 1:
-                self.D = 1
-                self.axis = 0
-
             self._UMR = None  # empty cache
             self.UMR  # compute and cache
 
@@ -1561,30 +1531,19 @@ class Fringes:
         return 3 if self.WDM or not self._monochrome else 1
 
     @property
+    def shape(self) -> tuple[int, int, int, int]:
+        """Shape of fringe pattern sequence in video shape (frames, height, with, color channels)."""
+        return self.T, self.Y, self.X, self.C
+
+    @property
     def L(self) -> np.ndarray:
-        """Coding lengths, i.e. lengths of fringe patterns for each direction.
-        [L] = px."""
-        L = np.array([self.X, self.Y])
-
-        if self.indexing == "ij":
-            L = L[::-1]
-
-        if self.D == 1:
-            L = np.atleast_1d(L[self.axis])
-
-        return L
+        """Coding lengths, i.e. lengths of fringe patterns for each direction (in pixel units)."""
+        return np.array([self.Y, self.X])[self.axes]
 
     @property
     def Lmax(self) -> int:
-        """Maximum coding length.
-        [Lmax] = px."""
+        """Maximum coding length (in pixel units)."""
         return self.L.max()
-
-    @property
-    def Lext(self) -> float:
-        """Extended coding length.
-        [Lext] = px."""
-        return self.a * self.Lmax
 
     @property
     def a(self) -> float:
@@ -1605,76 +1564,18 @@ class Fringes:
             self.UMR  # compute and cache
 
     @property
-    def _x(self) -> tuple[np.ndarray] | np.ndarray:
-        """Coordinate matrices of the coordinate system defined in `grid`.
-
-        Indexing order is defined in `indexing`.
-        If possible, a spase representation of the grid is returned.
-        """
-        if self.grid == "image":  # todo: and self.angle == 0:
-            bits = int(np.ceil(np.log2(self.Lmax - 1)))  # next power of two
-            bits += -bits % 8  # next power of two divisible by 8
-
-            x = np.indices((self.Y, self.X), dtype=f"uint{bits}", sparse=True)
-
-            if self.indexing == "xy":
-                x = x[::-1]
-        else:
-            if self.grid == "image":
-                sys = "img"
-            elif self.grid == "Cartesian":
-                sys = "cart"
-            elif self.grid == "polar":
-                sys = "polar"
-            else:
-                sys = "logpol"
-
-            # x = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))
-            x = np.array(getattr(grid, sys)(self.Y, self.X, 0))  # todo: spiral angle 45
-
-            if self.indexing == "ij":
-                x = x[::-1]  # returns a view
-
-            if self.grid in ["polar", "log-polar"]:
-                x *= self.Lext
-
-        if self.D == 1:
-            x = x[self.axis][None, ...]
-
-        return x
-
-    @property
-    def x(self) -> np.ndarray:
-        """Coordinate matrices of the coordinate system defined in `grid`.
-
-        Indexing order is defined in `indexing`.
-        This is always a fleshed out representation.
-        """
-        return np.array(np.broadcast_arrays(*self._x)) if isinstance(self._x, tuple) else self._x
-
-    @property
-    def xc(self) -> np.ndarray:
-        """Coordinate matrices as in `x` but with an additional axis for the color channel.
-        This is useful when running tests.
-        """
-        return self.x[..., None]  # add axis for color channel
-
-    @property
-    def x0(self) -> float:
-        """Coordinate offset."""
-        # return self.Lmax * (self.a - 1) / 2
-        return (self.Lext - self.Lmax) / 2
+    def Lext(self) -> float:
+        """Extended coding length (in pixel units)."""
+        return self.a * self.Lmax
 
     @property
     def grid(self) -> str:
-        """Coordinate system of the fringe patterns.
-
-        The following values can be set:\n
-        - 'image':     The top left corner pixel of the grid is the origin and positive directions are right- resp. downwards.\n
-        - 'Cartesian': The center of grid is the origin and positive directions are right- resp. upwards.\n
-        - 'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.\n
-        - 'log-polar': The center of grid is the origin and positive directions are clockwise resp. outwards.
-        """
+        """Coordinate system of the fringe patterns."""
+        # The following values can be set:\n
+        # - 'image':     The top left corner pixel of the grid is the origin and positive directions are downwards and to the right.\n
+        # - 'Cartesian': The center of grid is the origin and positive directions are right- and upwards.\n
+        # - 'polar':     The center of grid is the origin and positive directions are clockwise resp. outwards.\n
+        # - 'log-polar': The center of grid is the origin and positive directions are clockwise resp. outwards.
         return self._grid
 
     @grid.setter
@@ -1682,7 +1583,7 @@ class Fringes:
         _grid = str(grid)
 
         if (self.SDM or self.uwr == "FTM") and self.grid not in {"image", "Cartesian"}:  # self._choices["grid"][:2]:
-            logger.error(f"Couldn't set 'grid': 'grid' not in {{{"image", "Cartesian"}}}.")  # self._choices["grid"][:2]
+            logger.error(f"Couldn't set 'grid': 'grid' not in {{{'image', 'Cartesian'}}}.")  # self._choices["grid"][:2]
             return
 
         if self._grid != _grid and _grid in self._choices["grid"]:
@@ -1704,300 +1605,261 @@ class Fringes:
     #         logger.debug(f"{self._angle=}")
 
     @property
+    def axes(self) -> np.ndarray:
+        """Axes along which to encode."""
+        # using len(self._axes) instead of self.D, else recursion when MRD in mode
+        return np.array([0, 1])[: len(self._axes)] if "MRD" in self.mode else self._axes
+
+    @axes.setter
+    def axes(self, axes: int | Sequence[int]):
+        _axes = np.atleast_1d(np.array(axes, int))[: self._Dmax]
+
+        if not set(_axes) <= {0, 1}:  # if not subset
+            logger.error("Couldn't set 'axes': Must consist of only zeros or ones.")
+            return
+
+        if len(_axes) != len(set(_axes)):
+            logger.error("Each element must only exist once.")
+            return
+
+        if not np.array_equal(self._axes, _axes):
+            self._axes = _axes
+            logger.debug(f"{self._axes=}")
+
+            Dold = self._N.shape[0]
+            if Dold > self.D:
+                self.N = self._N[0, :]  # triggers UMR
+                self.v = self._v[0, :]  # triggers UMR
+                self.f = self._f[0, :]
+
+                if Dold == self.K == 1:
+                    self.FDM = False
+
+                self.SDM = False  # adjusts V
+            elif Dold < self.D:
+                self.N = np.append(self._N, self._N, axis=0)  # triggers UMR
+                self.v = np.append(self._v, self._v, axis=0)  # triggers UMR
+                self.f = np.append(self._f, self._f, axis=0)
+
+                self.V = self.V  # checks clipping
+
+            self._UMR = None  # empty cache
+            self.UMR  # compute and cache
+
+    @property
     def D(self) -> int:
         """Number of directions."""
-        return self._D
+        return len(self.axes)
 
     @D.setter
+    # @deprecated("No longer needed since 'axes' was introduced in version 2.0.1, but kept for backwards compatibility.")
     def D(self, D: int):
         _D = int(min(max(1, D), self._Dmax))
 
-        if self._D > _D:  # this means that _D == 1
-            self._D = _D
-            logger.debug(f"{self._D=}")
-
-            self.N = self._N[self.axis, :]
-            self.v = self._v[self.axis, :]
-            self.f = self._f[self.axis, :]
-
-            self.SDM = False  # adjusts B
-            if self._K == 1:
-                self.FDM = False
-        elif self._D < _D:  # this means that D_ == 2
-            self._D = _D
-            logger.debug(f"{self._D=}")
-
-            self.N = np.append(self._N, np.tile(self._N[-1, :], (_D - self._N.shape[0], 1)), axis=0)
-            self.v = np.append(self._v, np.tile(self._v[-1, :], (_D - self._v.shape[0], 1)), axis=0)
-            self.f = np.append(self._f, np.tile(self._f[-1, :], (_D - self._f.shape[0], 1)), axis=0)
-
-            self.B = self.B  # checks clipping
+        if self.D > _D:
+            self.axes = self.axes[0]
+        elif self.D < _D:
+            self.axes = np.append(self.axes, 1 - self.axes, axis=0)
 
     @property
-    def axis(self) -> int:
-        """Axis along which to shift if number of directions equals one."""
-        return self._axis
+    def _x(self) -> tuple[np.ndarray] | np.ndarray:
+        """Coordinate matrices of the coordinate system defined in `grid`.
 
-    @axis.setter
-    def axis(self, axis: int):
-        _axis = int(min(max(0, axis), self._Dmax - 1))
-
-        if self._axis != _axis:
-            self._axis = _axis
-            logger.debug(f"{self._axis=}")
-
-    @property
-    def M(self) -> int:  # float, np.ndarray
-        """Number of averaged intensity samples."""
-        # M = np.sum(self.h, axis=0) / 255  # todo: might be a fraction
-        M = np.count_nonzero(self.h, axis=0)  # todo: always is an integer
-
-        # M = np.atleast_1d(M[0]) if self._monochrome else M
-        M = M[0] if self._monochrome else M
-        M = M.min()  # todo: array of M
-        return int(M)  # use int() or float() to ensure type is "int" instead of "numpy.core.multiarray.scalar"
-
-    # @M.setter
-    # def M(self, M: int):
-    #     _M = int(max(1, M))
-    #     self.h = "w" * _M
-    #     # todo: float
-
-    @property
-    def H(self) -> int:
-        """Number of hues."""
-        return self.h.shape[0]
-
-    # @H.setter
-    # def H(self, H: int):
-    #     _H = int(max(1, H))
-    #
-    #     if self.H != _H:
-    #         if self.WDM:
-    #             logger.error("Couldn't set 'H': WDM is active.")
-    #             return
-    #             self.h = "w" * _H
-    #         elif _H == 1:
-    #             self.h = "w"
-    #         elif _H == 2:
-    #             self.h = "rb"
-    #         else:
-    #             rgb = "rgb" * int(np.ceil(_H / 3))  # repeat "rgb" this many times
-    #             self.h = rgb[:_H]
-
-    @property
-    def h(self) -> np.ndarray:
-        """Hues i.e. colors of fringe patterns.
-
-        Possible values are any sequence of RGB color triples ∈ [0, 255].
-        However, black (0, 0, 0) is not allowed.
-
-        The hue values can also be set by assigning any combination of the following characters as a string:\n
-        - 'r': red \n
-        - 'g': green\n
-        - 'b': blue\n
-        - 'c': cyan\n
-        - 'm': magenta\n
-        - 'y': yellow\n
-        - 'w': white\n
-
-        Before decoding, repeating hues will be fused by averaging."""
-        return self._h
-
-    @h.setter
-    def h(self, h: int | Sequence[int, ...] | Sequence[Sequence[int, int, int], ...] | Literal["w", "r", "g", "b", "c", "m", "y"] | Sequence[Literal["w", "r", "g", "b", "c", "m", "y"]]):
-        if isinstance(h, str):
-            LUT = {
-                "r": (255, 0, 0),
-                "g": (0, 255, 0),
-                "b": (0, 0, 255),
-                "c": (0, 255, 255),
-                "m": (255, 0, 255),
-                "y": (255, 255, 0),
-                "w": (255, 255, 255),
-            }
-            if all(c in LUT.keys() for c in h.lower()):
-                # set(h.lower()).issubset(LUT.keys())
-                # set(h.lower()) <= LUT.keys()):  # subset  # todo: notation since which python version?
-                h = [LUT[c] for c in h.lower()]
-            elif h == "default":
-                h = self._defaults["h"]
-            else:
-                return
-
-        # make array, clip first and then cast to dtype to avoid integer under-/overflow
-        _h = np.array(h).clip(0, 255).astype("uint8", copy=False)
-
-        if not _h.size:  # empty array
-            return
-
-        # trim: change ndim of '_h' to 2, i.e. its shape to (H, 3)
-        if _h.ndim == 0:
-            _h = np.full((self.H, 3), _h)
-        elif _h.ndim == 1:
-            if len(_h) == 3:
-                _h = _h.reshape(1, 3)
-            else:
-                _h = np.repeat(_h.reshape(3, 1), 3, axis=1)
-        elif _h.ndim == 2:
-            _h = _h[:, :3]
-        else:
-           raise ValueError("Only 0 up to 2 dimensions are allowed.")
-
-        if _h.shape[1] != 3:  # length of color-axis must equal 3
-            logger.error("Couldn't set 'h': 3 color channels must be provided.")
-            return
-
-        if np.any(np.max(_h, axis=1) == 0):
-            logger.error("Didn't set 'h': Black color is not allowed.")
-            return
-
-        if self.WDM and not self._monochrome:
-            logger.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
-            return
-
-        if not np.array_equal(self._h, _h):
-            Hold = self.H
-            self._h = _h
-            logger.debug(f"self._h = {str(self._h).replace(chr(10), ',')}")
-            if Hold != _h.shape[0]:
-                logger.debug(f"self.H = {_h.shape[0]}")  # computed upon call
-            logger.debug(f"{self.M=}")  # computed upon call
-
-    @property
-    def SDM(self) -> bool:
-        """Spatial division multiplexing.
-
-        The directions 'D' are multiplexed, resulting in a crossed fringe pattern.
-        The amplitude 'B' is halved.
-        It can only be activated if we have two directions, i.e. 'D' ≡ 2.
-        The number of frames 'T' is reduced by the factor 2."""
-        return self._SDM
-
-    @SDM.setter
-    def SDM(self, SDM: bool):
-        _SDM = bool(SDM)
-
-        if _SDM:
-            if self.D != 2:
-                _SDM = False
-                logger.error("Didn't set 'SDM': Pointless as only one dimension exist.")
-
-            if self.grid not in {"image", "Cartesian"}:
-                _SDM = False
-                logger.error(
-                    f"Couldn't set 'SDM': 'grid' not in {{{"image", "Cartesian"}}}."
-                )
-
-            if self.FDM:
-                _SDM = False
-                logger.error("Couldn't set 'SDM': FDM is active.")
-
-        if self._SDM != _SDM:
-            self._SDM = _SDM
-            logger.debug(f"{self._SDM=}")
-            logger.debug(f"{self.T=}")  # computed upon call
-
-            if self.SDM:
-                self.B /= self.D
-            else:
-                self.B *= self.D
-
-    @property
-    def WDM(self) -> bool:
-        """Wavelength division multiplexing.
-
-        The shifts are multiplexed into the color channel, resulting in an RGB fringe pattern.
-        It can only be activated if all shifts equal 3, i.e. 'N' ≡ 3.
-        The number of frames 'T' is reduced by the factor 3."""
-        return self._WDM
-
-    @WDM.setter
-    def WDM(self, WDM: bool):
-        _WDM = bool(WDM)
-
-        if _WDM:
-            if not np.all(self.N == 3):
-                _WDM = False
-                logger.error("Couldn't set 'WDM': At least one Shift != 3.")
-
-            if not self._monochrome:
-                _WDM = False
-                logger.error("Couldn't set 'WDM': Not all hues are monochromatic.")
-
-            if self.FDM:  # todo: remove this, already covered by N
-                _WDM = False
-                logger.error("Couldn't set 'WDM': FDM is active.")
-
-        if self._WDM != _WDM:
-            self._WDM = _WDM
-            logger.debug(f"{self._WDM=}")
-            logger.debug(f"{self.T=}")  # computed upon call
-
-    @property
-    def FDM(self) -> bool:
-        """Frequency division multiplexing.
-
-        The directions 'D' and the sets K are multiplexed, resulting in a crossed fringe pattern if 'D' ≡ 2.
-        It can only be activated if 'D' ∨ 'K' > 1 i.e. 'D' * 'K' > 1.
-        The amplitude 'b' is reduced by the factor 'D' * 'K'.
-        Usually 'f' equals 1 and is essentially only changed if frequency division multiplexing ('FDM') is activated:
-        Each set per direction receives an individual temporal frequency 'f',
-        which is used in temporal demodulation to distinguish the individual sets.
-        A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required
-        to satisfy the sampling theorem and N is updated automatically if necessary.
-        If one wants a static pattern, i.e. one that remains congruent when shifted, set 'static' to True.
+        If possible, a sparse representation of the grid is returned.
         """
-        return self._FDM
-
-    @FDM.setter
-    def FDM(self, FDM: bool):
-        _FDM = bool(FDM)
-
-        if _FDM:
-            if self.D == self.K == 1:
-                _FDM = False
-                logger.error("Didn't set 'FDM': Dimensions * Sets = 1, so nothing to multiplex.")
-
-            if self.SDM:
-                _FDM = False
-                logger.error("Couldn't set 'FDM': SDM is active.")
-
-            if self.WDM:  # todo: remove, already covered by N
-                _FDM = False
-                logger.error("Couldn't set 'FDM': WDM is active.")
-
-        if self._FDM != _FDM:
-            self._FDM = _FDM
-            logger.debug(f"{self._FDM=}")
-            # self.K = self._K
-            self.N = self._N
-            self.v = self._v
-            if self.FDM:
-                self.f = self._f
+        if self.grid == "image":  # todo: and self.angle == 0:
+            x = np.indices((self.Y, self.X), sparse=True)  # ij-indexing
+        else:
+            if self.grid == "image":
+                sys = "img"
+            elif self.grid == "Cartesian":
+                sys = "cart"
+            elif self.grid == "polar":
+                sys = "polar"
             else:
-                self.f = np.ones((self.D, self.K))
+                sys = "logpol"
 
-            # keep maximum possible visibility constant
-            if self.FDM:
-                self.B /= self.D * self.K
-            else:
-                self.B *= self.D * self.K
+            # x = np.array(getattr(grid, sys)(self.Y, self.X, self.angle))
+            x = np.array(getattr(grid, sys)(self.Y, self.X, 0))  # xy-indexing
+            # todo: spiral angle 45
+
+            if self.grid in ["polar", "log-polar"]:
+                x *= self.Lext
+
+        return x
 
     @property
-    def static(self) -> bool:
-        """Flag for creating static fringes (so they remain congruent when shifted)."""
-        return self._static
+    def x(self) -> np.ndarray:
+        """Coordinate matrices of the coordinate system defined in `grid`.
 
-    @static.setter
-    def static(self, static: bool):
-        _static = bool(static)
+        This is always a fleshed out representation.
 
-        if self._static != _static:
-            self._static = _static
-            logger.debug(f"{self._static=}")
-            self.v = self._v
-            self.f = self._f
+        'axes' defines the order in  which the coordinate matrices appear.
+
+        An additional axis is added for the color channel,
+        which is useful when running tests
+        so that 'x' is shape consistent/broadcastable to 'dec.x'
+        (the latter has a color channel).
+        """
+        _x = np.array(np.broadcast_arrays(*self._x)) if isinstance(self._x, tuple) else self._x
+        return _x[self.axes, :, :, None].astype(float, copy=False)
+
+    @property
+    def x0(self) -> float:
+        """Coordinate offset."""
+        # return self.Lmax * (self.a - 1) / 2
+        return (self.Lext - self.Lmax) / 2
+
+    @property
+    def bits(self) -> int:
+        """Number of bits."""
+        return self._bits
+
+    @bits.setter
+    def bits(self, bits: float):
+        self._bits = min(max(0, bits), 64)  # max uint64
+        logger.debug(f"{self.bits = }")
+        logger.debug(f"{self.dtype = }")
+        logger.debug(f"{self.Imax = }")
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type which can hold 2**`bits` of information."""
+        if self.bits == 0:
+            dtype = np.dtype(float)
+        else:
+            bits = int(np.ceil(np.log2(2**self.bits - 1)))  # next power of two
+            bits += -bits % 8  # next power of two divisible by 8
+            dtype = np.dtype(f"uint{bits}")
+        return dtype
+
+    @dtype.setter
+    def dtype(
+        self,
+        dtype: np.dtype
+        | Literal[
+            "uint8",
+            "uint16",
+            "uint32",
+            "float32",
+            "float64",
+        ],
+    ):
+        _dtype = np.dtype(dtype)
+
+        if self._dtype != _dtype and str(_dtype) in self._choices["dtype"]:
+            self._dtype = _dtype
+            logger.debug(f"{self._dtype=}")
+            self._bits = np.iinfo(_dtype).bits if _dtype.kind in "ui" else 0
+            logger.debug(f"{self._bits=}")
+            logger.debug(f"{self.Imax=}")
+            logger.debug(f"self.A = {self.A}")
+            logger.debug(f"self.B = {self.B}")
+
+    @property
+    def Imax(self) -> int:
+        """Maximum gray value."""
+        # return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
+        return 2**self.bits - 1 if self.dtype.kind in "ui" else 1
+
+    @property
+    def _Amin(self):
+        """Minimum offset."""
+        return self.B / self._Vmax
+
+    @property
+    def _Amax(self):
+        """Maximum offset."""
+        return self.Imax - self._Amin
+
+    @property
+    def A(self) -> float:
+        """Offset."""
+        return self.Imax * self.E
+
+    @A.setter
+    def A(self, A: float):
+        _A = float(min(max(self._Amin, A), self._Amax))
+
+        if self.A != _A:
+            self.E = _A / self.Imax
+
+    @property
+    def _Bmax(self):
+        """Maximum amplitude."""
+        return min(self.A, self.Imax - self.A) * self._Vmax
+
+    @property
+    def B(self) -> float:
+        """Amplitude."""
+        return self.A * self.V
+
+    @B.setter
+    def B(self, B: float):
+        _B = float(min(max(0, B), self._Bmax))
+
+        if self.B != _B:  # and _B != 0:
+            self.V = _B / self.A
+
+    @property
+    def _Vmax(self):
+        """Maximum visibility."""
+        if self.FDM:
+            return 1 / (self.D * self.K)
+        elif self.SDM:
+            return 1 / self.D
+        else:
+            return 1
+
+    @property
+    def V(self) -> float:
+        """Fringe visibility (fringe contrast) ∈ [0, 1].
+
+        Screens are extremely nonlinear near the minimum and maximum values;
+        we can avoid them by setting V to e.g. 0.95.
+        """
+        return self._V
+
+    @V.setter
+    def V(self, V: float):
+        _V = float(min(max(0, V), self._Vmax))
+
+        if self._V != _V:
+            self._V = _V
+            logger.debug(f"{self.V=}")
+            logger.debug(f"{self.B=}")
+
+    @property
+    def _Emax(self):
+        """Maximum relative offset (exposure)."""
+        return 1 / (1 + self.V)
+
+    @property
+    def E(self) -> float:
+        """Relative exposure, i.e. relative mean intensity ∈ [0, 1]."""
+        return self._E
+
+    @E.setter
+    def E(self, E) -> float:
+        _E = float(min(max(0, E), self._Emax))
+
+        if self._E != _E:
+            self._E = _E
+            logger.debug(f"{self.E=}")
+            logger.debug(f"{self.A=}")
+
+    @property
+    def g(self) -> float:
+        """Gamma correction factor used to compensate nonlinearities of the display response curve."""
+        return self._g
+
+    @g.setter
+    def g(self, g: float):
+        _g = float(min(max(0, g), self._gmax))
+
+        if self._g != _g and _g != 0:
+            self._g = _g
+            logger.debug(f"{self._g=}")
 
     @property
     def _Kmax(self) -> int:
@@ -2007,20 +1869,15 @@ class Fringes:
         )  # np.inf instead of sys.maxsize but then it's float
 
     @property
-    def K(self) -> int:  # todo: int | Sequence[int]:
+    def K(self) -> int:
         """Number of sets (number of fringe patterns with different spatial frequencies)."""
         return self._K
 
     @K.setter
     def K(self, K: int):
-        # todo: different K for each D: use array of arrays; see above
-        # a = np.ones(2)
-        # b = np.ones(5)
-        # c = np.array([a, b], dtype=object)
-
         _K = int(min(max(1, K), self._Kmax))
 
-        isBmax = self.B == self._Bmax
+        isVmax = self.V == self._Vmax
 
         if self._K > _K:  # remove elements
             self._K = _K
@@ -2030,11 +1887,11 @@ class Fringes:
             self.v = self._v[:, : self.K]
             self.f = self._f[:, : self.K]
 
-            if self._D == self._K == 1:
+            if self.D == self.K == 1:
                 self.FDM = False
 
-            if isBmax:
-                self.B = self._Bmax  # maximizes B
+            if isVmax:
+                self.V = self._Vmax  # maximizes B
         elif self._K < _K:  # add elements
             self._K = _K
             logger.debug(f"{self._K=}")
@@ -2050,14 +1907,15 @@ class Fringes:
                 axis=1,
             )
 
-            self.B = self.B  # checks clipping
+            self.V = self.V  # checks clipping
 
     @property
     def _Nmin(self) -> int:
         """Minimum number of shifts to (uniformly) sample temporal frequencies.
 
         Per direction at least one set with N ≥ 3 is necessary
-        to solve for the three unknowns brightness 'a', modulation 'b' and coordinate x."""
+        to solve for the three unknowns brightness 'a', modulation 'b' and coordinate x.
+        """
         if self.FDM:
             Nmin = int(np.ceil(2 * self.f.max() + 1))  # sampling theorem
             # todo: 2 * D * K + 1 -> fractional periods if static
@@ -2114,9 +1972,7 @@ class Fringes:
 
     @property
     def lmin(self) -> float:
-        """Minimum resolvable wavelength.
-        [lmin] = px."""
-
+        """Minimum resolvable wavelength (in pixel units)."""
         # don't use self._fmax, else circular loop
         if self.FDM and self.static:
             fmax = min((self._Nmin - 1) / 2, self.Lext / self._lmin)
@@ -2139,14 +1995,14 @@ class Fringes:
 
     @property
     def l(self) -> np.ndarray:
-        """Wavelengths of fringe periods.
-        [l] = px.
+        """Wavelengths of fringe periods (in pixel units).
 
-        When Lext changes, v is kept constant and only l is changed."""
+        When Lext changes, 'v' is kept constant and only 'l' is changed.
+        """
         return self.Lext / self.v
 
     @l.setter
-    def l(self, l: float | Sequence[float] | str):  #  | Literal["linear", "exponential", "optimal"]):
+    def l(self, l: float | Sequence[float] | str):  # | Literal["linear", "exponential", "optimal"]):
         if isinstance(l, str):
             if "," in l:
                 l = np.fromstring(l, sep=",")
@@ -2256,7 +2112,7 @@ class Fringes:
 
                     n = lmax - lmin + 1
                     K = min(self.K, n)  # ensures K <= n
-                    C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
+                    # C = sp.special.comb(n, K, exact=True, repetition=False)  # number of unique combinations
                     combos = np.array(
                         [
                             c
@@ -2281,10 +2137,10 @@ class Fringes:
 
     @property
     def _l(self) -> np.ndarray:  # kept for backwards compatibility with fringes-GUI
-        """Wavelengths of fringe periods.
-        [l] = px.
+        """Wavelengths of fringe periods (in pixel units).
 
-        When Lext changes, v is kept constant and only l is changed."""
+        When `X` or `Y` and hence `Lext` changes, 'v' is kept constant and only 'l' is changed.
+        """
         return self.Lext / self._v
 
     @property
@@ -2302,7 +2158,7 @@ class Fringes:
         return v  # todo: round to number of digits?
 
     @v.setter
-    def v(self, v: float | Sequence[float] | str):  #  | Literal["linear", "exponential", "optimal"]):
+    def v(self, v: float | Sequence[float] | str):  # | Literal["linear", "exponential", "optimal"]):
         if isinstance(v, str):
             if "," in v:
                 v = np.fromstring(v, sep=",")
@@ -2364,7 +2220,7 @@ class Fringes:
                     p = [p[-i // 2] if i % 2 else p[i // 2] for i in range(len(p))]  # resort primes
                     _v = np.sort(np.array(p, float).reshape((self.D, self.K)), axis=1)  # resort primes
                     logger.warning(
-                        f"Periods are not coprime. " f"Changing values to {str(_v.round(3)).replace(chr(10), ',')}."
+                        f"Periods are not coprime. Changing values to {str(_v.round(3)).replace(chr(10), ',')}."
                     )
             # else:
             #     vmax = (self._Nmax - 1) / 2 > _v
@@ -2432,53 +2288,6 @@ class Fringes:
             self.N = self._N  # todo: remove if fractional periods is implemented, log warning
 
     @property
-    def p0(self) -> float:
-        """Phase offset ∈ (-2π, +2π).
-
-        It can be used to e.g. let the fringe patterns start (at the origin) with a gray value of zero.
-        """
-        return 0 if "mrd" in self.mode else self._p0
-
-    @p0.setter
-    def p0(self, p0: float):
-        _p0 = float(np.sign(p0) * np.abs(p0) % _2PI)
-
-        if self._p0 != _p0:
-            self._p0 = _p0
-            logger.debug(f"self._p0 = {self._p0 / np.pi} \u03c0")  # π
-
-    @property
-    def _monochrome(self) -> bool:
-        """True if all hues are monochromatic, i.e. the RGB values are identical for each hue."""
-        return all(len(set(h)) == 1 for h in self.h)
-
-    @property
-    def _ambiguous(self) -> bool:
-        """True if unambiguous measurement range is smaller than the coding range."""
-        return bool(np.any(self.UMR < self.L * self.a))
-
-    @property
-    def indexing(self) -> str:
-        """Indexing convention.
-
-        Cartesian indexing `xy` (the default) will index the row first,
-        while matrix indexing `ij` will index the colum first.
-        This equivalent to the argument 'indexing' in numpy.meshgrid().
-        """
-        return "ij" if "mrd" in self.mode else self._indexing
-
-    @indexing.setter
-    def indexing(self, indexing: Literal["xy", "ij"]):
-        _indexing = str(indexing).lower()
-
-        if self._indexing != _indexing and _indexing in self._choices["indexing"]:
-            self._indexing = _indexing
-            logger.debug(f"{self._indexing=}")
-            if self.D == 2:
-                self._UMR = None  # empty cache
-                self.UMR  # compute and cache
-
-    @property
     def reverse(self) -> bool:
         """Flag for shifting fringes in reverse direction."""
         return self._reverse
@@ -2493,22 +2302,292 @@ class Fringes:
             logger.debug(f"self._f = {str((-self._f if self.reverse else self._f).round(3)).replace(chr(10), ',')}")
 
     @property
-    def mode(self) -> str:
-        """Mode for decoding.
+    def p0(self) -> float:
+        """Phase offset.
 
-        The following values can be set:\n
-        - 'fast'\n
-        - 'precise'
+        It can be used to e.g. let the fringe patterns start (at the origin) with a gray value of zero.
         """
-        return self._mode
+        return 0 if "MRD" in self.mode else self._p0
 
-    @mode.setter
-    def mode(self, mode: Literal["fast", "precise", "MRD"]):  # todo: add "numpy", "numba"
-        _mode = str(mode).lower()
+    @p0.setter
+    def p0(self, p0: float):
+        # _p0 = float(np.sign(p0) * np.abs(p0) % _2PI)
+        _p0 = float(p0)
 
-        if self._mode != _mode and any(m in _mode for m in self._choices["mode"]):  # _mode in self._choices["mode"]:
-            self._mode = _mode
-            logger.debug(f"{self._mode=}")
+        if self._p0 != _p0:
+            self._p0 = _p0
+            logger.debug(f"self._p0 = {self._p0 / np.pi} \u03c0")  # π
+
+    @property
+    def H(self) -> int:
+        """Number of hues."""
+        return self.h.shape[0]
+
+    # @H.setter
+    # def H(self, H: int):
+    #     _H = int(max(1, H))
+    #
+    #     if self.H != _H:
+    #         if self.WDM:
+    #             logger.error("Couldn't set 'H': WDM is active.")
+    #             return
+    #             self.h = "w" * _H
+    #         elif _H == 1:
+    #             self.h = "w"
+    #         elif _H == 2:
+    #             self.h = "rb"
+    #         else:
+    #             rgb = "rgb" * int(np.ceil(_H / 3))  # repeat "rgb" this many times
+    #             self.h = rgb[:_H]
+
+    @property
+    def h(self) -> np.ndarray:
+        """Hues i.e. colors of fringe patterns.
+
+        Possible values are any sequence of RGB color triples ∈ [0, 255].
+        However, black (0, 0, 0) is not allowed.
+
+        The hue values can also be set by assigning any combination of the following characters as a string:\n
+        - 'r': red \n
+        - 'g': green\n
+        - 'b': blue\n
+        - 'c': cyan\n
+        - 'm': magenta\n
+        - 'y': yellow\n
+        - 'w': white\n
+
+        Before decoding, repeating hues will be fused by averaging.
+        """
+        return self._h
+
+    @h.setter
+    def h(
+        self,
+        h: float
+        | Sequence[float]
+        | Sequence[Sequence[float, float, float]]
+        | Literal["w", "r", "g", "b", "c", "m", "y"]
+        | Sequence[Literal["w", "r", "g", "b", "c", "m", "y"]],
+    ):
+        if isinstance(h, str):
+            LUT = {
+                "r": (255, 0, 0),
+                "g": (0, 255, 0),
+                "b": (0, 0, 255),
+                "c": (0, 255, 255),
+                "m": (255, 0, 255),
+                "y": (255, 255, 0),
+                "w": (255, 255, 255),
+            }
+            if all(c in LUT.keys() for c in h.lower()):
+                # set(h.lower()).issubset(LUT.keys())
+                # set(h.lower()) <= LUT.keys()):  # subset  # todo: notation since which python version?
+                h = [LUT[c] for c in h.lower()]
+            elif h == "default":
+                h = self._defaults["h"]
+            else:
+                return
+
+        # make array, clip first and then cast to dtype to avoid integer under-/overflow
+        _h = np.array(h).clip(0, 255).astype(float, copy=False)
+
+        if not _h.size:  # empty array
+            return
+
+        # trim: change ndim of '_h' to 2, i.e. its shape to (H, 3)
+        if _h.ndim == 0:
+            _h = np.full((self.H, 3), _h)
+        elif _h.ndim == 1:
+            if len(_h) == 3:
+                _h = _h.reshape(1, 3)
+            else:
+                _h = np.repeat(_h.reshape(3, 1), 3, axis=1)
+        elif _h.ndim == 2:
+            _h = _h[:, :3]
+        else:
+            raise ValueError("Only 0 up to 2 dimensions are allowed.")
+
+        if _h.shape[1] != 3:  # length of color-axis must equal 3
+            logger.error("Couldn't set 'h': 3 color channels must be provided.")
+            return
+
+        if np.any(np.max(_h, axis=1) == 0):
+            logger.error("Didn't set 'h': Black color is not allowed.")
+            return
+
+        if self.WDM and not self._monochrome:
+            logger.error("Couldn't set 'h': 'WDM' is active, but not all hues are monochromatic.")
+            return
+
+        if not np.array_equal(self._h, _h):
+            Hold = self.H
+            self._h = _h
+            logger.debug(f"self._h = {str(self._h).replace(chr(10), ',')}")
+            if Hold != _h.shape[0]:
+                logger.debug(f"self.H = {_h.shape[0]}")  # computed upon call
+            logger.debug(f"{self.M=}")  # computed upon call
+
+    @property
+    def M(self) -> int:  # float | np.ndarray
+        """Number of averaged intensity samples."""
+        # M = np.sum(self.h, axis=0) / 255  # todo: might be a fraction
+        M = np.count_nonzero(self.h, axis=0)  # todo: always is an integer
+
+        # M = np.atleast_1d(M[0]) if self._monochrome else M
+        M = M[0] if self._monochrome else M
+        M = M.min()  # todo: array of M
+        return int(M)  # use int() or float() to ensure type is "int" instead of "numpy.core.multiarray.scalar"
+
+    # @M.setter
+    # def M(self, M: int):
+    #     _M = int(max(1, M))
+    #     self.h = "w" * _M
+    #     # todo: float
+
+    @property
+    def _monochrome(self) -> bool:
+        """True if all hues are monochromatic, i.e. the RGB values are identical for each hue."""
+        return all(len(set(h)) == 1 for h in self.h)
+
+    @property
+    def SDM(self) -> bool:
+        """Spatial division multiplexing.
+
+        The directions 'D' are multiplexed, resulting in a crossed fringe pattern.
+        The amplitude 'B' is halved.
+        It can only be activated if we have two directions, i.e. 'D' ≡ 2.
+        The number of frames 'T' is reduced by the factor 2.
+        """
+        return self._SDM
+
+    @SDM.setter
+    def SDM(self, SDM: bool):
+        _SDM = bool(SDM)
+
+        if _SDM:
+            if self.D != 2:
+                _SDM = False
+                logger.error("Didn't set 'SDM': Pointless as only one dimension exist.")
+
+            if self.grid not in {"image", "Cartesian"}:
+                _SDM = False
+                logger.error(f"Couldn't set 'SDM': 'grid' not in {{{'image', 'Cartesian'}}}.")
+
+            if self.FDM:
+                _SDM = False
+                logger.error("Couldn't set 'SDM': FDM is active.")
+
+        if self._SDM != _SDM:
+            self._SDM = _SDM
+            logger.debug(f"{self._SDM=}")
+            logger.debug(f"{self.T=}")  # computed upon call
+
+            if self.SDM:
+                self.V /= self.D
+            else:
+                self.V *= self.D
+
+    @property
+    def WDM(self) -> bool:
+        """Wavelength division multiplexing.
+
+        The shifts are multiplexed into the color channel, resulting in an RGB fringe pattern.
+        It can only be activated if all shifts equal 3, i.e. 'N' ≡ 3.
+        The number of frames 'T' is reduced by the factor 3.
+        """
+        return self._WDM
+
+    @WDM.setter
+    def WDM(self, WDM: bool):
+        _WDM = bool(WDM)
+
+        if _WDM:
+            if not np.all(self.N == 3):
+                _WDM = False
+                logger.error("Couldn't set 'WDM': At least one Shift != 3.")
+
+            if not self._monochrome:
+                _WDM = False
+                logger.error("Couldn't set 'WDM': Not all hues are monochromatic.")
+
+            if self.FDM:  # todo: remove this, already covered by N
+                _WDM = False
+                logger.error("Couldn't set 'WDM': FDM is active.")
+
+        if self._WDM != _WDM:
+            self._WDM = _WDM
+            logger.debug(f"{self._WDM=}")
+            logger.debug(f"{self.T=}")  # computed upon call
+
+    @property
+    def FDM(self) -> bool:
+        """Frequency division multiplexing.
+
+        The directions 'D' and the sets K are multiplexed, resulting in a crossed fringe pattern if 'D' ≡ 2.
+        It can only be activated if 'D' ∨ 'K' > 1 i.e. 'D' * 'K' > 1.
+        The amplitude 'b' is reduced by the factor 'D' * 'K'.
+        Usually 'f' equals 1 and is essentially only changed if frequency division multiplexing ('FDM') is activated:
+        Each set per direction receives an individual temporal frequency 'f',
+        which is used in temporal demodulation to distinguish the individual sets.
+        A minimal number of shifts Nmin ≥ ⌈ 2 * fmax + 1 ⌉ is required
+        to satisfy the sampling theorem and N is updated automatically if necessary.
+        If one wants a static pattern, i.e. one that remains congruent when shifted, set 'static' to True.
+        """
+        return self._FDM
+
+    @FDM.setter
+    def FDM(self, FDM: bool):
+        _FDM = bool(FDM)
+
+        if _FDM:
+            if self.D == self.K == 1:
+                _FDM = False
+                logger.error("Didn't set 'FDM': Dimensions * Sets = 1, so nothing to multiplex.")
+
+            if self.SDM:
+                _FDM = False
+                logger.error("Couldn't set 'FDM': SDM is active.")
+
+            if self.WDM:  # todo: remove, already covered by N
+                _FDM = False
+                logger.error("Couldn't set 'FDM': WDM is active.")
+
+        if self._FDM != _FDM:
+            self._FDM = _FDM
+            logger.debug(f"{self._FDM=}")
+            # self.K = self._K
+            self.N = self._N
+            self.v = self._v
+            if self.FDM:
+                self.f = self._f
+            else:
+                self.f = np.ones((self.D, self.K))
+
+            # keep maximum possible visibility constant
+            if self.FDM:
+                self.B /= self.D * self.K
+            else:
+                self.B *= self.D * self.K
+
+    @property
+    def static(self) -> bool:
+        """Flag for creating static fringes (so they remain congruent when shifted)."""
+        return self._static
+
+    @static.setter
+    def static(self, static: bool):
+        _static = bool(static)
+
+        if self._static != _static:
+            self._static = _static
+            logger.debug(f"{self._static=}")
+            self.v = self._v
+            self.f = self._f
+
+    @property
+    def _ambiguous(self) -> bool:
+        """True if unambiguous measurement range is smaller than the coding range."""
+        return bool(np.any(self.UMR < self.L * self.a))
 
     @property
     def uwr(self) -> str:
@@ -2519,12 +2598,11 @@ class Fringes:
         - 'ftm': Fourier-transform method.\n
         - 'none': No unwrapping required.
         """
-
-        if self.K == 1 and np.all(self._N == 1) and self.grid in {"image", "Cartesian"}:
+        if np.all(self.v <= 1):
+            uwr = "none"  # only averaging
+        elif self.K == 1 and np.all(self._N == 1) and self.grid in {"image", "Cartesian"}:
             # todo: v >> 1, i.e. l ~ 8
             uwr = "ftm"  # Fourier-transform method
-        elif np.all(self.v <= 1):
-            uwr = "none"  # only averaging
         elif self._ambiguous:
             uwr = "spatial"
         else:
@@ -2533,157 +2611,28 @@ class Fringes:
         return uwr
 
     @property
-    def g(self) -> float:
-        """Gamma correction factor used to compensate nonlinearities of the display response curve."""
-        return self._g
+    def mode(self) -> str:
+        """Mode for coding.
 
-    @g.setter
-    def g(self, g: float):
-        _g = float(min(max(0, g), self._gmax))
-
-        if self._g != _g and _g != 0:
-            self._g = _g
-            logger.debug(f"{self._g=}")
-
-    @property
-    def shape(self) -> tuple[int, int, int, int]:
-        """Shape of fringe pattern sequence in video shape (frames, height, with, color channels)."""
-        return self.T, self.Y, self.X, self.C
-
-    @property
-    def bits(self) -> int:
-        """Number of bits."""
-        return self._bits
-
-    @bits.setter
-    def bits(self, bits: float):
-        self._bits = min(max(0, bits), 64)  # max uint64
-        logger.debug(f"{self.bits = }")
-        logger.debug(f"{self.dtype = }")
-        logger.debug(f"{self.Imax = }")
-
-    @property
-    def dtype(self) -> np.dtype:
-        """Data type which can hold 2**`bits` of information."""
-        if self.bits == 0:
-            dtype = np.dtype(float)
-        else:
-            bits = int(np.ceil(np.log2(2**self.bits - 1)))  # next power of two
-            bits += -bits % 8  # next power of two divisible by 8
-            dtype = np.dtype(f"uint{bits}")
-        return dtype
-
-    @dtype.setter
-    def dtype(self, dtype: np.dtype | Literal["uint8", "uint16", "uint32", "float32", "float64",]):
-        _dtype = np.dtype(dtype)
-
-        if self._dtype != _dtype and str(_dtype) in self._choices["dtype"]:
-            self._dtype = _dtype
-            logger.debug(f"{self._dtype=}")
-            self._bits = np.iinfo(_dtype).bits if _dtype.kind in "ui" else 0
-            logger.debug(f"{self._bits=}")
-            logger.debug(f"{self.Imax=}")
-            logger.debug(f"self.A = {self.A}")
-            logger.debug(f"self.B = {self.B}")
-
-    @property
-    def Imax(self) -> int:
-        """Maximum gray value."""
-        # return np.iinfo(self.dtype).max if self.dtype.kind in "ui" else 1
-        return 2**self.bits - 1 if self.dtype.kind in "ui" else 1
-
-    @property
-    def _Amin(self):
-        """Minimum offset."""
-        return self.B / self._Vmax
-
-    @property
-    def _Amax(self):
-        """Maximum offset."""
-        return self.Imax - self._Amin
-
-    @property
-    def A(self) -> float:
-        """Offset."""
-        return self.Imax * self.E
-
-    @A.setter
-    def A(self, A: float):
-        _A = float(min(max(self._Amin, A), self._Amax))
-
-        if self.A != _A:
-            self.E = _A / self.Imax
-
-    @property
-    def _Bmax(self):
-        """Maximum amplitude."""
-        return min(self.A, self.Imax - self.A) * self._Vmax
-
-    @property
-    def B(self) -> float:
-        """Amplitude."""
-        return self.A * self.V
-
-    @B.setter
-    def B(self, B: float):
-        _B = float(min(max(0, B), self._Bmax))
-
-        if self.B != _B:  # and _B != 0:
-            self.V = _B / self.A
-
-    @property
-    def _Emax(self):
-        """Maximum relative offset (exposure)."""
-        return 1 / (1 + self.V)
-
-    @property
-    def E(self) -> float:
-        """Relative exposure, i.e. relative mean intensity ∈ [0, 1]."""
-        return self._E
-
-    @E.setter
-    def E(self, E) -> float:
-        _E = float(min(max(0, E), self._Emax))
-
-        if self._E != _E:
-            self._E = _E
-            logger.debug(f"{self.E=}")
-            logger.debug(f"{self.A=}")
-
-    @property
-    def _Vmax(self):
-        """Maximum visibility."""
-        if self.FDM:
-            return 1 / (self.D * self.K)
-        elif self.SDM:
-            return 1 / self.D
-        else:
-            return 1
-
-    @property
-    def V(self) -> float:
-        """Fringe visibility (fringe contrast) ∈ [0, 1].
-
-        Screens are extremely nonlinear near the minimum and maximum values,
-        we can avoid them by setting V to e.g. 0.95.
+        The following values can be set:\n
+        - 'fast'\n
+        - 'precise'
         """
-        return self._V
+        return self._mode
 
-    @V.setter
-    def V(self, V: float):
-        _V = float(min(max(0, V), self._Vmax))
+    @mode.setter
+    def mode(self, mode: Literal["fast", "precise", "MRD", "sRGB"]):  # todo: add "NumPy", "Numba"
+        _mode = str(mode)
 
-        if self._V != _V:
-            self._V = _V
-            logger.debug(f"{self.V=}")
-            logger.debug(f"{self.B=}")
+        if self._mode != _mode and any(m in _mode for m in self._choices["mode"]):  # _mode in self._choices["mode"]:
+            self._mode = _mode
+            logger.debug(f"{self._mode=}")
 
     @property
     def UMR(self) -> np.ndarray:
-        """Unambiguous measurement range.
-        [UMR] = px
+        """Unambiguous measurement range (in pixel units).
 
-        The coding is only unique within the interval [0, UMR); after that it repeats itself.
+        The coding is only unique within the periodic interval [0, UMR).
 
         The UMR is derived from 'l' and 'v':\n
         - If 'l' ∈ ℕ, UMR = lcm('l'), with lcm() being the least common multiple.\n
@@ -2760,9 +2709,7 @@ class Fringes:
         logger.debug(f"self.UMR = {str(self._UMR)}")
 
         if self._ambiguous:
-            logger.warning(
-                "Unwrapping will not be spatially independent and only yield a relative phase map (UMR < L)."
-            )
+            logger.warning("UMR < L: unwrapping will not be spatially independent and only yield a relative phase map.")
 
         return self._UMR
 
@@ -2842,14 +2789,14 @@ class Fringes:
     def gcd(self) -> np.ndarray:
         """Greatest common divisor of moduli.
 
-        Must be smaller than noise."""
+        Must be smaller than noise.
+        """
         gcd = self._l / self.m
         return np.mean(gcd, axis=1)  # each 'gcd' should be identical; we average to get more precision
 
     @property
     def crt(self) -> np.ndarray:
         """Coefficients for Chinese remainder theorem."""
-
         if self._crt is not None:  # cache
             return self._crt
 
@@ -2873,9 +2820,10 @@ class Fringes:
                     try:
                         # M_ = pow(M, -1, self.m[d, i])  # only for Python 3.8+
                         M_ = sympy.core.numbers.mod_inverse(M, self.m[d, i])
-                        crt[d, i] = M * M_
                     except ValueError:
                         crt[d, i] = 0  # no solution found
+                    else:
+                        crt[d, i] = M * M_
 
                     if np.any(crt[d, :i] % self.m[d, i] == 1):  # one element already equals 1 modulo m[i]
                         crt[d, i] *= -1  # todo: WAVG them?
@@ -2916,8 +2864,7 @@ class Fringes:
 
     @property
     def SQNRdB(self):
-        """Signal to quantization noise ratio.
-        [SNRdB] = dB."""
+        """Signal to quantization noise ratio, in unit 'dB'."""
         return 20 * np.log10(self.SQNR)
 
     @property
@@ -2930,8 +2877,7 @@ class Fringes:
 
     @property
     def DRQdB(self):
-        """Dynamic range.
-        [DRdB] = dB."""
+        """Dynamic range, in unit 'dB'."""
         return 20 * np.log10(self.DRQ)
 
     @property
@@ -2968,23 +2914,33 @@ class Fringes:
         # set params
         for k in self._setters:  # iterate over `_setters`, which are sorted!
             if k in params:
-                setattr(self, k, params[k])
+                v = params[k]
+                setattr(self, k, v)
 
         # check params
         for k in self._setters:  # iterate over `_setters`, which are sorted!
             if k in params:
-                if k in "N l v f".split() and getattr(self, k).ndim != np.array(params[k]).ndim:
-                    if not np.array_equal(getattr(self, k), params[k][0]):
-                        break
+                v = params[k]
+
+                if k in "N l v f".split():
+                    if isinstance(v, (int, float)):
+                        if not np.all(getattr(self, k) == v):
+                            break
+                    elif getattr(self, k).ndim != np.array(v).ndim:
+                        if not np.array_equal(getattr(self, k), v[0]):
+                            break
+                    else:
+                        if not np.array_equal(getattr(self, k), v):
+                            break
                 else:
-                    if not np.array_equal(getattr(self, k), params[k]):
+                    if not np.array_equal(getattr(self, k), v):
                         break
         else:  # else clause executes only after the loop completes normally, i.e. did not encounter a break
             return
 
         logger.warning(
-            f"Parameter '{k}' got overwritten by interdependencies."
-            f"Choose consistent initialization values."
+            f"Parameter '{k}' got overwritten by interdependencies. "
+            f"Choose consistent initialization values. "
             f"Restoring old values."
         )
         self._params = params_old  # restore old params
@@ -3028,7 +2984,7 @@ class Fringes:
     for __k, __v in _defaults.items():
         # do this in for loop instead of a comprehension,
         # because for the latter, names in class scope are not accessible
-        __doc__ += f"\n{__k} : {'array_like' if __k in "N l v f h".split() else _types_str[__k]}, default={__v}"
+        __doc__ += f"\n{__k} : {'array_like' if __k in 'N l v f h'.split() else _types_str[__k]}, default={__v}"
         __doc__ += f"\n    {_help[__k]}"
     # __doc__ += "\n\nAttributes\n----------"  # implemented as properties and derived from Parameters
     # for __k, __v in sorted(vars().items()):

@@ -10,7 +10,7 @@ cv2.setWindowProperty("Fringes", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 left, top, width, height = cv2.getWindowImageRect("Fringes")
 
 # prepare camera
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(1)
 
 delay = 500  # delay time of the screen until the image is actually shown
 white = np.full((height, width), 255, np.uint8)  # white image
@@ -30,12 +30,13 @@ camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)  # turn off autoexposure
 
 # configure and encode fringe patterns
 f = Fringes()
+f.mode = "sRGB"
 f.X = width
 f.Y = height
 I = f.encode()
 
 # record fringe patterns
-Irec = np.empty((f.T,) + image.shape, image.dtype)  # allocate empty image stack
+Irec = np.empty(shape=(f.T,) + image.shape, dtype=image.dtype)  # allocate empty image stack
 try:
     for t in range(f.T):  # record fringe patterns in a loop
         cv2.imshow("Fringes", I[t])  # display fringe pattern in fullscreen mode

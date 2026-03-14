@@ -36,7 +36,8 @@ Video Shape
    If a `multiplexing`_ scheme is activated, :attr:`~fringes.fringes.Fringes.T` reduces further.
 
 :attr:`~fringes.fringes.Fringes.L` is the maximum of :attr:`~fringes.fringes.Fringes.X` and :attr:`~fringes.fringes.Fringes.Y` and denotes the length (in pixel units) to be encoded.
-It can be extended by the factor :attr:`~fringes.fringes.Fringes.a` to :attr:`~fringes.fringes.Fringes.Lext`.
+
+:attr:`~fringes.fringes.Fringes.a` can be used to extend :attr:`~fringes.fringes.Fringes.L` by the factor `\in [1, 2]` to :attr:`~fringes.fringes.Fringes.Lext`.
 
 Coordinate System
 ------------------
@@ -49,50 +50,18 @@ The following coordinate systems can be used by setting :attr:`~fringes.fringes.
    - ``'log-polar'``: The center of grid is the origin (0, 0) and positive directions are clockwise resp. outwards.
    - ``'spiral'``: The origin (0, 0) resides in the center of the generated grid and positive directions are counterclockwise, cf. [Klu18]_.
 
-:attr:`~fringes.fringes.Fringes.indexing` denotes the indexing convention.
-Possible values are:
+:attr:`~fringes.fringes.Fringes.axes` defines the order of the coordinate system's axes.
+Default is (1, 0) i.e. Cartesian indexing.
 
-- ``'xy'``: *Cartesian indexing* (the default) will index the row first;
-- ``'ij'``: *matrix indexing* will index the colum first.
+:attr:`~fringes.fringes.Fringes.D` = len(:attr:`~fringes.fringes.Fringes.axes`) is the number of directions/dimensions of the coordinate system to use.
 
-:attr:`~fringes.fringes.Fringes.D` denotes the number of directions to be encoded (default is 2).
-
-:attr:`~fringes.fringes.Fringes.axis` is used to define along which axis of the coordinate system (index 0 or 1)
-the fringe pattern is modulated and shifted if :attr:`~fringes.fringes.Fringes.D` = 1.
+..
+   (not to be confused with ``'Cartesian'`` coordinate system i.e. :attr:`~fringes.fringes.Fringes.grid`, see above).
 
 ..
     :attr:`~fringes.fringes.Fringes.angle` can be used to tilt the coordinate system. The origin remains the same.
 
-Set
----
-Each set consists of the following attributes:
-
-.. (cf. black box in :numref:`interdependencies`):
-
-- :attr:`~fringes.fringes.Fringes.N`: number of shifts
-- :attr:`~fringes.fringes.Fringes.l`: wavelength (in pixel units)
-- :attr:`~fringes.fringes.Fringes.v`: spatial frequency, i.e. number of periods (per screen length :attr:`~fringes.fringes.Fringes.L`)
-- :attr:`~fringes.fringes.Fringes.f`: temporal frequency, i.e. number of periods to shift over
-
-Each is an array with shape (number of directions :attr:`~fringes.fringes.Fringes.D`, number of sets :attr:`~fringes.fringes.Fringes.K`).
-For example, if :attr:`~fringes.fringes.Fringes.N`.shape = (2, 3), it means that we encode :attr:`~fringes.fringes.Fringes.D` = 2 directions with :attr:`~fringes.fringes.Fringes.K` = 3 sets each.
-Changing :attr:`~fringes.fringes.Fringes.D` or :attr:`~fringes.fringes.Fringes.K` directly, changes the shape of all set attributes.
-When setting a set attribute with a new shape (:attr:`~fringes.fringes.Fringes.D`', :attr:`~fringes.fringes.Fringes.K`'),
-:attr:`~fringes.fringes.Fringes.D` and :attr:`~fringes.fringes.Fringes.K` are updated as well as the shape of the other set attributes.
-
-If a set attribute is 1D, then it is stacked to match the number of directions :attr:`~fringes.fringes.Fringes.D`.
-
-If a set attribute is 0D, i.e. a scalar, then all values are simply replaced by the new one.
-
-:attr:`~fringes.fringes.Fringes.l` and :attr:`~fringes.fringes.Fringes.v` are related by :attr:`~fringes.fringes.Fringes.l` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.v`.
-When :attr:`~fringes.fringes.Fringes.L` changes, :attr:`~fringes.fringes.Fringes.v` is kept constant and only :attr:`~fringes.fringes.Fringes.l` is changed.
-
-Usually :attr:`~fringes.fringes.Fringes.f` = 1 and is essentially only changed if :ref:`frequency division multiplexing <multiplexing>` :attr:`~fringes.fringes.Fringes.FDM` is activated.
-
-:attr:`~fringes.fringes.Fringes.reverse` is a boolean which reverses the direction of the shifts (by multiplying :attr:`~fringes.fringes.Fringes.f` with -1).
-
-:attr:`~fringes.fringes.Fringes.p0` denotes the phase offset, which can be used to
-e.g. let the fringe patterns start (at the origin) with a gray value of zero.
+:attr:`~fringes.fringes.Fringes.x` are the coordinate matrices to be encoded.
 
 Intensity Values
 ----------------
@@ -107,35 +76,55 @@ Possible values are:
 - ``'float32'``
 - ``'float64'``
 
-.. :attr:`~fringes.fringes.Fringes.q` is the quantization step size and equals 1 for ``bool``, `2^r` for r-bit ``unsigned integers``,
-   and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
-
-.. :attr:`~fringes.fringes.Fringes.q` is the quantization step size and equals `2^r` for r-bit ``unsigned integers``
-   and for ``float`` its corresponding `resolution <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>`_.
-
-.. :attr:`~fringes.fringes.Fringes.Imax` is the maximum gray value and equals 1 for ``float`` and ``bool``,
-   and `2^r - 1` for ``unsigned integers`` with r bits.
-
 :attr:`~fringes.fringes.Fringes.Imax` is the maximum gray value and equals 1 for ``float``
 and `2` ^ :attr:`~fringes.fringes.Fringes.bits` `- 1` for ``unsigned integers``.
 
-:attr:`~fringes.fringes.Fringes.A` is the offset, also called brightness (of the background).
-It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
+:attr:`~fringes.fringes.Fringes.A` is the offset, also called brightness (of the background) `\in [0,` :attr:`~fringes.fringes.Fringes.Imax` `]`.
 
-:attr:`~fringes.fringes.Fringes.B` is the amplitude of the cosinusoidal fringes.
-It is limited by :attr:`~fringes.fringes.Fringes.Imax`.
+:attr:`~fringes.fringes.Fringes.B` is the amplitude of the cosinusoidal fringes `\in [0,` :attr:`~fringes.fringes.Fringes.Imax` `]`.
 
 :attr:`~fringes.fringes.Fringes.V` is the fringe :ref:`visibility <visibility and Exposure>` (also called fringe contrast).
 :attr:`~fringes.fringes.Fringes.V` = :attr:`~fringes.fringes.Fringes.A` / :attr:`~fringes.fringes.Fringes.B`, with :attr:`~fringes.fringes.Fringes.V` `\in [0, 1]`.
 
-:attr:`~fringes.fringes.Fringes.E` is the :ref:`exposure <visibility and Exposure>` (relative brightness) and is within the range `[0, 1]`.
+:attr:`~fringes.fringes.Fringes.E` is the :ref:`exposure <visibility and Exposure>` (relative brightness) `\in [0, 1]`.
 
 :attr:`~fringes.fringes.Fringes.g` denotes the gamma correction factor and can be used to compensate non-linearities of the display response curve.
 
+Set
+---
+:attr:`~fringes.fringes.Fringes.K` is the number of sets.
+It is equal for all directions :attr:`~fringes.fringes.Fringes.D`.
+Each set consists of the following attributes:
+
+.. (cf. black box in :numref:`interdependencies`):
+
+- :attr:`~fringes.fringes.Fringes.N`: number of shifts
+- :attr:`~fringes.fringes.Fringes.l`: wavelength (in pixel units)
+- :attr:`~fringes.fringes.Fringes.v`: spatial frequency, i.e. number of periods (per screen length :attr:`~fringes.fringes.Fringes.L`)
+- :attr:`~fringes.fringes.Fringes.f`: temporal frequency, i.e. number of periods to shift over
+
+Each is an array with shape (number of directions :attr:`~fringes.fringes.Fringes.D`, number of sets :attr:`~fringes.fringes.Fringes.K`).
+For example, if :attr:`~fringes.fringes.Fringes.N`.shape = (2, 3), it means that we encode :attr:`~fringes.fringes.Fringes.D` = 2 directions with :attr:`~fringes.fringes.Fringes.K` = 3 sets each.
+Changing :attr:`~fringes.fringes.Fringes.D` (resp. :attr:`~fringes.fringes.Fringes.axes`) or :attr:`~fringes.fringes.Fringes.K` directly, changes the shape of all set attributes.
+When setting a set attribute with a new shape, :attr:`~fringes.fringes.Fringes.D` (resp. :attr:`~fringes.fringes.Fringes.axes`) and :attr:`~fringes.fringes.Fringes.K` are updated as well as the shape of the other set attributes.
+If a set attribute is 0D, i.e. a scalar, then all values are simply replaced by the new one.
+If a set attribute is 1D, then it is stacked to match the number of directions :attr:`~fringes.fringes.Fringes.D`.
+
+:attr:`~fringes.fringes.Fringes.l` and :attr:`~fringes.fringes.Fringes.v` are related by :attr:`~fringes.fringes.Fringes.l` = :attr:`~fringes.fringes.Fringes.L` / :attr:`~fringes.fringes.Fringes.v`.
+When :attr:`~fringes.fringes.Fringes.L` changes, :attr:`~fringes.fringes.Fringes.v` is kept constant and only :attr:`~fringes.fringes.Fringes.l` is changed.
+
+:attr:`~fringes.fringes.Fringes.f` = 1 almost always.
+The most common exception is when :ref:`frequency division multiplexing <multiplexing>` :attr:`~fringes.fringes.Fringes.FDM` is activated.
+
+:attr:`~fringes.fringes.Fringes.reverse` is a boolean which reverses the direction of the shifts (by multiplying :attr:`~fringes.fringes.Fringes.f` with -1).
+
+:attr:`~fringes.fringes.Fringes.p0` denotes the phase offset, which can be used to
+e.g. let the fringe patterns start (at the origin) with a gray value of zero.
+
 Coloring and Averaging
 ----------------------
-The fringe patterns can be colorized by setting the hue :attr:`~fringes.fringes.Fringes.h` to any RGB color triplet within the interval [0, 255].
-However, black (0, 0, 0) is not allowed.
+:attr:`~fringes.fringes.Fringes.h` denotes hues and is a sequence of RGB color triplets `\in [0, 255]`.
+They are used to colorize the fringe patterns. However, black (0, 0, 0) is not allowed.
 :attr:`~fringes.fringes.Fringes.h` must be in shape (:attr:`~fringes.fringes.Fringes.H`, 3),
 where :attr:`~fringes.fringes.Fringes.H` is the number of hues and 3 is the length of the RGB color triplet.
 
@@ -153,9 +142,8 @@ The hues :attr:`~fringes.fringes.Fringes.h` can also be set by assigning any com
 or :ref:`wavelength division multiplexing <multiplexing>`.
 For example, if all hues are monochromatic, i.e. the RGB values are identical for each hue, :attr:`~fringes.fringes.Fringes.C` equals 1, else 3.
 
-Repeating hues will be fused by averaging them before decoding.
-
-:attr:`~fringes.fringes.Fringes.M` is the number of averaged intensity samples.
+:attr:`~fringes.fringes.Fringes.M` is the number of averaged intensity samples
+(repeating hues will be fused by averaging them before decoding).
 
 Multiplexing
 ------------
@@ -193,7 +181,7 @@ For more details, please refer to :doc:`Multiplex <mux>`.
    and is either ``'none'``, ``'temporal'``, ``'spatial'`` or ``'FTM'``.
    See :ref:`unwrapping <uwr>` for more details.
 
-.. :attr:`~fringes.fringes.Fringes.mode` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
+   :attr:`~fringes.fringes.Fringes.mode` denotes the mode used for [temporal phase unwrapping](#temporal-phase-unwrapping--tpu-).
    Choose either ``'fast'`` (the default) or ``'precise'``.
 
 Quality Metrics
@@ -201,8 +189,7 @@ Quality Metrics
 
 :attr:`~fringes.fringes.Fringes.UMR` denotes the unambiguous measurement range.
 The coding is only unique within the interval [0, :attr:`~fringes.fringes.Fringes.UMR`); after that it repeats itself.
-
-The :attr:`~fringes.fringes.Fringes.UMR` is derived from :attr:`~fringes.fringes.Fringes.l` and :attr:`~fringes.fringes.Fringes.v`:
+It is derived from :attr:`~fringes.fringes.Fringes.l` and :attr:`~fringes.fringes.Fringes.v`:
 
 - If :attr:`~fringes.fringes.Fringes.l` `\in \mathbb{N}`, :attr:`~fringes.fringes.Fringes.UMR` = `lcm(` :attr:`~fringes.fringes.Fringes.l` `)`, with `lcm` being the least common multiple.
 - Else, if :attr:`~fringes.fringes.Fringes.v` `\in \mathbb{N}`, :attr:`~fringes.fringes.Fringes.UMR` = :attr:`~fringes.fringes.Fringes.L` / `gcd(` :attr:`~fringes.fringes.Fringes.v` `)`, with `gcd` being the greatest common divisor.

@@ -16,7 +16,7 @@ The number of frames :attr:`~fringes.fringes.Fringes.T` is halved.
 
 .. literalinclude:: /../../examples/mux/spatial_division_multiplexing.py
    :language: python
-   :emphasize-lines: 12, 13
+   :emphasize-lines: 11, 12
    :linenos:
 
 .. _SDM:
@@ -53,7 +53,7 @@ Therefore, it requires about 3 times the exposure time compared to grayscale pat
 
 .. literalinclude:: /../../examples/mux/wavelength_division_multiplexing.py
    :language: python
-   :emphasize-lines: 11, 12
+   :emphasize-lines: 10, 11
    :linenos:
 
 .. _WDM:
@@ -101,7 +101,7 @@ is required to satisfy the sampling theorem.
 
 .. literalinclude:: /../../examples/mux/frequency_division_multiplexing_2.py
    :language: python
-   :emphasize-lines: 12, 13, 14, 15, 16
+   :emphasize-lines: 11, 12, 13, 14, 15
    :linenos:
 
 .. _FDM-D2K1:
@@ -117,7 +117,7 @@ is required to satisfy the sampling theorem.
 
 .. literalinclude:: /../../examples/mux/frequency_division_multiplexing_1.py
    :language: python
-   :emphasize-lines: 12, 13, 14, 15, 16
+   :emphasize-lines: 11, 12, 13, 14, 15
    :linenos:
 
 .. _FDM-D1K2:
@@ -133,7 +133,7 @@ is required to satisfy the sampling theorem.
 
 .. literalinclude:: /../../examples/mux/frequency_division_multiplexing_3.py
    :language: python
-   :emphasize-lines: 12, 13, 14, 15, 16
+   :emphasize-lines: 11, 12, 13, 14, 15
    :linenos:
 
 .. _FDM-D2K2:
@@ -158,7 +158,7 @@ With static/congruent patterns, one can realize phase shifting by moving printed
 
 .. literalinclude:: /../../examples/mux/frequency_division_multiplexing_4.py
    :language: python
-   :emphasize-lines: 11, 12, 13, 14, 15, 16, 17
+   :emphasize-lines: 10, 11, 12, 13, 14, 15, 16
    :linenos:
 
 .. _FDM-D2K2-static:

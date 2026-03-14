@@ -11,7 +11,4 @@ User Guide
 
     mux
     filter
-
-    .. source
-
     trouble

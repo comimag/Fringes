@@ -1,9 +1,6 @@
-from collections.abc import Sequence
 import logging
 import time
 
-import cv2
-import numba as nb
 import numpy as np
 import scipy as sp
 
@@ -18,13 +15,13 @@ def vshape(data: np.ndarray, channels: set[int] = (1, 3, 4)) -> np.ndarray:
     Transforms video data into the standardized shape (T, Y, X, C), where
     T is number of frames, Y is height, X is width, and C is number of color channels.
 
-    Inspired from `scikit-video <https://www.scikit-video.org/stable/modules/generated/skvideo.utils.vshape.html>`_.
+    Inspired by `scikit-video <https://www.scikit-video.org/stable/modules/generated/skvideo.utils.vshape.html>`_.
 
     Parameters
     ----------
     data : ndarray
         Input data in arbitrary shape.
-    channels : set of ints, default = {1, 3, 4}
+    channels : set of ints, default={1, 3, 4}
         Allowed number of color channels.
 
     Returns
@@ -43,32 +40,32 @@ def vshape(data: np.ndarray, channels: set[int] = (1, 3, 4)) -> np.ndarray:
     --------
     >>> from fringes import vshape
 
-    >>> data = np.ones(shape=(100))
+    >>> data = np.empty(shape=(100))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (100, 1, 1, 1)
 
-    >>> data = np.ones(shape=(1200, 1920))
+    >>> data = np.empty(shape=(1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (1, 1200, 1920, 1)
 
-    >>> data = np.ones(shape=(1200, 1920, 3))
+    >>> data = np.empty(shape=(1200, 1920, 3))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (1, 1200, 1920, 3)
 
-    >>> data = np.ones(shape=(100, 1200, 1920))
+    >>> data = np.empty(shape=(10, 1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
-    (100, 1200, 1920, 1)
+    (10, 1200, 1920, 1)
 
-    >>> data = np.ones(shape=(100, 1200, 1920, 3))
+    >>> data = np.empty(shape=(10, 1200, 1920, 3))
     >>> videodata = vshape(data)
     >>> videodata.shape
-    (100, 1200, 1920, 3)
+    (10, 1200, 1920, 3)
 
-    >>> data = np.ones(shape=(2, 3, 4, 1200, 1920))
+    >>> data = np.empty(shape=(2, 3, 4, 1200, 1920))
     >>> videodata = vshape(data)
     >>> videodata.shape
     (24, 1200, 1920, 1)
@@ -111,6 +108,23 @@ def vshape(data: np.ndarray, channels: set[int] = (1, 3, 4)) -> np.ndarray:
         C = 1
 
     return data.reshape(T, Y, X, C)  # returns a view
+
+
+def linear2srgb(I: np.ndarray) -> np.ndarray:
+    """Convert from linear to sRGB color space.
+
+    Parameters
+    ----------
+    I : np.ndarray
+        Input image.
+        Must be within [0, 1].
+
+    Returns
+    -------
+    I : np.ndarray
+        `I` in sRGB color space and within [0, 1].
+    """
+    return np.where(I <= 0.0031308, I * 12.92, 1.055 * I ** (1 / 2.4))
 
 
 def unzip(I: np.ndarray, T: int) -> np.ndarray:
@@ -163,8 +177,9 @@ def unzip(I: np.ndarray, T: int) -> np.ndarray:
 
 
 def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
-    """Automatically estimate and apply the gamma correction factor
-    to linearize the display/camera response curve.
+    """Automatically estimate and apply the gamma correction factor.
+
+    Linearizes the display/camera response curve.
 
     Parameters
     ----------
@@ -176,7 +191,6 @@ def gamma_auto_correct(I: np.ndarray) -> np.ndarray:
     Ilin : np.ndarray
         Linearized data.
     """
-
     # normalize to [0, 1]
     Imax = np.iinfo(I.dtype).max if I.dtype.kind in "ui" else 1 if I.max() < 1 else I.max()
     Ilin = I / Imax
@@ -213,7 +227,7 @@ def fade(
     and intensity noise added by the camera.
 
     Parameters
-    -----------
+    ----------
     I: np.ndarray
         Image (sequence) with values within [0, 1].
     I0 : float | np.ndarray, default=0.0
@@ -260,22 +274,22 @@ def fade(
     In = vshape(I) * Imax  # this makes a copy
 
     # transmission
-    if isinstance(T, np.ndarray) or T != 1.0:
-        assert np.all(0 <= T <= 0)
+    if np.any(0 <= T < 1):
         In *= vshape(T)
 
     # offset
-    if isinstance(I0, np.ndarray) or I0 > 0.0:
-        assert np.all(I0 >= 0)
+    if np.any(I0 > 0):
         In += vshape(I0)
 
     # magnification
     if M > 1:  # attention: magnification must be an integer
-        In = sp.ndimage.uniform_filter(In, size=M, mode="wrap", axes=(1, 2))
+        In = sp.ndimage.uniform_filter(In, size=M, mode="nearest", axes=(1, 2))
+        # todo: this does not work reliably on edges
 
     # blur (e.g. defocus)
     if PSF > 0:
-        In = sp.ndimage.gaussian_filter(In, sigma=PSF, order=0, mode="wrap", axes=(1, 2))
+        In = sp.ndimage.gaussian_filter(In, sigma=PSF, order=0, mode="nearest", axes=(1, 2))
+        # todo: this does not work reliably on edges
 
     # camera noise
     if K > 0:

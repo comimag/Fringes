@@ -8,9 +8,9 @@ import time
 
 import cv2
 import numpy as np
+
 # from rich.logging import RichHandler
 # from rich_argparse import RichHelpFormatter
-
 from fringes import Fringes, vshape  # todo: gui
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ LONG_FLAGS = {
     "D": "directions",
     "K": "sets",
     "N": "shifts",
-    "l": "lambdas",  # wavelengths
+    "l": "lambdas",  # wavelength
     "v": "periods",
     "f": "frequencies",
     "h": "colors",
@@ -34,17 +34,18 @@ LONG_FLAGS = {
     "a": "alpha",
 }  # info: "[argparse] allows long options to be abbreviated to a prefix, if the abbreviation is unambiguous[...]"
 SHORT_FLAGS = {
-    "h": "c",
-    "v": "p",  # number of periods
+    "h": "c",  # hues -> colors
+    "v": "p",  # spatial frequency -> number of periods
+    "l": "w",  # lambda -> wavelength
 }
 SHORT_FLAGS_INVERSE = {v: k for k, v in SHORT_FLAGS.items()}
 
 
 class MyFormatter(argparse.MetavarTypeHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):  # RichHelpFormatter):
-    pass  # https://python-forum.io/thread-28707.html
+    """Combines 'MetavarTypeHelpFormatter' and 'ArgumentDefaultsHelpFormatter'."""
 
 
-def base_parser() -> argparse.ArgumentParser:
+def base_parser() -> argparse.ArgumentParser:  # noqa: D103
     parser = argparse.ArgumentParser(
         description=importlib.metadata.metadata(__package__)["summary"],
         argument_default=argparse.SUPPRESS,
@@ -56,10 +57,15 @@ def base_parser() -> argparse.ArgumentParser:
         "-i",
         "--infile",
         type=str,
-        help="Input file(s). If unspecified, encodes the fringe pattern sequence. Else, it decodes the given input.",
+        help="Input file (may be a glob-pattern). "
+        "If unspecified, encodes the fringe pattern sequence. "
+        "Else, decodes the given input.",
     )
-    parser.add_argument("outfile", type=str, help="Output file.")
-    parser.add_argument("-s", "--show", action='store_true', help="Show output.")
+    parser.add_argument(
+        "--config", type=str, help="Configuration file. Parameters get overwritten by command line arguments."
+    )  # todo: "-c" (but hues!) -> -cfg?
+    parser.add_argument("outfile", type=str, help="Output file (pattern).")
+    parser.add_argument("-s", "--show", action="store_true", help="Show output before saving it.")
     parser.add_argument(
         "-t",
         "--threads",
@@ -70,7 +76,7 @@ def base_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def add_fringes_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def add_fringes_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:  # noqa: D103
     for k in sorted(Fringes._setters, key=lambda k: LONG_FLAGS.get(k, k.lower())):  # key=str.lower
         if k == "grid":
             continue  # todo: enable grid
@@ -95,32 +101,39 @@ def add_fringes_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
         )
     return parser
 
-def parse_args() -> argparse.Namespace:
+
+def parse_args() -> argparse.Namespace:  # noqa: D103
     parser = base_parser()
     add_fringes_args(parser)
     return parser.parse_args()
 
 
-def set_logging(verbosity: int):
+def set_logging(verbosity: int):  # noqa: D103
     level = ["WARNING", "INFO", "DEBUG"][min(verbosity, 2)]
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)8s.%(funcName)s: %(message)s")
     handler = logging.StreamHandler(stream=sys.stdout)
-    # formatter = logging.Formatter("%(name)8s.%(funcName)s: %(message)s")
-    # handler = RichHandler()
     handler.setFormatter(formatter)
     for log in __package__, "__main__":
-        logger = logging.getLogger(log)
-        logger.addHandler(handler)
-        logger.setLevel(level)
+        logger_ = logging.getLogger(log)
+        logger_.addHandler(handler)
+        logger_.setLevel(level)
 
 
-def configure_fringes(args: argparse.Namespace) -> Fringes:
+def configure_fringes(args: argparse.Namespace) -> Fringes:  # noqa: D103
+    f = Fringes()
+
+    if hasattr(args, "config"):
+        f.load(args.config)
+
     params = {}
     for k, v in vars(args).items():
         if SHORT_FLAGS_INVERSE.get(k, k) in Fringes._setters and v is not None:
             params[SHORT_FLAGS_INVERSE.get(k, k)] = v
-    f = Fringes()
     f._params = params
+
+    if hasattr(args, "config"):
+        f.save(args.config)
+
     return f
 
 
@@ -166,7 +179,7 @@ def load_images(flist: list) -> np.ndarray:
     elif C == 4:
         np.rollaxis(I[..., ::-1], -1, -1)  # indices backwards is [3, 2, 1, 0], then rolled is [2, 1, 0, 3]
 
-    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
+    logger.info(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
     return I
 
 
@@ -198,10 +211,10 @@ def save_images(fname: str, I: np.ndarray):
         fname = f"{root}{t + 1:0{x}}{ext}"
         cv2.imwrite(fname, image)
 
-    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
+    logger.info(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
 
 
-def main():
+def main():  # noqa: D103
     args = parse_args()
     set_logging(args.verbose)
     f = configure_fringes(args)
@@ -212,25 +225,26 @@ def main():
         # encode
         I = f.encode()
 
-        # save
-        root, ext = os.path.splitext(args.outfile)
-        if ext.lower() in {".png", ".tif", ".tiff"} and I.dtype.type in {np.uint8, np.uint16}:
-            save_images(root + ext, I)
-            logger.info(f"Saved encoded fringe pattern sequence to '{root}_*{ext}'.")
-        else:
-            ext = ".npy"
-            np.save(root + ext, I)  # appends '.npy' to fname if missing
-            logger.info(f"Saved encoded fringe pattern sequence to '{root + ext}'.")
-
         # show
         if "show" in args:
             try:
                 import pyqtgraph as pg
+            except ImportError:
+                logging.error("'pyqtgraph' and its dependencies are not installed.")
+            else:
                 pg.setConfigOptions(imageAxisOrder="row-major")
                 pg.image(I, title="fringe pattern sequence")
                 pg.exec()
-            except ImportError:
-                logging.error("'pyqtgraph' and its dependencies are not installed.")
+
+        # save
+        root, ext = os.path.splitext(args.outfile)
+        if ext.lower() in {".png", ".tif", ".tiff"} and I.dtype.type in {np.uint8, np.uint16}:
+            save_images(root + ext, I)
+            logger.info(f"Saved encoded fringe pattern sequence to '{root}*{ext}'.")
+        else:
+            ext = ".npy"
+            np.save(root + ext, I)  # appends '.npy' to fname if missing
+            logger.info(f"Saved encoded fringe pattern sequence to '{root + ext}'.")
 
     else:  # decode
         # load
@@ -241,29 +255,29 @@ def main():
             flist = glob.glob(args.infile)
             I = load_images(flist)  # load image files
         else:
-            raise ValueError(f"File type '{ext}' not supported."
-                             f"Must be one of {{{".npy", ".png", ".tif", ".tiff"}}}.")
+            raise ValueError(f"File type '{ext}' not supported. Must be one of {{{'.npy', '.png', '.tif', '.tiff'}}}.")
 
         # decode
         dec = f.decode(I, threads=getattr(args, "threads", None))
-
-        # save
-        root, _ = os.path.splitext(args.outfile)
-        np.savez(root + ".npz", **dec._asdict())  # appends '.npz' to fname if missing
-        logger.info(f"Saved decoded data to '{root + ".npz"}'.")
 
         # show
         if "show" in args:
             try:
                 import pyqtgraph as pg
-                pg.setConfigOptions(imageAxisOrder="row-major")
-                pg.image(I, title="fringe pattern sequence")
-                pg.image(dec.a, title="brightness")
-                pg.image(dec.b, title="modulation")
-                pg.image(dec.x, title="coordinate")
-                pg.exec()
             except ImportError:
-                logger.error("'pyqtgraph' and its dependencies are not installed.")
+                logger.exception("'pyqtgraph' and its dependencies are not available.")
+            else:
+                pg.setConfigOptions(imageAxisOrder="row-major")
+                pg.image(dec.x, title="coordinate")
+                pg.image(dec.b, title="modulation")
+                pg.image(dec.a, title="brightness")
+                pg.image(I, title="fringe pattern sequence")
+                pg.exec()
+
+        # save
+        root, _ = os.path.splitext(args.outfile)
+        np.savez(root + ".npz", **dec._asdict())  # appends '.npz' to fname if missing
+        logger.info(f"Saved decoded data to '{root + '.npz'}'.")
 
 
 if __name__ == "__main__":

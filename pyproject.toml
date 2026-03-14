@@ -1,6 +1,6 @@
 [project]
 name = "Fringes"
-version = "2.0.0"
+version = "2.1.0"
 description = "Phase shifting algorithms for encoding and decoding sinusoidal fringe patterns."
 authors = [{name="Christian Kludt"}]
 readme = "README.md"
@@ -25,7 +25,7 @@ dependencies = [
     "numpy>=1.21.2",  # 1.21.2 is first version to support python>=3.10; in 1.21 the Mypy plugin was introduced
     "opencv-contrib-python>=4.5.4.58",  # 4.5.4.58 is first version to support python>=3.10
     "pyyaml>=6.0.2",
-    "scikit-image>=0.19",  # 0.19 is first version to support python>=3.10
+    "scikit-image>=0.20",  # 0.19 is first version to support python>=3.10; 0.20 is first to support loaf_func in ImageCollection
     "scipy>=1.7",  # 1.7 is first version to support python>=3.10
     "sympy>=1.13.3",
 ]
@@ -42,6 +42,7 @@ dependencies = [
 #    "pyside6>=6.0.4",  # 6.0.4 is first version to only support the Qt 6.0+ framework
 #]
 #gui = [
+#    "pyqtgraph>=0.13",
 #    "qdarktheme",
 #    "textual>=4",
 #    {include-group = "data"},
@@ -49,13 +50,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "jupyter>=1.1.1",
-    "matplotlib>=3.10", # 3.10 is first version to support python>=3.10
-    "pyside6>=6.0.4", # 6.0.4 is first version to only the Qt 6.0+ frameworksince 6.2 support for: QImage::Format_RGBX16FPx4, QImage::Format_RGBA16FPx4, QImage::Format_RGBX32FPx4, QImage::Format_RGBA32FPx4
-    "pyqtgraph>=0.13",
+#    "jupyter>=1.1.1",
     {include-group = "docs"},
     {include-group = "lint"},
-    {include-group = "test"}
+    {include-group = "plot"},
+    {include-group = "test"},
 ]
 docs = [
     "imageio>=2",
@@ -64,14 +63,18 @@ docs = [
     "sphinx-design>=0.6.1",
     "sphinx-rtd-theme>=3.0.2",
     "tomli>=1.1.0 ; python_version < '3.11'", # https://pypi.org/project/tomli/
-]  # ensure the "docs" group is mentioned in ".readthedocs.yml"
+]  # ensure the "docs" group is mentioned in '.readthedocs.yml'
 lint = [
-    "black>=25",  # 25 is the latest major version
+    "ruff",
+]
+plot = [
+    "matplotlib>=3.10", # 3.10 is first version to support python>=3.10
+    "pyside6>=6.0.4", # 6.0.4 is first version to only support the Qt 6.0+ framework
+    "pyqtgraph>=0.13",
 ]
 test = [
     "coverage>=7.10.6",  # 7 is latest major version
-    "pytest>=8", # 8 is the latest major version
-#    "pytest-cov>=6", # 6 is the latest major version
+    "pytest>=9", # 9 is latest major version
     "matplotlib>=3.10", # 3.10 is first version to support python>=3.10 (pyplot is required for testing the examples)
 ]
 
@@ -79,21 +82,19 @@ test = [
 fringes = "fringes.__main__:main"  # instead of 'uvx run fringes':
 
 #[project.gui-scripts]
-#fgui = "fringes.gui:main"
+#fgui = "fringes.gui:main" todo: fgui
 
 [project.urls]  # https://docs.pypi.org/project_metadata/
 Documentation = "https://fringes.readthedocs.io"
 Repository = "https://github.com/comimag/fringes"
 #Changelog = "https://github.com/comimag/Fringes/commits/main/"
+#Issues = "https://github.com/comimag/fringes/issues"
 Donate = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EHBGZ229DKUC4"
 # JOSS
 # ZENODO
 
-[tool.black]
-line-length = 120
-
 [tool.coverage.run]
-#branch = true
+patch = ["subprocess"]  # https://pytest-cov.readthedocs.io/en/latest/subprocess-support.html
 
 [tool.coverage.report]
 # Regexes for lines to exclude from consideration
@@ -119,13 +120,50 @@ ignore_errors = true
 [tool.coverage.html]
 directory = "coverage_html_report"
 
-[tool.pytest.ini_options]
-addopts = "--doctest-modules --doctest-continue-on-failure"
-pythonpath = "examples"
-testpaths = [
-    "tests",
-    "src",
+[tool.pytest]
+addopts = [
+    "--import-mode=importlib",
+    "--doctest-modules",
+    "--doctest-continue-on-failure"
 ]
+pythonpath = ["examples"]
+testpaths = [
+    "src",
+    "tests",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = [
+    "D",  # pydocstyle
+    "E",  # pycodestyle
+    "I",  # isort
+]
+ignore = [
+    "D100",  # undocumented-public-module
+    "D104",  # undocumented-public-package
+    "D301",  # escape-sequence-in-docstring
+    "E501",  # line-too-long
+    "E741",  # ambiguous-variable-name
+    "E743",  # ambiguous-function-name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/*" = [
+    "D",  # pydocstyle
+]
+"examples/*" = [
+    "I",  # isort
+    "E402",  # module-import-not-at-top-of-file
+]
+"tests/*" = [
+    "D",  # pydocstyle
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"  # Use Google-style docstrings.
 
 [tool.uv]
 package = true

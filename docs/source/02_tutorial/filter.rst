@@ -12,7 +12,7 @@ The :ref:`decoding <decoding>` yields the following results:
 
 .. literalinclude:: /../../examples/decode.py
    :language: python
-   :emphasize-lines: 10
+   :emphasize-lines: 9
    :linenos:
 
 These results are in :ref:`video shape <video shape>`,
@@ -71,7 +71,7 @@ of the recording camera.
 
 .. literalinclude:: /../../examples/direct_global.py
    :language: python
-   :emphasize-lines: 5, 10, 16, 17
+   :emphasize-lines: 7, 10, 16, 17
    :linenos:
 
 .. figure:: filter/direct.png
@@ -93,7 +93,7 @@ Visibility and Exposure
 In an alternative formulation,
 the absolute quantities offset `a` and amplitude `b` of the phase shifting equation
 are replaced by the maximal possible gray value `I_{max}`,
-the relative quantities exposure `E` (relative average intensity) and visibilty `V` (relative fringe contrast) [Fis12]_:
+the relative quantities exposure `E` (relative average intensity) and visibility `V` (relative fringe contrast) [Fis12]_:
 
 `I = a + b \cos(\varPhi) = I_{max} E [1 + V \cos(\varPhi)]`
 
@@ -134,7 +134,7 @@ The visibility `V` is influenced by:
 
 .. literalinclude:: /../../examples/visibility_exposure.py
    :language: python
-   :emphasize-lines: 4, 14, 15
+   :emphasize-lines: 4, 12, 13
    :linenos:
 
 .. figure:: filter/visibility.png
@@ -159,7 +159,7 @@ by setting the flag ``verbose`` in the method :meth:`~fringes.fringes.Fringes.de
 
 .. literalinclude:: /../../examples/verbose.py
    :language: python
-   :emphasize-lines: 12
+   :emphasize-lines: 9
    :linenos:
 
 The phase ... after temporal demodulation ... link to fundamentals
@@ -218,7 +218,7 @@ and at the same time poor sensitivity and stability for low-order surface featur
 
 .. literalinclude:: /../../examples/slope.py
    :language: python
-   :emphasize-lines: 13
+   :emphasize-lines: 11
    :linenos:
 
 .. figure:: filter/slope_x.jpg
@@ -249,7 +249,7 @@ and does not require accurate prior knowledge of the distance to the object." [B
 
 .. literalinclude:: /../../examples/curvature.py
    :language: python
-   :emphasize-lines: 4, 14
+   :emphasize-lines: 4, 13
    :linenos:
 
 .. figure:: filter/curvature.jpg

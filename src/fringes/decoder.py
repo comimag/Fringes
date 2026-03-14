@@ -5,12 +5,9 @@ import numpy as np
 import scipy as sp  # only for ftm()
 import skimage as ski  # only for spu()
 
-from fringes.decoder_numba import decode
-
-# from fringes.decoder_ import decode
+# from fringes.decoder_numba import decode
 
 logger = logging.getLogger(__name__)
-
 
 _2PI: float = 2 * np.pi
 
@@ -40,7 +37,7 @@ def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.nd
     """
     T, Y, X, C = I.shape
     D, K = N.shape
-    a = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    a = np.zeros(shape=(D, Y, X, C), dtype=np.float32)
     b = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
     p = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
     t0 = 0
@@ -50,17 +47,18 @@ def temp_demod_numpy_unknown_frequencies(I, N, p0: float = np.pi) -> tuple[np.nd
             # c = np.fft.fft(I_, axis=0)
             c = np.fft.rfft(I_, axis=0)
             avg = np.abs(c)
-            # a[d] += np.sum(I_)
+            # a[d] += np.sum(I_, axis=0)
             a[d] += avg[0]
             idx = np.argmax(avg[1:], axis=0)
             idx = int(np.median(idx)) + 1  # median is a robust estimator for the mean
             cidx = c[idx]  # usually frequency '1'
-            b[d, i] = np.abs(cidx) / N[d, i]  # todo: * 2  # * 2: also add amplitudes of frequencies with opposite sign
+            b[d, i] = 2 / N[d, i] * np.abs(cidx)  # * 2: also add amplitudes of frequencies with opposite sign
             # p[d, i] = -np.angle(cidx * np.exp(-1j * (p0 - np.pi))) % _2PI  # todo: why p0 - PI???
             cidx *= np.exp(1j * p0)  # shift back by p0
-            p[d, i] = np.angle(cidx) % _2PI  # todo: test p0
+            p[d, i] = -np.angle(cidx) % _2PI  # todo: test p0
             t0 += N[d, i]
-    return a, b, p
+        a[d] /= np.sum(N[d])
+    return a, b.reshape(-1, Y, X, C), p.reshape(-1, Y, X, C)
 
 
 def temp_demod_numpy(I, N, f, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -91,27 +89,31 @@ def temp_demod_numpy(I, N, f, p0: float = np.pi) -> tuple[np.ndarray, np.ndarray
     """
     T, Y, X, C = I.shape
     D, K = N.shape
-    a = np.empty(shape=(D, Y, X, C), dtype=np.float32)
+    a = np.zeros(shape=(D, Y, X, C), dtype=np.float32)
     b = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
     p = np.empty(shape=(D, K, Y, X, C), dtype=np.float32)
     t0 = 0
     for d in range(D):
         for i in range(K):
             I_ = I[t0 : t0 + N[d, i]]
-            a[d] += np.sum(I_)
+            a[d] += np.sum(I_, axis=0)
             t_ = np.arange(N[d, i]) / N[d, i]  # temporal sampling points
-            s = np.exp(1j * (_2PI * f[d, i] * t_ + p0))  # complex filter i.e. sampling points on unit circle
-            # z = np.sum(I_ * c[:, None, None, None], axis=0)  # weighted sum -> complex phasor
+            s = (
+                2 / N[d, i] * np.exp(1j * (_2PI * f[d, i] * t_ + p0))
+            )  # complex filter i.e. sampling points on unit circle
+            # shifts = _2PI * f[d, i] * t_  # wt
+            # z = np.sum(I_ * s[:, None, None, None], axis=0)  # weighted sum -> complex phasor
             z = np.dot(
                 np.moveaxis(I_, 0, -1), s
             )  # 'If a is an N-D array and b is a 1-D array, it is a sum product over the last axis of a and b.'
-            b[d, i] = z / N[d, i] * 2  # * 2: also add amplitudes of frequencies with opposite sign
+            b[d, i] = np.abs(z)  # * 2: also add amplitudes of frequencies with opposite sign
             p[d, i] = np.angle(z) % _2PI  # arctan2 maps to [-PI, PI], but we need [0, 2PI)  # todo: test p0
             t0 += N[d, i]
-    return a, b, p
+        a[d] /= np.sum(N[d])
+    return a, b.reshape(-1, Y, X, C), p.reshape(-1, Y, X, C)
 
 
-def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarray:
+def spu(p: np.ndarray, verbose: bool = True, spu_func: str = "ski") -> np.ndarray:
     """Unwrap phase maps spatially.
 
     Parameters
@@ -122,8 +124,8 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
         The frames (first dimension) as well the color channels (last dimension)
         are unwrapped separately.
     verbose : bool, default=False
-        Flag for computing InverseReliabilityMap if `uwr_func` is 'cv2'.
-    uwr_func : {'ski', 'cv2'}, default='ski'
+        Flag for computing InverseReliabilityMap if `spu_func` is 'cv2'.
+    spu_func : {'ski', 'cv2'}, default='ski'
         Unwrapping function to use.
 
         - 'ski': `Scikit-image[1]_ <https://scikit-image.org/docs/stable/auto_examples/filters/plot_phase_unwrap.html>`_
@@ -151,7 +153,7 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
     """
     Y, X, C = p.shape
 
-    if uwr_func in "cv2":  # OpenCV unwrapping
+    if spu_func in "cv2":  # OpenCV unwrapping
         params = cv2.phase_unwrapping.HistogramPhaseUnwrapping.Params()
         params.height = Y
         params.width = X
@@ -162,7 +164,7 @@ def spu(p: np.ndarray, verbose: bool = True, uwr_func: str = "ski") -> np.ndarra
         r = np.empty((Y, X, C), np.float32)
 
     for c in range(C):
-        if uwr_func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
+        if spu_func in "cv2":  # OpenCV algorithm is usually faster, but can be much slower in noisy images
             # dtype must be np.float32  # todo: test this
             puwr[:, :, c] = unwrapping_instance.unwrapPhaseMap(p[:, :, c])
 

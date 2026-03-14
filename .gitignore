@@ -13,10 +13,12 @@ wheels/
 .venv/
 
 # Testing
-.coverage
+.coverage*
 coverage_html_report/
 htmlcov/
 
 # Data
-/pattern*.*
-/decoded.npz
+.fringes.yaml
+config.yaml
+pattern*.*
+decoded.npz

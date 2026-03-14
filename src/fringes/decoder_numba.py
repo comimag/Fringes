@@ -20,6 +20,7 @@ _2PI: float = 2 * np.pi
 
 
 def tpu():
+    """Temporal phase unwrapping."""
     NotImplementedError  # todo: tpu() with numba
 
 
@@ -41,9 +42,10 @@ def decode(
     mode: str = "fast",
     verbose: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Temporal demodulation and spatial demodulation
-    by virtue of generalized temporal phase unwrapping
-    using directional statistics.
+    """Temporal and spatial demodulation.
+
+    Uses generalized temporal phase unwrapping
+    and directional statistics.
 
     Parameters
     ----------
@@ -120,16 +122,19 @@ def decode(
     R = np.empty((D, Y, X, C), np.float32)  # residuals
 
     for d in range(D):
+        UMR_0_5 = UMR[d] - 0.5
+
         # complex filter coefficients i.e. sampling points on unit circle
         s = np.empty((K, np.max(N[d])), np.complex128)
         for i in range(K):
             for n in range(N[d, i]):
                 t_ = n / N[d, i]  # temporal sampling points
-                s[i, n] = np.exp(1j * (_2PI * f[d, i] * t_ + p0))
+                # shifts = _2PI * f[d, i] * t_
+                s[i, n] = 2 / N[d, i] * np.exp(1j * (_2PI * f[d, i] * t_ + p0))
 
         Nsumd = np.sum(N[d])
 
-        # initial weights of phase averaging (are their )inverse variances)
+        # initial weights of phase averaging (are their inverse variances)
         # (must be multiplied with b**2 later on)
         w0 = N[d] * v[d] ** 2
 
@@ -171,7 +176,7 @@ def decode(
                             z += I[t, y, x, c] * s[i, n]
                             t += 1
                         # z_[i] = z  # todo
-                        b[i] = np.abs(z) / N[d, i] * 2
+                        b[i] = np.abs(z)
                         p[i] = np.angle(z) % _2PI  # arctan2 maps to [-PI, PI], but we need [0, 2PI)
                     # a /= t
                     a /= Nsumd
@@ -183,23 +188,21 @@ def decode(
                         P[d, :, y, x, c] = p
 
                     if bmin > 0:
-                        for i in range(K):
-                            if b[i] < bmin:
-                                Xi[d, y, x, c] = np.nan
-                                if verbose:
-                                    O[d, :, y, x, c] = -1
-                                    R[d, y, x, c] = np.nan
-                                continue  # skip spatial demodulation (signal is too weak to yield a reliable result)
+                        if np.any(b < bmin):
+                            Xi[d, y, x, c] = np.nan
+                            if verbose:
+                                O[d, :, y, x, c] = -1
+                                R[d, y, x, c] = np.nan
+                            continue  # skip spatial demodulation (signal is too weak to yield a reliable result)
 
                     if Vmin > 0 and a > 0:  # avoid division by zero
-                        for i in range(K):
-                            V = b / a  # note: a >= b
-                            if V < Vmin:
-                                Xi[d, y, x, c] = np.nan
-                                if verbose:
-                                    O[d, :, y, x, c] = -1
-                                    R[d, y, x, c] = np.nan
-                                continue  # skip spatial demodulation (signal is too weak to yield a reliable result)
+                        V = b / a
+                        if np.any(V < Vmin):
+                            Xi[d, y, x, c] = np.nan
+                            if verbose:
+                                O[d, :, y, x, c] = -1
+                                R[d, y, x, c] = np.nan
+                            continue  # skip spatial demodulation (signal is too weak to yield a reliable result)
 
                     # spatial demodulation
                     if K == 1:
@@ -229,9 +232,9 @@ def decode(
                         # criterion for when correct solution is found
                         # which is when the phasor is large enough
                         # i.e. the circular variance is small enough
-                        rmin = 1
+                        # rmin = 1
 
-                        # maximal phasor length: initialize with minimal value
+                        # maximum phasor length: initialize with minimal value
                         rmax = 0
 
                         # derive fringe orders from the reference set
@@ -271,6 +274,9 @@ def decode(
                                 #     break
 
                         xi = np.angle(Z) % _2PI / _2PI * Lext - x0  # change codomain from [-PI, PI] to [0, Lext)
+                        # if xi > UMR_0_5:  # todo: codomain: (UMR - 0.5, UMR) -> (-0.5, 0)
+                        #     xi -= UMR[d]
+
                         Xi[d, y, x, c] = xi
 
                         if verbose:

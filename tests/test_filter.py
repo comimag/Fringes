@@ -1,37 +1,37 @@
 import numpy as np
 
 from fringes import Fringes
-from fringes.filter import direct, indirect, visibility, exposure, curvature  # todo: height
-
+from fringes.filter import curvature, direct, exposure, indirect, visibility  # todo: height
 
 f = Fringes(Y=100)
 I = f.encode()
+a, b, x = f.decode(I)
 
 
 def test_direct_indirect():
-    a, b, x = f.decode(I)
-
     d = direct(b)
     # d_max = np.max(np.abs(d - 255))
-    assert np.allclose(d, f.Imax, rtol=0, atol=1.37), "Direct is off more than 1.37."
+    assert np.allclose(d, f.Imax, rtol=0, atol=1.37)
 
+
+def test_indirect():
     g = indirect(a, b)
     # g_max = np.max(np.abs(g))
-    assert np.all(g >= 0), "Global contains negative values."
-    assert np.allclose(g, 0, rtol=0, atol=1.26), "Global is larger than 1.26."
+    assert np.all(g >= 0)
+    assert np.allclose(g, 0, rtol=0, atol=1.26)
 
 
-def test_visibility_exposure():
-    a, b, x = f.decode(I)
-
+def test_visibility():
     V = visibility(a, b)
     # V_max = np.max(np.abs(V - 1))
-    assert np.all(V >= 0), "Visibility contains negative values."
-    assert np.allclose(V, 1, rtol=0, atol=0.005), "Visibility is off more than 0.005."
+    assert np.all(V >= 0)
+    assert np.allclose(V, 1, rtol=0, atol=0.005)
 
+
+def test_exposure():
     E = exposure(a, I)  # todo: test lessbits
     # E_max = np.max(np.abs(E - 0.5))
-    assert np.allclose(E, 0.5, rtol=0, atol=0.0005), "Exposure is off more than 0.0005."
+    assert np.allclose(E, 0.5, rtol=0, atol=0.0005)
 
 
 def test_curvature():
@@ -43,7 +43,7 @@ def test_curvature():
 
     c = curvature(x, center=False, normalize=False)  # todo: test center, normalize
     # c_max = np.max(np.abs(c - 2))
-    assert np.allclose(c, 2, rtol=0, atol=0.05), "Curvature if off more than 0.05."
+    assert np.allclose(c, 2, rtol=0, atol=0.05)
 
 
 # def test_height():  # todo: test height
@@ -52,4 +52,4 @@ def test_curvature():
 #     dec = f.decode(f.encode())
 #     c = curvature(dec.coordinate, center=False, normalize=False)
 #     h = height(c)
-#     assert np.allclose(h, 0, rtol=0, atol=0.1), "Height if off more than 0.1."
+#     assert np.allclose(h, 0, rtol=0, atol=0.1)

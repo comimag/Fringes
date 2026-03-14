@@ -79,10 +79,10 @@ a) Measure the **modulation transfer function (MTF)** at a given number of sampl
    6. Finally, the modulation ``b'`` at certain spatial frequencies :attr:`~fringes.fringes.Fringes.v`'
       will be interpolated by the method :meth:`~fringes.fringes.Fringes.mtf`.
 
-      .. literalinclude:: /../../examples/modulation_transfer_function_1.py
-      :language: python
-      :emphasize-lines: 17, 18
-      :linenos:
+   .. literalinclude:: /../../examples/modulation_transfer_function_1.py
+     :language: python
+     :emphasize-lines: 17, 18
+     :linenos:
 
 b) As an approximation, a linear MTF is assumed [Bot08]_:
    It starts at :attr:`~fringes.fringes.Fringes.v` = 0 with b = 1 and ends at :attr:`~fringes.fringes.Fringes.v` = :attr:`~fringes.fringes.Fringes.vmax` with b = 0 (cf. :numref:`mtf`).

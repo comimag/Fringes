@@ -1,9 +1,9 @@
 """Spatial and Wavelength Division Multiplexing.
+
 https://doi.org/10.1364/OE.24.027993
 """
 
 from fringes import Fringes
-from matplotlib import pyplot as plt
 
 f = Fringes()
 f.X = f.Y = 1024
@@ -18,6 +18,8 @@ print(f.T)  # it consists of one frame only -> single shot application
 I = f.encode()
 
 # show fringe patterns
+from matplotlib import pyplot as plt
+
 plt.figure()
 plt.imshow(I[0])  # first frame is only frame
 plt.show()

@@ -1,7 +1,6 @@
 import logging
 import time
 
-import cv2
 import numpy as np
 
 from fringes.util import vshape
@@ -56,14 +55,10 @@ def indirect(a: np.ndarray, b: np.ndarray) -> np.ndarray:
            2006.
            <https://dl.acm.org/doi/abs/10.1145/1179352.1141977>`_
     """
-    # todo: assert videoshape of a and b
-
     D = a.shape[0]
     K = int(b.shape[0] / D)
 
-    g = 2 * (a.reshape(D, 1, -1) - b.reshape(D, K, -1)).reshape(b.shape).clip(0, None)
-
-    return g
+    return 2 * (a.reshape(D, 1, -1) - b.reshape(D, K, -1)).reshape(b.shape).clip(0, None)
 
 
 def visibility(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -81,8 +76,6 @@ def visibility(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     V : np.ndarray
         Visibility.
     """
-    # todo: assert videoshape of a and b
-
     D, Y, X, C = a.shape
     K = int(b.shape[0] / D)
 
@@ -103,7 +96,7 @@ def exposure(a: np.ndarray, Irec: np.ndarray, lessbits: bool = True) -> np.ndarr
     Irec : np.ndarray
         Fringe pattern sequence.
     lessbits: bool, default=True
-        `Irec` rcorded by tha camera may contain fewer bits of information than its data type can hold,
+        `Irec` recorded by tha camera may contain fewer bits of information than its data type can hold,
         e.g. 12 bits for dtype `uint16`.
         If this flag is activated, it looks for the maximal value in `I`
         and sets `Imax` to the same or next power of two which is divisible by two.
@@ -114,7 +107,6 @@ def exposure(a: np.ndarray, Irec: np.ndarray, lessbits: bool = True) -> np.ndarr
     E : np.ndarray
         Exposure.
     """
-
     if Irec.dtype.kind in "ui":
         if np.iinfo(Irec.dtype).bits > 8 and lessbits:  # data may contain fewer bits of information
             bits = int(np.ceil(np.log2(Irec.max() + 1)))  # same or next power of two
@@ -130,7 +122,7 @@ def exposure(a: np.ndarray, Irec: np.ndarray, lessbits: bool = True) -> np.ndarr
     return E.astype(np.float32, copy=False)
 
 
-def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> np.ndarray:  # todo: test
+def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> np.ndarray:  # todo: curvature
     """Mean curvature map.
 
     Computed by differentiating a slope map.
@@ -156,7 +148,7 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
     T, Y, X, C = vshape(s).shape
     s = s.reshape(T, Y, X, C)  # returns a view
 
-    assert T == 2, "Number of direction doesn't equal 2."
+    assert T == 2, "Number of directions doesn't equal 2."
     assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
 
     # Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
@@ -188,7 +180,59 @@ def curvature(s: np.ndarray, center: bool = False, normalize: bool = False) -> n
     return c  # .reshape(-1, Y, X, C)
 
 
-# def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test
+def _grad(p: np.ndarray, l: float, center: bool = False, normalize: bool = False) -> np.ndarray:  # todo: test grad
+    """Gradient map.
+
+    Parameters
+    ----------
+    p : np.ndarray
+        Wrapped phase map.
+        It is reshaped to video-shape (frames `T`, height `Y`, width `X`, color channels `C`) before processing.
+    l : float
+        Spatial wavelength of wrapping.
+    center : bool, default=False
+        If this flag is set to True, the curvature values get centered around zero using the median.
+    normalize : bool, default=False
+        Flag indicating whether to use the arc-tangent function
+        to non-linearly map the codomain of `g` from [-inf, inf] to [-1, 1].
+
+    Returns
+    -------
+    g : np.ndarray
+        Gradient.
+    """
+    t0 = time.perf_counter()
+
+    D, K = np.shape(l)
+    T, Y, X, C = vshape(p).shape
+    p = p.reshape(D, K, Y, X, C)  # returns a view
+
+    assert X >= 2 and Y >= 2, "Shape too small to calculate numerical gradient."
+
+    p *= l[:, :, None, None, None] / (2 * np.pi)
+
+    # Gy = np.gradient(s[0], axis=0) + np.gradient(s[1], axis=0)
+    # Gx = np.gradient(s[0], axis=1) + np.gradient(s[1], axis=1)
+    # g = np.sqrt(Gx**2 + Gy**2)  # here only positive values!
+
+    xdx = np.gradient(p[0, 0], axis=0) % l[0, 0]  # 0
+    xdy = np.gradient(p[0, 0], axis=1) % l[0, 0]  # 1
+    ydx = np.gradient(p[1, 0], axis=0) % l[1, 0]  # 1
+    ydy = np.gradient(p[1, 0], axis=1) % l[1, 0]  # 0
+    g = xdx + xdy + ydx + ydy
+
+    if center:
+        # g -= np.mean(g, axis=(0, 1))
+        g -= np.median(g, axis=(0, 1))  # Median is a robust estimator of the mean.
+
+    if normalize:
+        g = np.arctan(g) * 2 / np.pi  # scale [-inf, inf] to [-1, 1]
+
+    logger.debug(f"{(time.perf_counter() - t0) * 1000:.0f}ms")
+    return g  # .reshape(-1, Y, X, C)
+
+
+# def height(curv: np.ndarray, iterations: int = 3) -> np.ndarray:  # todo: test height
 #     """Local height map.
 #
 #     It is computed by iterative local integration via an inverse laplace filter.
