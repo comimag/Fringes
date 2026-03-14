@@ -1,4 +1,4 @@
-name: uv-pytest
+name: pytest
 
 on:
   push:
